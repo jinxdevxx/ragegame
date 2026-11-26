@@ -3,9 +3,9 @@
 //  Reihenfolge: Boden → Trümmer-Flecken → Schatten/Objekte/Monster
 //  (nach Tiefe sortiert) → Trümmer → Münzen → Effekte → Overlays
 // =====================================================================
-import { SPRITES, OUT } from './sprites.js?v=0.3.1';
-import { drawMonster } from './monster.js?v=0.3.1';
-import { shadeHex as sh } from './game.js?v=0.3.1';
+import { SPRITES, OUT } from './sprites.js?v=0.3.2';
+import { drawMonster } from './monster.js?v=0.3.2';
+import { shadeHex as sh } from './game.js?v=0.3.2';
 
 const TAU = Math.PI * 2;
 const STARS = Array.from({ length: 220 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() * 1.8 + 0.4, p: Math.random() * 0.6 + 0.1, tw: Math.random() * 6 }));
@@ -169,36 +169,59 @@ function streetGrid(k, o) {
 }
 
 const GROUNDS = {
-  // ---------------- Garten: gemähter Rasen, Beete, Teiche, Trittsteine
+  // ---------------- Garten: Grundstücke mit Kieswegen, Hecken, Rasen, Beeten und Teichen.
+  // Regel: Alles am Boden ist FLACH (keine Umrisse, keine Schatten) – nur echte Objekte haben Umrisse.
   lawn(k) {
-    const { c, sx, sy, z, v, S, W, H, world } = k;
-    const band = S * 3;
-    c.fillStyle = world.bg2;
-    for (let ix = Math.floor(v.x0 / band); ix <= Math.ceil(v.x1 / band); ix++) if (((ix % 2) + 2) % 2) c.fillRect(sx(ix * band), 0, band * z + 1, H);
-    cached(k, 'lawn', kk => terrain(kk, S * 14, 5, [{ t: 0.66, color: 'rgba(40,90,30,0.13)' }]));
-    const C = S * 5;
-    cells(v, C, (ix, iy) => {
-      const h = hash(ix, iy, 1), X = sx((ix + hash(iy, ix, 2) * 0.6 + 0.2) * C), Y = sy((iy + hash(ix, iy, 9) * 0.6 + 0.2) * C), u = S * z;
-      if (h < 0.1) { // Blumenbeet
-        c.fillStyle = '#7a4e30'; c.beginPath(); c.roundRect(X - u * 1.6, Y - u * 0.6, u * 3.2, u * 1.2, u * 0.5); c.fill();
-        c.fillStyle = '#5c3a22'; c.beginPath(); c.roundRect(X - u * 1.5, Y - u * 0.5, u * 3, u * 0.25, u * 0.12); c.fill();
-        for (let i = 0; i < 7; i++) circle(c, X - u * 1.25 + i * u * 0.42, Y + Math.sin(i * 2.1) * u * 0.2, u * 0.16, ['#ff6fa8', '#ffd23f', '#ffffff', '#c38bff'][i % 4]);
-      } else if (h < 0.15) { // Teich
-        c.fillStyle = '#3d8a3a'; c.beginPath(); c.ellipse(X, Y, u * 2.2, u * 1.3, 0, 0, TAU); c.fill();
-        c.fillStyle = '#4fb3d9'; c.beginPath(); c.ellipse(X, Y, u * 1.9, u * 1.05, 0, 0, TAU); c.fill();
-        c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.ellipse(X - u * 0.6, Y - u * 0.35, u * 0.6, u * 0.18, 0, 0, TAU); c.fill();
-        circle(c, X + u * 0.8, Y + u * 0.2, u * 0.28, '#5cbd52');
-      } else if (h < 0.26) { // Trittsteine
-        for (let i = 0; i < 4; i++) { c.fillStyle = '#b8b2a5'; c.beginPath(); c.ellipse(X + i * u * 0.9, Y + Math.sin(i + h * 9) * u * 0.25, u * 0.38, u * 0.26, 0, 0, TAU); c.fill(); }
-      } else if (h < 0.3) { // Busch
-        treeTop(c, X, Y, u * 0.9, '#4f9e3f', '#2f6b2a');
-      }
-      if (u * 5 > 40) { // Grasbüschel
-        c.strokeStyle = world.accent; c.lineWidth = Math.max(1, u * 0.08); c.beginPath();
-        for (let i = 0; i < 3; i++) { const gx = sx((ix + hash(ix + i, iy, 4)) * C), gy = sy((iy + hash(ix, iy + i, 5)) * C); c.moveTo(gx - u * 0.12, gy); c.lineTo(gx - u * 0.2, gy - u * 0.3); c.moveTo(gx, gy); c.lineTo(gx, gy - u * 0.36); c.moveTo(gx + u * 0.12, gy); c.lineTo(gx + u * 0.22, gy - u * 0.28); }
+    const { c, sx, sy, z, v, S, W, H } = k;
+    const B = S * 14, Pw = S * 1.8, Hw = S * 0.45;
+    c.fillStyle = '#d8c9a0'; c.fillRect(0, 0, W, H); // Kies
+    // Kies-Körnung
+    const G = S * 0.9;
+    if (G * z > 6) {
+      c.fillStyle = 'rgba(120,100,60,0.18)';
+      cells(v, G, (ix, iy) => { const h = hash(ix, iy, 401); if (h < 0.5) return; c.fillRect(sx((ix + h) * G), sy((iy + hash(iy, ix, 402)) * G), Math.max(1, S * z * 0.12), Math.max(1, S * z * 0.12)); });
+    }
+    const bx0 = Math.floor(v.x0 / B), bx1 = Math.ceil(v.x1 / B), by0 = Math.floor(v.y0 / B), by1 = Math.ceil(v.y1 / B);
+    for (let ix = bx0; ix <= bx1; ix++) for (let iy = by0; iy <= by1; iy++) {
+      const x = ix * B + Pw / 2, y = iy * B + Pw / 2, w = B - Pw, h = hash(ix, iy, 403);
+      // Hecke (flach) rund um die Parzelle
+      c.fillStyle = '#4e9a3d'; c.fillRect(sx(x), sy(y), w * z, w * z);
+      c.fillStyle = '#5aa846'; c.fillRect(sx(x), sy(y), w * z, Hw * 0.45 * z);
+      // Rasen mit Mähstreifen
+      const lx = x + Hw, ly = y + Hw, lw = w - Hw * 2;
+      c.fillStyle = '#74c25a'; c.fillRect(sx(lx), sy(ly), lw * z, lw * z);
+      c.fillStyle = '#6ab850';
+      const stripes = 6;
+      for (let i = 0; i < stripes; i += 2) c.fillRect(sx(lx + i * lw / stripes), sy(ly), lw / stripes * z, lw * z);
+      // Gartenelemente (flach, gedeckte Farben)
+      if (h < 0.3) { // Gemüsebeet
+        const bx = lx + lw * 0.12, by = ly + lw * 0.12, bw = lw * 0.42, bh = lw * 0.3;
+        c.fillStyle = '#8a6a48'; c.fillRect(sx(bx), sy(by), bw * z, bh * z);
+        c.fillStyle = '#6fa64e';
+        for (let r = 0; r < 3; r++) for (let q = 0; q < 6; q++) { c.beginPath(); c.arc(sx(bx + bw * (0.1 + q * 0.16)), sy(by + bh * (0.22 + r * 0.28)), Math.max(1, S * z * 0.22), 0, TAU); c.fill(); }
+      } else if (h < 0.5) { // Teich mit Steinrand (flach)
+        const cx = lx + lw * 0.68, cy = ly + lw * 0.62, rx = lw * 0.2, ry = lw * 0.14;
+        c.fillStyle = '#b9b3a3'; c.beginPath(); c.ellipse(sx(cx), sy(cy), (rx + S * 0.35) * z, (ry + S * 0.35) * z, 0, 0, TAU); c.fill();
+        c.fillStyle = '#5ab4dc'; c.beginPath(); c.ellipse(sx(cx), sy(cy), rx * z, ry * z, 0, 0, TAU); c.fill();
+        c.fillStyle = 'rgba(255,255,255,0.3)'; c.beginPath(); c.ellipse(sx(cx - rx * 0.3), sy(cy - ry * 0.35), rx * 0.4 * z, ry * 0.18 * z, 0, 0, TAU); c.fill();
+        c.fillStyle = '#6fbf5a'; c.beginPath(); c.arc(sx(cx + rx * 0.35), sy(cy + ry * 0.2), Math.max(1, S * z * 0.35), 0, TAU); c.fill();
+      } else if (h < 0.68) { // Blumenrabatte entlang der Hecke (flacher Streifen)
+        c.fillStyle = '#7a5c40'; c.fillRect(sx(lx), sy(ly + lw - S * 1.1), lw * z, S * 1.1 * z);
+        const cols = ['#e86f9a', '#f2c94c', '#f4f0e6', '#b48ad9'];
+        for (let q = 0; q < 14; q++) { c.fillStyle = cols[q % 4]; c.beginPath(); c.arc(sx(lx + lw * (0.04 + q * 0.07)), sy(ly + lw - S * 0.55 + Math.sin(q * 2.3) * S * 0.2), Math.max(1, S * z * 0.2), 0, TAU); c.fill(); }
+      } else if (h < 0.8) { // Terrasse (Steinplatten)
+        const tx = lx + lw * 0.55, ty = ly + lw * 0.1, tw = lw * 0.35;
+        c.fillStyle = '#c9c2b4'; c.fillRect(sx(tx), sy(ty), tw * z, tw * z);
+        c.strokeStyle = 'rgba(0,0,0,0.08)'; c.lineWidth = 1; c.beginPath();
+        for (let q = 1; q < 4; q++) { c.moveTo(sx(tx + tw * q / 4), sy(ty)); c.lineTo(sx(tx + tw * q / 4), sy(ty + tw)); c.moveTo(sx(tx), sy(ty + tw * q / 4)); c.lineTo(sx(tx + tw), sy(ty + tw * q / 4)); }
         c.stroke();
       }
-    });
+      // Trittsteine quer über den Rasen (flach)
+      if (h > 0.4 && h < 0.9) {
+        c.fillStyle = '#c4bdae';
+        for (let q = 0; q < 6; q++) { c.beginPath(); c.ellipse(sx(lx + lw * (0.1 + q * 0.15)), sy(ly + lw * 0.85 - q * lw * 0.05), S * 0.45 * z, S * 0.3 * z, 0, 0, TAU); c.fill(); }
+      }
+    }
   },
 
   // ---------------- Vorstadt-Straßen: Blöcke mit Vorgärten

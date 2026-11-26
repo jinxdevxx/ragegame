@@ -6,6 +6,17 @@
 
 export const PATCH_NOTES = [
   {
+    version: '0.3.2',
+    date: '2026-11-26',
+    title: 'Neuer Garten',
+    summary: 'Die erste Karte ist komplett neu gestaltet – übersichtlich und klar lesbar.',
+    changes: [
+      'Garten neu: Grundstücke mit Kieswegen, Hecken, gemähtem Rasen, Gemüsebeeten, Teichen, Terrassen und Trittsteinen.',
+      'Klare Regel: Alles, was zur Karte gehört, ist flach (ohne Umrisse und Schatten) – alles Zerstörbare hat dicke Umrisse und Schatten. Man sieht sofort, wo man hinlaufen muss.',
+      'Entfernt: die Blumenbeet-„Stangen“, die Deko-Büsche, die wie Objekte aussahen, und die durchsichtigen Gitter-Flecken.',
+    ],
+  },
+  {
     version: '0.3.1',
     date: '2026-11-26',
     title: 'Urknall-Fix',
