@@ -6,6 +6,17 @@
 
 export const PATCH_NOTES = [
   {
+    version: '0.2.1',
+    date: '2026-11-26',
+    title: 'Volle Kontrolle',
+    summary: 'Das Monster läuft nicht mehr von allein der Maus hinterher.',
+    changes: [
+      'Steuerung: Mit der Maus läuft das Monster nur noch, solange du die linke Maustaste gedrückt hältst. Loslassen = stehen bleiben.',
+      'WASD/Pfeiltasten reagieren jetzt sofort und direkt, ohne Nachrutschen. Pfeiltasten scrollen die Seite nicht mehr.',
+      'Hilfe-Fenster und Tutorial erklären die neue Steuerung.',
+    ],
+  },
+  {
     version: '0.2.0',
     date: '2026-11-26',
     title: 'Der große Umbau',

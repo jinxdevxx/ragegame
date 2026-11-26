@@ -12,7 +12,7 @@ export const GAME_NAME = 'RAGEVERSE';
 export const PLAYER = {
   startRadius: 10,        // Größe beim Start eines Runs (Welt-Einheiten)
   speed: 5.2,             // Tempo in "eigenen Radien pro Sekunde"
-  accel: 10,              // wie schnell man auf Zielspeed kommt
+  accel: 18,              // wie schnell man auf Zielspeed kommt (hoch = direkte Steuerung)
   damage: 1.0,            // Schadensfaktor pro Schlag
   breakRatio: 1.05,       // Objekte bis zu (Radius × breakRatio) sind zerstörbar
   crumbRatio: 0.35,       // Objekte unter (Radius × crumbRatio) zerbröseln sofort bei Berührung

@@ -61,7 +61,9 @@ window.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   keys.add(k);
   if (!inRun) return;
-  if (k === ' ') { input.dash = true; e.preventDefault(); }
+  if (k.startsWith('arrow') || k === ' ') e.preventDefault(); // Seite nicht scrollen
+  if (e.repeat) return;
+  if (k === ' ') input.dash = true;
   if (k === 'e' || k === 'shift') input.slam = true;
   if (k === 'r' || k === 'q') input.berserk = true;
   if ((k === 'p' || k === 'escape') && game.state === 'play') pause();
@@ -80,10 +82,11 @@ canvas.addEventListener('pointerdown', e => {
     const now = performance.now();
     if (now - lastTap < 300) input.dash = true;
     lastTap = now;
-  } else if (e.button === 2) input.dash = true;
+  } else if (e.button === 2) { input.dash = true; pointer.active = false; }
 });
-canvas.addEventListener('pointermove', e => { pointer.x = e.clientX; pointer.y = e.clientY; if (e.pointerType === 'mouse') pointer.active = true; });
-canvas.addEventListener('pointerup', e => { if (e.pointerType === 'touch') pointer.active = false; });
+// Maus: Monster läuft nur, solange die linke Maustaste gedrückt ist
+canvas.addEventListener('pointermove', e => { pointer.x = e.clientX; pointer.y = e.clientY; });
+window.addEventListener('pointerup', () => { pointer.active = false; });
 canvas.addEventListener('pointercancel', () => { pointer.active = false; });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 const abBtn = (id, key) => $(id).addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); input[key] = true; });
@@ -338,7 +341,7 @@ function openHelp(from) {
   $('help-body').innerHTML = `
     <h3>Steuerung</h3>
     <div class="help-grid">
-      <div class="hk"><kbd>Maus</kbd> / <kbd>WASD</kbd> / Finger</div><div>Bewegen. Das Monster läuft in Richtung Maus bzw. Finger.</div>
+      <div class="hk"><kbd>Maustaste halten</kbd> / <kbd>WASD</kbd> / Finger</div><div>Bewegen. Solange du die linke Maustaste (oder den Finger) gedrückt hältst, läuft das Monster dorthin. Loslassen = stehen bleiben.</div>
       <div class="hk"><kbd>P</kbd> / <kbd>Esc</kbd></div><div>Pause</div>
     </div>
     <h3>Fähigkeiten</h3>
@@ -457,7 +460,7 @@ function tutorial() {
   if ((save.tutorial || 0) >= 3) return;
   save.tutorial = (save.tutorial || 0) + 1; writeSave(save);
   const steps = [
-    [0.5, 'Lauf in Dinge, die <b>kleiner</b> sind als du – und mach sie kaputt! 👊'],
+    [0.5, '<b>Maustaste halten</b> (oder WASD) zum Laufen – renn in Dinge, die <b>kleiner</b> sind als du! 👊'],
     [5, '<b>Leertaste</b> (oder Doppeltipp) = ⚡ Ansturm nach vorne'],
     [10, '<b>E</b> = 💥 Stampfer: Erdbeben um dich herum'],
     [15, 'Die 🔥 <b>Wut</b> sinkt ständig – zerstör weiter, sonst ist der Run vorbei!'],

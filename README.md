@@ -7,7 +7,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.2.0 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.2.1 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -28,7 +28,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 | 💥 Stampfer | E | 💥 | Erdbeben im Umkreis von 3,5× deiner Größe, zerstört alles Zerstörbare | 8 s (Upgrade „Erdbeben“) |
 | 😡 Berserker | R | 😡 | Lädt sich durch Zerstörung auf. Gezündet: 6 s riesig, unverwundbar, 3× Schaden, keine Wut-Abnahme | lädt sich auf (Upgrade „Berserker“) |
 
-Steuerung: Maus, WASD/Pfeiltasten oder Finger. Pause mit P/Esc. Im Spiel erklärt das **❓ Hilfe**-Fenster alles mit den aktuellen Werten.
+Steuerung: **linke Maustaste gedrückt halten** (das Monster läuft zur Maus), WASD/Pfeiltasten oder Finger. Ohne gedrückte Taste bleibt das Monster stehen. Pause mit P/Esc. Im Spiel erklärt das **❓ Hilfe**-Fenster alles mit den aktuellen Werten.
 
 ### Damit es nicht monoton wird
 - **3 Karten mit je 8 Welten:**
@@ -137,6 +137,10 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.2.1 Volle Kontrolle
+- Feedback: Das Monster lief automatisch der Maus hinterher, auch ohne Klick. Jetzt läuft es nur, solange die linke Maustaste gedrückt ist; loslassen = stehen bleiben (auch wenn die Taste außerhalb des Spielfelds losgelassen wird). Rechtsklick bleibt Ansturm.
+- WASD/Pfeiltasten direkter: Beschleunigung von 10 auf 18 erhöht (kein träges Nachrutschen mehr), Pfeiltasten und Leertaste scrollen die Seite nicht mehr, gedrückt gehaltene Leertaste löst nicht dauernd Ansturm aus.
+
 ### 2026-11-26: v0.2.0 Der große Umbau
 Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game ist eintönig, es fehlen Dopamin-Momente. Außerdem sind Fähigkeiten nirgends erklärt, der Magnet tut scheinbar nichts, und beim Wachsen entstehen leere Stellen.
 - **Neuer Charakter & Look:** Monster statt Kugel, mit Evolution pro Welt. Cartoon-Stil mit Outlines, Objekte stehen aufrecht, echte Böden je Welt. Über 80 Objekt-Grafiken.
@@ -168,6 +172,9 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.2.1: Volle Kontrolle (2026-11-26)
+- Maus-Steuerung nur noch bei gedrückter linker Maustaste
 
 ### v0.2.0: Der große Umbau (2026-11-26)
 - Neues Monster statt Kugel, mit Evolution in jeder Welt
