@@ -29,6 +29,7 @@ export function bot(g) {
   let near = 0;
   for (const o of g.objects) if (o.size <= lim && Math.hypot(o.x - p.x, o.y - p.y) < p.r * g.stats.slamRadius) near++;
   out.slam = near >= 4;
+  out.skill = !!g.botSkill && near >= 3; // Monster-Skill (für tools/skill-value.js)
   return out;
 }
 
@@ -39,6 +40,7 @@ export function playRun(save, opts = {}) {
     onEnd: s => { res = s; },
   });
   g.vw = 1280; g.vh = 720;
+  g.botSkill = !!opts.skill;
   g.start(opts);
   let steps = 0, emptyTime = 0;
   while (!res && steps < 30 * 60 * 20) {

@@ -282,7 +282,9 @@ const ring = (g, n, dist, size, extra = {}) => Array.from({ length: n }, (_, i) 
 }
 {
   const g = charGame('flitzer'), h = charGame('flitzer'); g.useSkill(); run(g, 1, input({ dx: 1 })); run(h, 1, input({ dx: 1 }));
-  check('Flitzer · Turbo-Rausch: schneller + Ansturm ohne Abklingzeit', g.p.x > h.p.x * 1.5 && g.p.dashCd === 0, `Strecke ${h.p.x.toFixed(0)} → ${g.p.x.toFixed(0)}`);
+  check('Flitzer · Schallmauer: schneller', g.p.x > h.p.x * 1.08, `Strecke ${h.p.x.toFixed(0)} → ${g.p.x.toFixed(0)}`);
+  const k = charGame('flitzer'); const os = ring(k, 8, 1.9, 0.5); os.forEach(o => { o.hp = o.maxHp = k.oneHit() * 2; }); k.useSkill(); run(k, 0.9);
+  check('Flitzer · Schallmauer: Überschall-Ringe zerlegen Zähes rundum', os.filter(o => o.dead).length >= 6, `${os.filter(o => o.dead).length}/8`);
 }
 {
   const g = charGame('golem'); g.useSkill(); run(g, 0.4); const os = [obj(g, 0, 0, g.p.r * 0.5)]; os[0].x = g.p.x; os[0].y = g.p.y + g.p.r * 0.2; os[0].hp = os[0].maxHp = g.oneHit() * 2; run(g, 1.5);
@@ -302,16 +304,16 @@ const ring = (g, n, dist, size, extra = {}) => Array.from({ length: n }, (_, i) 
   check('Frostbeule · Eiszeit: alles steht still, Hindernisse harmlos', mover.x === x0 && g.p.rage > r0 - 6, `Objekt bewegt ${(mover.x - x0).toFixed(1)}, Wut ${r0.toFixed(0)} → ${g.p.rage.toFixed(0)}`);
 }
 {
-  const g = charGame('kraken'); const os = ring(g, 8, 4, 0.6); os.forEach(o => { o.hp = o.maxHp = 1e12; }); g.useSkill();
-  check('Kraken · Tentakelgriff: zerquetscht 6 Objekte (auch zähe)', os.filter(o => o.dead).length === 6, `${os.filter(o => o.dead).length}/8`);
+  const g = charGame('kraken'); const os = ring(g, 14, 5, 0.6); os.forEach(o => { o.hp = o.maxHp = 1e12; }); g.useSkill();
+  check('Kraken · Tentakelgriff: zerquetscht 10 Objekte (auch zähe)', os.filter(o => o.dead).length === 10, `${os.filter(o => o.dead).length}/14`);
 }
 {
-  const g = charGame('mecha'); const os = ring(g, 10, 6, 0.5); g.useSkill(); run(g, 1.5);
-  check('Mecha-Rex · Raketensalve: sprengt Ziele im Sichtfeld', os.filter(o => o.dead).length >= 7, `${os.filter(o => o.dead).length}/10`);
+  const g = charGame('mecha'); const os = ring(g, 16, 6, 0.5); g.useSkill(); run(g, 1.8);
+  check('Mecha-Rex · Raketensalve: sprengt 16 Ziele im Sichtfeld', os.filter(o => o.dead).length >= 13, `${os.filter(o => o.dead).length}/16`);
 }
 {
-  const g = charGame('phoenix'); g.p.lookX = 1; g.p.lookY = 0; const os = [1, 2, 3].map(i => obj(g, g.p.r * (3 + i * 3), 0, g.p.r * 0.9)); os.forEach(o => { o.hp = o.maxHp = 1e12; }); g.useSkill(); run(g, 1.2);
-  check('Phönix · Feuerflug: vernichtet alles auf dem Weg', os.every(o => o.dead), `${os.filter(o => o.dead).length}/3`);
+  const g = charGame('phoenix'); const os = ring(g, 8, 2.6, 1.3); os.forEach(o => { o.hp = o.maxHp = g.oneHit() * 4; }); g.p.rage = 20; const r0 = g.p.rage; g.useSkill(); run(g, 2);
+  check('Phönix · Phönixfeuer: Flammenkranz verbrennt auch Großes (130 %) + Wut zurück', os.every(o => o.dead) && g.p.rage > r0 - 5, `${os.filter(o => o.dead).length}/8, Wut ${r0.toFixed(0)} → ${g.p.rage.toFixed(0)}`);
   const h = charGame('phoenix'); h.p.rage = 0.001; run(h, 0.2);
   check('Phönix · Wiedergeburt (einmal pro Run)', h.state === 'play' && h.p.rage > 10 && h.p.revived);
 }

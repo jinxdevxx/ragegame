@@ -8,7 +8,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Cheat-/Testversion:** https://jinxdevxx.github.io/ragegame-cheat/ (getrennter Speicher, Cheat-Menü per 🛠 oder Taste ^)
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.8.0 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.8.1 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -52,14 +52,14 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
   |---|---|---|
   | Grumpf | 📢 Wutschrei: Druckwelle + Wut | Start |
   | Stachelkönig | 🦔 Stachelhagel | ☠ + 1.500 Objekte |
-  | Flitzer | 💨 Turbo-Rausch | ☠ + Stadt |
+  | Flitzer | 💨 Schallmauer: Überschall-Ringe + Zusammenstöße wie Ansturm | ☠ + Stadt |
   | Magma-Golem | 🌋 Lava-Spur | ☠ + 8.000 Objekte |
   | Goldzahn | ✨ Goldregen | ☠ + Kontinent |
   | Void | 🕳 Singularität: schwarzes Loch frisst alles Zerstörbare | ☠ + Planetar |
   | Frosty | ❄ Eiszeit: friert Welt und Hindernisse ein | ☠ 250K + Welt 11 |
   | Kraken | 🐙 Tentakelgriff: packt Objekte im Umkreis | ☠ 1M + 100.000 Objekte |
   | Mecha | 🚀 Raketensalve auf die zähsten Ziele | ☠ 5M + Welt 19 |
-  | Phönix | 🔥 Feuerflug + einmal pro Run Wiedergeburt | ☠ 25M + Welt 29 |
+  | Phönix | 🔥 Phönixfeuer: Flammenkranz verbrennt alles rundum (bis 150 %), Wut zurück + einmal pro Run Wiedergeburt | ☠ 25M + Welt 29 |
   | Infernus | 😈 Höllenfeuer | ZORNOS besiegen |
 
 - **Eigene Gestalt je Monster** (js/monster.js): Grumpf (Klassiker), Stachelkönig (Igel), Flitzer (Sprint-Gecko), Magma-Golem (Felsblock), Goldzahn (Drache), Void (schwebendes Sternenwesen), Frostbeule (Yeti), Kraken (Oktopus), Mecha-Rex (Roboter), Phönix (Feuervogel), Infernus (Dämon). Vorschau aller Monster: `tools/sheet.html`, `tools/sheet-big.html?skin=gold`.
@@ -185,6 +185,13 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.8.1 Skills mit Sinn
+- **Nutzer-Feedback:** Feuerflug (Phönix) ist unnötig, wenn der Ansturm hoch geskillt ist. Gemessen: Ansturm-Abklingzeit sinkt auf 0,38–0,58 s – damit waren Feuerflug („Sturzflug“) und Turbo-Rausch („Ansturm ohne Abklingzeit“) im Endgame wertlos.
+- **Analyse aller F-Skills** (`tools/skill-value.js`: Bot spielt je Monster Runs mit und ohne Skill, mittleres Spiel, 10 Runs je Seite, Streuung ±0,3 Welten). Ergebnis vorher: Flitzer schadete sogar (×0,63 Schrott), Phönix/Kraken/Mecha kaum Wirkung; Golem, Frost, Grumpf, Void, Stachel, Infernus deutlich positiv. Endgame-Profil (alles max.) erreicht immer Welt 50 – dort kein Unterschied messbar; Karte 420 als Härtetest streut zu stark (einzelne Runs 3 s vs. 200 s).
+- **Umbau:** Phönix → *Phönixfeuer* (6 s Flammenkranz, verbrennt bis 150 %, Wut pro Kill), Flitzer → *Schallmauer* (Überschall-Ringe, Zusammenstöße wie Ansturm, nur +15 % Tempo – mehr Tempo ließ den Bot an Zielen vorbeischießen), Kraken 6 → 10 Griffe bis 130 %, Mecha 10 → 16 Raketen auf die größten Ziele. Nachher: Kraken +0,7, Phönix +0,4, Flitzer +0,3 Welten. Goldzahn bleibt bewusst ein Wirtschafts-Skill (×1,6 Schrott). Alle Skills skalieren mit dem Schaden und ergänzen den Ansturm statt ihn zu kopieren.
+- **Kush-Skin:** statt Schlag-Arm ein Joint mit Glut und Rauch (Nutzer-Wunsch, nur dieser Skin).
+- **Karte 420 neu gestaltet** (zwei Runden Nutzer-Feedback): Plantage von oben (Pflanzen aus 6+5 Fächerblättern mit schmalen, gezackten Fiederblättern und Mittelrippe, Blüte mit Härchen, Erdwege, Lichtungen, Teiche, Rauchschwaden); der Bodenmaßstab wächst auf dieser Ein-Welt-Karte in 4er-Schritten mit.
+
 ### 2026-11-26: v0.8.0 Grüner Daumen
 - **Cheat-/Testversion** (Wunsch, mit Go): eigenes Repo `ragegame-cheat`, gebaut per `bash tools/build-cheat.sh`. Patches nur in der Kopie: Speicher-Schlüssel `rageverse_cheat_*` (gleiche Domain wie das echte Spiel!), `writeSave` für das Cheat-Menü, Titel/Kennzeichnung. Browser-Test: echter Spielstand bleibt unsichtbar und unverändert.
 - **Easter Egg 420** (Wunsch: eine schwere Welt mit Ziel, Weed-Thema, Mutter Mary Jane). Erst als 50-Welten-Karte geplant, vom Nutzer korrigiert: eine einzige Welt mit Ziel.
@@ -303,6 +310,10 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.8.1: Skills mit Sinn (2026-11-26)
+- Phönixfeuer statt Feuerflug, Schallmauer statt Turbo-Rausch, Kraken und Mecha verstärkt
+- Neuer Look der Karte 420
 
 ### v0.8.0: Grüner Daumen (2026-11-26)
 - Geheimes Easter Egg nach dem ZORNOS-Sieg
