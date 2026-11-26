@@ -1,12 +1,12 @@
 // =====================================================================
 //  RAGEVERSE – Einstieg: Game-Loop, Steuerung, Menüs, Shop, Updates
 // =====================================================================
-import * as C from './config.js?v=0.6.2';
-import { monsterData, talentRank, talentFree, canRaiseTalent, raiseTalent, Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.6.2';
-import { render, drawMonsterPreview } from './render.js?v=0.6.2';
-import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.6.2';
-import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.6.2';
-import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.6.2';
+import * as C from './config.js?v=0.7.0';
+import { monsterData, talentRank, talentFree, canRaiseTalent, raiseTalent, Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.7.0';
+import { render, drawMonsterPreview } from './render.js?v=0.7.0';
+import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.7.0';
+import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.7.0';
+import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.7.0';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -540,13 +540,20 @@ function renderShop() {
   };
   $('shop-grid').innerHTML = C.UPGRADES.filter(u => u.cat === shopTab).map(u => {
     const l = upgradeLevel(save, u.id), maxed = l >= u.max, cost = upgradeCost(u, l), can = !maxed && save.scrap >= cost;
+    const mx = maxBuy(l, u.max, save.scrap, k => upgradeCost(u, k));
     return `<div class="upg ${can ? 'can' : ''}" data-id="${u.id}">
       <div class="upg-top"><div class="upg-icon">${u.icon}</div><div class="upg-txt"><div class="upg-name">${u.name} <span class="lv">Lv ${l}/${u.max}</span></div><div class="upg-lvl">${effect[u.id] ? effect[u.id]() : ''}</div></div></div>
       <div class="upg-desc">${u.desc}</div>
       <div class="bar tiny"><div style="width:${Math.round(l / u.max * 100)}%"></div></div>
-      <button class="btn ${can ? 'primary' : ''}" data-buy="${u.id}" ${can ? '' : 'disabled'}>${maxed ? 'MAX' : money(cost)}</button>
+      <div class="buy-row"><button class="btn ${can ? 'primary' : ''}" data-buy="${u.id}" ${can ? '' : 'disabled'}>${maxed ? 'MAX' : money(cost)}</button>${mx.n >= 2 ? `<button class="btn max-btn" data-buymax="${u.id}" title="Alles investieren: ${mx.n} Stufen für ${money(mx.cost, true)}">⏫ +${mx.n}</button>` : ''}</div>
     </div>`;
   }).join('');
+}
+// Wie viele Stufen kann man sich auf einmal leisten? (für den ⏫-Knopf: alles in ein Upgrade)
+function maxBuy(l, max, budget, costAt) {
+  let n = 0, cost = 0;
+  while (l + n < max) { const c = costAt(l + n); if (cost + c > budget) break; cost += c; n++; }
+  return { n, cost };
 }
 // Vorschau: was bringt der Urknall konkret beim Schrott?
 function bangPreview(gain) {
@@ -589,11 +596,12 @@ function renderBang() {
   $('shop-tab-desc').textContent = '';
   const perks = C.DM_PERKS.map(d => {
     const l = dmLevel(save, d.id), maxed = l >= d.max, cost = dmCost(d, l), can = !maxed && (save.darkMatter || 0) >= cost;
+    const mx = maxBuy(l, d.max, save.darkMatter || 0, k => dmCost(d, k));
     const eff = d.id === 'dm_mut' ? `${l} Start-Mutation${l === 1 ? '' : 'en'}` : d.id === 'dm_keep' ? `behält ${Math.round(l * d.per * 100)} % der Stufen` : `+${Math.round(l * d.per * 100)} %`;
     return `<div class="upg dmp ${can ? 'can' : ''}">
       <div class="upg-top"><div class="upg-icon">${d.icon}</div><div class="upg-txt"><div class="upg-name">${d.name} <span class="lv">Lv ${l}/${d.max}</span></div><div class="upg-lvl">${eff}</div></div></div>
       <div class="upg-desc">${d.desc}</div>
-      <button class="btn ${can ? 'primary' : ''}" data-dm="${d.id}" ${can ? '' : 'disabled'}>${maxed ? 'MAX' : '◆ ' + fmt(cost)}</button>
+      <div class="buy-row"><button class="btn ${can ? 'primary' : ''}" data-dm="${d.id}" ${can ? '' : 'disabled'}>${maxed ? 'MAX' : '◆ ' + fmt(cost)}</button>${mx.n >= 2 ? `<button class="btn max-btn" data-dmmax="${d.id}" title="Alles investieren: ${mx.n} Stufen für ◆ ${fmt(mx.cost)}">⏫ +${mx.n}</button>` : ''}</div>
     </div>`;
   }).join('');
   $('shop-grid').innerHTML = `<div class="bang-panel">
@@ -630,6 +638,21 @@ $('shop-grid').addEventListener('click', e => {
     const ev = C.SKILL_EVOS.find(x => x.id === evb.dataset.evo);
     if (evoState(ev) !== 'buy') { sfx('deny'); return; }
     save.chaos -= ev.cost; save.evos[ev.id] = true; writeSave(save); sfx('unlock'); checkAchievements(); renderShop(); return;
+  }
+  const dmm = e.target.closest('[data-dmmax]');
+  if (dmm) {
+    const d = C.DM_PERKS.find(x => x.id === dmm.dataset.dmmax), mx = maxBuy(dmLevel(save, d.id), d.max, save.darkMatter || 0, k => dmCost(d, k));
+    if (mx.n < 1) { sfx('deny'); return; }
+    save.darkMatter -= mx.cost; save.dmPerks[d.id] = dmLevel(save, d.id) + mx.n; writeSave(save); sfx('unlock'); renderShop(); return;
+  }
+  const bm = e.target.closest('[data-buymax]');
+  if (bm) {
+    const u = C.UPGRADES.find(x => x.id === bm.dataset.buymax), l = upgradeLevel(save, u.id), mx = maxBuy(l, u.max, save.scrap, k => upgradeCost(u, k));
+    if (mx.n < 1) { sfx('deny'); return; }
+    save.scrap -= mx.cost; save.upgrades[u.id] = l + mx.n; writeSave(save); sfx('unlock'); renderShop();
+    const card = $('shop-grid').querySelector(`[data-id="${u.id}"]`);
+    if (card) { card.classList.add('bought'); setTimeout(() => card.classList.remove('bought'), 400); }
+    return;
   }
   const dmb = e.target.closest('[data-dm]');
   if (dmb) {
@@ -715,11 +738,13 @@ function renderTalents() {
       <div class="tal-txt"><b>${esc(t.name)}${T.sig ? ' <small>Signatur</small>' : ''}</b><span>${locked ? `🔒 ab Level ${T.lvl}` : esc(desc)}</span>
         <div class="bar tiny"><div style="transform:scaleX(${(r / T.max).toFixed(3)})"></div></div></div>
       <div class="tal-rank">${r}/${T.max}</div>
-      <button class="btn ${can ? 'primary' : ''}" data-tal="${T.id}" ${can ? '' : 'disabled'}>+</button>
+      <div class="tal-btns"><button class="btn ${can ? 'primary' : ''}" data-tal="${T.id}" ${can ? '' : 'disabled'}>+</button>${can && free >= 2 && r < T.max - 1 ? `<button class="btn max-btn" data-talmax="${T.id}" title="Alle freien Punkte hier hinein">⏫</button>` : ''}</div>
     </div>`;
   }).join('');
 }
 $('tal-list').addEventListener('click', e => {
+  const bm = e.target.closest('[data-talmax]');
+  if (bm) { let n = 0; while (raiseTalent(save, talentChar, bm.dataset.talmax)) n++; if (n) { writeSave(save); sfx('unlock'); renderTalents(); } else sfx('deny'); return; }
   const b = e.target.closest('[data-tal]'); if (!b) return;
   if (raiseTalent(save, talentChar, b.dataset.tal)) { writeSave(save); sfx('buy'); renderTalents(); } else sfx('deny');
 });

@@ -4,7 +4,7 @@
 //  x von -1 bis 1, y von -1 (oben) bis 1 (Boden). Outline wird vom
 //  Aufrufer gesetzt (lineWidth/strokeStyle), Farbe kommt aus o.color.
 // =====================================================================
-import { shadeHex as sh } from './game.js?v=0.6.2';
+import { shadeHex as sh } from './game.js?v=0.7.0';
 
 const TAU = Math.PI * 2;
 
@@ -764,4 +764,182 @@ export const SPRITES = {
     const lw = c.lineWidth; c.lineWidth = 0.32; c.strokeStyle = OUT; c.stroke(); c.lineWidth = 0.24; c.strokeStyle = '#ffffff'; c.stroke();
     c.setLineDash([0.14, 0.14]); c.strokeStyle = o.color; c.stroke(); c.setLineDash([]); c.lineWidth = lw; c.strokeStyle = OUT;
   },
+
+  // ================= Dimensionen: thematische Objekte =================
+  // --- Götter / Himmel / Ruinen
+  pillar(c, o) { // (zerbrochene) Säule
+    rr(c, -0.5, 0.75, 1, 0.22, 0.04, sh(o.color, -0.1)); rr(c, -0.38, -0.7, 0.76, 1.48, 0.04, o.color);
+    for (let i = -1; i <= 1; i++) line(c, i * 0.2, -0.62, i * 0.2, 0.7, 0.04, sh(o.color, -0.25));
+    poly(c, [-0.5, -0.7, 0.5, -0.7, 0.42, -0.86, 0.15, -0.8, -0.05, -0.98, -0.25, -0.82, -0.45, -0.88], sh(o.color, 0.1));
+  },
+  temple(c, o) { // griechischer Tempel
+    rr(c, -0.98, 0.72, 1.96, 0.25, 0.03, sh(o.color, -0.15)); rr(c, -0.88, 0.55, 1.76, 0.2, 0.03, sh(o.color, -0.05));
+    for (let i = 0; i < 5; i++) rr(c, -0.78 + i * 0.36, -0.35, 0.2, 0.92, 0.03, o.color);
+    rr(c, -0.92, -0.48, 1.84, 0.16, 0.03, sh(o.color, 0.05));
+    poly(c, [-0.98, -0.48, 0, -0.98, 0.98, -0.48], sh(o.color, 0.12));
+    circ(c, 0, -0.66, 0.1, '#ffd23f');
+  },
+  palace(c, o) { // Palast mit goldenen Kuppeln
+    rr(c, -0.95, -0.1, 1.9, 1.05, 0.05, o.color);
+    for (const x of [-0.75, 0.75]) { rr(c, x - 0.18, -0.6, 0.36, 1.55, 0.04, sh(o.color, -0.08)); poly(c, [x - 0.22, -0.6, x, -0.95, x + 0.22, -0.6], '#ffd23f'); }
+    c.beginPath(); c.arc(0, -0.1, 0.42, Math.PI, 0); c.closePath(); fs(c, '#ffd23f'); line(c, 0, -0.52, 0, -0.75, 0.05, OUT); circ(c, 0, -0.78, 0.06, '#ffd23f');
+    rr(c, -0.16, 0.45, 0.32, 0.5, 0.15, sh(o.color, -0.35));
+    for (const x of [-0.5, 0.35]) rr(c, x, 0.1, 0.15, 0.22, 0.07, '#7fd3ff');
+  },
+  god(c, o) { // Gott mit Bart, Toga und Blitz
+    const t = o.anim || 0;
+    poly(c, [-0.55, 0.95, -0.45, -0.1, 0.45, -0.1, 0.55, 0.95], '#ffffff'); line(c, -0.45, -0.05, 0.4, 0.9, 0.12, o.color);
+    circ(c, 0, -0.45, 0.33, '#f2c9a0');
+    c.beginPath(); c.moveTo(-0.3, -0.42); c.quadraticCurveTo(0, 0.2, 0.3, -0.42); c.quadraticCurveTo(0, -0.2, -0.3, -0.42); fs(c, '#f0f0f0');
+    eyes(c, -0.12, -0.52, 0.07, 0.3); eyes(c, 0.12, -0.52, 0.07, 0.3);
+    poly(c, [-0.3, -0.75, -0.2, -0.95, -0.08, -0.78, 0, -1, 0.08, -0.78, 0.2, -0.95, 0.3, -0.75], '#ffd23f');
+    const f = Math.sin(t * 6) > 0 ? 1 : 0.6; c.globalAlpha = f;
+    poly(c, [0.6, -0.6, 0.85, -0.6, 0.72, -0.25, 0.92, -0.25, 0.55, 0.25, 0.65, -0.12, 0.48, -0.12], '#fff36a'); c.globalAlpha = 1;
+  },
+  angel(c, o) { // Engel mit Flügeln und Heiligenschein
+    const f = Math.sin((o.anim || 0) * 5) * 0.15;
+    for (const d of [-1, 1]) { c.beginPath(); c.moveTo(d * 0.15, -0.1); c.quadraticCurveTo(d * (0.95 + f), -0.75, d * 0.95, 0.1); c.quadraticCurveTo(d * 0.6, 0.05, d * 0.15, 0.25); fs(c, '#f4f4ff'); }
+    poly(c, [-0.35, 0.95, -0.2, -0.05, 0.2, -0.05, 0.35, 0.95], o.color);
+    circ(c, 0, -0.32, 0.26, '#f6d6b8'); eyes(c, -0.09, -0.34, 0.06, 0.2); eyes(c, 0.09, -0.34, 0.06, 0.2);
+    c.beginPath(); c.ellipse(0, -0.7, 0.26, 0.08, 0, 0, TAU); const lw = c.lineWidth; c.lineWidth = 0.08; c.strokeStyle = '#ffd23f'; c.stroke(); c.lineWidth = lw; c.strokeStyle = OUT;
+  },
+  bolt(c, o) { poly(c, [0.1, -1, 0.55, -1, 0.2, -0.2, 0.6, -0.2, -0.3, 1, -0.05, 0.1, -0.45, 0.1], o.color); },
+  cloud(c, o) { for (const [x, y, r] of [[-0.5, 0.2, 0.45], [0.05, -0.1, 0.6], [0.55, 0.2, 0.42], [0, 0.35, 0.5]]) circ(c, x, y, r, o.color); circ(c, -0.15, -0.25, 0.18, 'rgba(255,255,255,0.6)', true); },
+  harp(c, o) {
+    c.beginPath(); c.moveTo(-0.6, 0.9); c.lineTo(-0.6, -0.8); c.quadraticCurveTo(0.2, -1.05, 0.65, -0.3); c.lineTo(-0.6, 0.9); const lw = c.lineWidth; c.lineWidth = 0.18; c.strokeStyle = OUT; c.stroke(); c.lineWidth = 0.1; c.strokeStyle = o.color; c.stroke(); c.lineWidth = lw; c.strokeStyle = OUT;
+    for (let i = 0; i < 5; i++) line(c, -0.45 + i * 0.2, -0.75 + i * 0.12, -0.45 + i * 0.2, 0.75 - i * 0.24, 0.025, '#fff6c0');
+  },
+  // --- Uhrwerk / Schmiede
+  gear(c, o) {
+    const t = (o.anim || 0) * 0.6, n = 10; c.beginPath();
+    for (let i = 0; i < n * 2; i++) { const a = t + i / (n * 2) * TAU, r = i % 2 ? 0.78 : 0.98; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    c.closePath(); fs(c, o.color); circ(c, 0, 0, 0.5, sh(o.color, -0.15)); circ(c, 0, 0, 0.18, '#2a1b1b');
+    for (let i = 0; i < 4; i++) { const a = t + i * Math.PI / 2; circ(c, Math.cos(a) * 0.33, Math.sin(a) * 0.33, 0.07, sh(o.color, 0.2), true); }
+  },
+  clock(c, o) { // Uhrturm
+    rr(c, -0.5, -0.4, 1, 1.35, 0.05, sh(o.color, -0.2)); poly(c, [-0.6, -0.4, 0, -1, 0.6, -0.4], sh(o.color, -0.35));
+    circ(c, 0, -0.05, 0.38, '#fff6dc'); const t = o.anim || 0;
+    line(c, 0, -0.05, Math.cos(t) * 0.26, -0.05 + Math.sin(t) * 0.26, 0.05, OUT); line(c, 0, -0.05, Math.cos(t / 12) * 0.18, -0.05 + Math.sin(t / 12) * 0.18, 0.07, OUT);
+    rr(c, -0.15, 0.55, 0.3, 0.4, 0.12, '#3a2010');
+  },
+  automaton(c, o) { // Uhrwerk-Roboter
+    const b = Math.sin((o.anim || 0) * 4) * 0.04;
+    rr(c, -0.45, 0.55, 0.3, 0.4, 0.05, sh(o.color, -0.25)); rr(c, 0.15, 0.55, 0.3, 0.4, 0.05, sh(o.color, -0.25));
+    rr(c, -0.6, -0.25 + b, 1.2, 0.85, 0.15, o.color); circ(c, 0, 0.15 + b, 0.2, '#ffd23f'); circ(c, 0, 0.15 + b, 0.08, OUT, true);
+    rr(c, -0.4, -0.85 + b, 0.8, 0.58, 0.12, sh(o.color, 0.1)); circ(c, -0.16, -0.58 + b, 0.1, '#7fffe0'); circ(c, 0.16, -0.58 + b, 0.1, '#7fffe0');
+    line(c, 0, -0.85 + b, 0, -1.02 + b, 0.05, OUT); circ(c, 0, -1.02 + b, 0.06, '#ff4a3d');
+  },
+  anvil(c, o) {
+    poly(c, [-0.95, -0.3, 0.75, -0.3, 0.95, -0.55, 0.95, -0.1, 0.35, 0.05, 0.25, 0.5, 0.6, 0.6, 0.6, 0.95, -0.6, 0.95, -0.6, 0.6, -0.25, 0.5, -0.35, 0.05, -0.75, 0], o.color);
+    circ(c, -0.2, -0.6, 0.12, '#ffb13d', true); circ(c, 0.2, -0.75, 0.08, '#ffd23f', true);
+  },
+  hourglass(c, o) {
+    rr(c, -0.65, -0.98, 1.3, 0.16, 0.04, '#8a5a2a'); rr(c, -0.65, 0.82, 1.3, 0.16, 0.04, '#8a5a2a');
+    poly(c, [-0.5, -0.82, 0.5, -0.82, 0.08, 0, 0.5, 0.82, -0.5, 0.82, -0.08, 0], 'rgba(220,240,255,0.8)');
+    const k = ((o.anim || 0) * 0.2) % 1; poly(c, [-0.4 * (1 - k), -0.7 + k * 0.6, 0.4 * (1 - k), -0.7 + k * 0.6, 0.06, -0.05, -0.06, -0.05], o.color, true);
+    poly(c, [-0.45 * k, 0.8 - k * 0.5, 0.45 * k, 0.8 - k * 0.5, 0.45, 0.8, -0.45, 0.8], o.color, true);
+  },
+  // --- Drachenhort
+  dragon(c, o) {
+    const t = o.anim || 0, f = Math.sin(t * 6) * 0.2;
+    c.beginPath(); c.moveTo(-0.1, -0.2); c.lineTo(-0.9, -0.9 + f); c.lineTo(-0.7, -0.25); c.lineTo(-1, 0); c.lineTo(-0.3, 0.1); fs(c, sh(o.color, -0.2));
+    c.beginPath(); c.moveTo(-0.5, 0.4); c.quadraticCurveTo(-1, 0.6, -0.95, 0.9); c.quadraticCurveTo(-0.7, 0.6, -0.35, 0.65); fs(c, o.color);
+    ell(c, -0.1, 0.35, 0.55, 0.45, o.color); ell(c, 0, 0.45, 0.32, 0.3, '#ffe9a0');
+    ell(c, 0.5, -0.25, 0.38, 0.3, o.color); poly(c, [0.35, -0.5, 0.25, -0.85, 0.48, -0.55], '#fff6dc'); poly(c, [0.6, -0.52, 0.7, -0.85, 0.75, -0.5], '#fff6dc');
+    eyes(c, 0.55, -0.32, 0.09, 0.5); circ(c, 0.84, -0.18, 0.03, OUT, true);
+    if (Math.sin(t * 2 + o.seed * 9) > 0.5) poly(c, [0.85, -0.15, 1.15, -0.3, 1.1, 0, 1.2, 0.15], '#ffb13d');
+  },
+  goldpile(c, o) {
+    poly(c, [-0.98, 0.95, -0.6, 0.2, -0.2, -0.3, 0.25, -0.45, 0.65, 0.1, 0.98, 0.95], '#e0a020');
+    for (let i = 0; i < 14; i++) { const x = Math.sin(i * 7.3 + o.seed * 5) * 0.75, y = 0.85 - Math.abs(Math.cos(i * 3.1)) * (0.9 - Math.abs(x) * 0.6); ell(c, x, y, 0.15, 0.07, i % 3 ? '#ffd23f' : '#fff09a'); }
+    poly(c, [-0.15, -0.55, 0.05, -0.8, 0.25, -0.55, 0.05, -0.4], '#ff4a7a'); circ(c, 0.55, -0.05, 0.1, '#5ad0ff');
+  },
+  egg(c, o) { ell(c, 0, 0.05, 0.62, 0.88, o.color); for (let i = 0; i < 5; i++) ell(c, -0.3 + (i % 3) * 0.3, -0.45 + i * 0.25, 0.1, 0.07, sh(o.color, -0.25), 0, true); circ(c, -0.22, -0.4, 0.14, 'rgba(255,255,255,0.4)', true); },
+  chest(c, o) {
+    rr(c, -0.9, -0.1, 1.8, 1.05, 0.08, '#8a4a1a'); c.beginPath(); c.moveTo(-0.9, -0.1); c.quadraticCurveTo(0, -0.95, 0.9, -0.1); c.closePath(); fs(c, '#a05a24');
+    rr(c, -0.95, -0.15, 1.9, 0.16, 0.04, o.color); rr(c, -0.12, -0.2, 0.24, 0.4, 0.04, o.color); circ(c, 0, 0.05, 0.05, OUT, true);
+    for (let i = 0; i < 3; i++) circ(c, -0.4 + i * 0.4, -0.35, 0.1, '#ffd23f');
+  },
+  // --- Wald / Garten
+  bigtree(c, o) {
+    poly(c, [-0.2, 0.95, -0.15, 0.1, 0.15, 0.1, 0.2, 0.95], '#6a3f1f'); line(c, -0.15, 0.95, -0.45, 0.98, 0.08, '#6a3f1f'); line(c, 0.15, 0.95, 0.45, 0.98, 0.08, '#6a3f1f');
+    for (const [x, y, r] of [[-0.5, -0.1, 0.42], [0.5, -0.1, 0.42], [0, -0.5, 0.55], [0, 0, 0.45]]) circ(c, x, y, r, o.color);
+    for (let i = 0; i < 4; i++) circ(c, -0.35 + i * 0.25, -0.35 + (i % 2) * 0.3, 0.07, '#ff6a8a', true);
+  },
+  root(c, o) { c.beginPath(); c.moveTo(-0.95, 0.9); c.bezierCurveTo(-0.6, -0.2, -0.1, 0.7, 0.2, -0.3); c.bezierCurveTo(0.35, -0.8, 0.7, -0.6, 0.95, -0.9); const lw = c.lineWidth; c.lineWidth = 0.4; c.strokeStyle = OUT; c.stroke(); c.lineWidth = 0.28; c.strokeStyle = o.color; c.stroke(); c.lineWidth = lw; c.strokeStyle = OUT; circ(c, 0.95, -0.9, 0.16, '#7fe07f'); },
+  // --- Wasser / Ursuppe
+  fish(c, o) {
+    const w = Math.sin((o.anim || 0) * 8) * 0.12;
+    poly(c, [-0.55, 0, -0.98, -0.45 + w, -0.98, 0.45 + w], sh(o.color, -0.15));
+    ell(c, 0.1, 0, 0.7, 0.45, o.color); poly(c, [-0.1, -0.4, 0.15, -0.75, 0.35, -0.38], sh(o.color, -0.15));
+    eyes(c, 0.5, -0.1, 0.12, 0.4); line(c, 0.65, 0.18, 0.75, 0.15, 0.04, OUT);
+  },
+  whale(c, o) {
+    const t = o.anim || 0;
+    c.beginPath(); c.moveTo(-0.7, 0.1); c.quadraticCurveTo(-1, -0.2 + Math.sin(t * 2) * 0.1, -1, -0.5); c.lineTo(-0.75, -0.25); c.lineTo(-0.85, 0.2); fs(c, o.color);
+    ell(c, 0.1, 0.15, 0.9, 0.55, o.color); ell(c, 0.2, 0.42, 0.65, 0.22, '#e0f4ff');
+    eyes(c, 0.6, 0, 0.09, 0.4);
+    for (let i = 0; i < 3; i++) circ(c, 0.3 + i * 0.05, -0.55 - i * 0.15 - (t * 0.5 % 0.3), 0.06 + i * 0.02, 'rgba(200,240,255,0.8)', true);
+  },
+  jelly(c, o) {
+    const t = o.anim || 0;
+    for (let i = 0; i < 5; i++) { const x = -0.45 + i * 0.22; c.beginPath(); c.moveTo(x, 0.1); c.quadraticCurveTo(x + Math.sin(t * 3 + i) * 0.2, 0.5, x, 0.95); const lw = c.lineWidth; c.lineWidth = 0.07; c.strokeStyle = sh(o.color, -0.2); c.stroke(); c.lineWidth = lw; c.strokeStyle = OUT; }
+    c.beginPath(); c.arc(0, 0.1, 0.65, Math.PI, 0); c.quadraticCurveTo(0, 0.3, -0.65, 0.1); fs(c, o.color);
+    circ(c, -0.2, -0.25, 0.12, 'rgba(255,255,255,0.6)', true); eyes(c, -0.15, -0.05, 0.07, 0.2); eyes(c, 0.15, -0.05, 0.07, 0.2);
+  },
+  coral(c, o) {
+    const br = (x, y, a, l, d) => { const x2 = x + Math.cos(a) * l, y2 = y + Math.sin(a) * l; line(c, x, y, x2, y2, 0.16 - d * 0.04, o.color); if (d < 2) { br(x2, y2, a - 0.5, l * 0.7, d + 1); br(x2, y2, a + 0.5, l * 0.7, d + 1); } else circ(c, x2, y2, 0.07, sh(o.color, 0.3), true); };
+    br(0, 0.95, -Math.PI / 2, 0.6, 0); rr(c, -0.4, 0.82, 0.8, 0.15, 0.05, '#e0c080');
+  },
+  cell(c, o) { // Urzelle / Amöbe
+    const t = o.anim || 0; c.beginPath();
+    for (let i = 0; i <= 16; i++) { const a = i / 16 * TAU, r = 0.85 + Math.sin(a * 3 + t * 2 + o.seed * 5) * 0.1; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    c.closePath(); c.globalAlpha = 0.85; fs(c, o.color); c.globalAlpha = 1;
+    circ(c, 0.15, -0.1, 0.32, sh(o.color, -0.3)); circ(c, 0.08, -0.18, 0.1, 'rgba(255,255,255,0.5)', true);
+    for (let i = 0; i < 4; i++) circ(c, -0.5 + i * 0.2, 0.35 - (i % 2) * 0.3, 0.07, sh(o.color, 0.3), true);
+  },
+  // --- Neon / Glitch
+  server(c, o) {
+    rr(c, -0.55, -0.98, 1.1, 1.93, 0.06, '#1a1f2a');
+    for (let i = 0; i < 5; i++) { rr(c, -0.45, -0.85 + i * 0.36, 0.9, 0.26, 0.03, '#2a3040'); for (let k = 0; k < 3; k++) circ(c, 0.12 + k * 0.1, -0.72 + i * 0.36, 0.035, Math.floor((o.anim || 0) * 6 + i + k) % 3 ? o.color : '#ff4a7a', true); }
+  },
+  chip(c, o) {
+    for (let i = 0; i < 4; i++) for (const d of [-1, 1]) { line(c, -0.45 + i * 0.3, d * 0.6, -0.45 + i * 0.3, d * 0.95, 0.08, '#c0c8d0'); line(c, d * 0.6, -0.45 + i * 0.3, d * 0.95, -0.45 + i * 0.3, 0.08, '#c0c8d0'); }
+    rr(c, -0.65, -0.65, 1.3, 1.3, 0.1, '#1a1f2a'); rr(c, -0.35, -0.35, 0.7, 0.7, 0.06, o.color);
+  },
+  virus(c, o) {
+    const t = o.anim || 0;
+    for (let i = 0; i < 10; i++) { const a = i / 10 * TAU + t * 0.5; line(c, Math.cos(a) * 0.5, Math.sin(a) * 0.5, Math.cos(a) * 0.9, Math.sin(a) * 0.9, 0.08, sh(o.color, -0.2)); circ(c, Math.cos(a) * 0.92, Math.sin(a) * 0.92, 0.08, sh(o.color, 0.2)); }
+    circ(c, 0, 0, 0.58, o.color); eyes(c, -0.18, -0.05, 0.12, 0.3); eyes(c, 0.18, -0.05, 0.12, 0.3);
+  },
+  glitch(c, o) {
+    const t = Math.floor((o.anim || 0) * 8);
+    for (let i = 0; i < 6; i++) { const off = ((t + i * 3) % 5 - 2) * 0.06; rr(c, -0.9 + off, -0.9 + i * 0.3, 1.8, 0.3, 0, ['#ff00ff', '#00ffff', '#ffff00', o.color][(i + t) % 4]); }
+    c.fillStyle = '#000'; c.font = 'bold 0.4px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('ERR', 0, 0);
+  },
+  // --- Schatten / Grab
+  ghost(c, o) {
+    const t = o.anim || 0, b = Math.sin(t * 3) * 0.06; c.beginPath(); c.moveTo(-0.6, 0.9 + b); c.lineTo(-0.6, -0.2 + b); c.arc(0, -0.2 + b, 0.6, Math.PI, 0); c.lineTo(0.6, 0.9 + b);
+    for (let i = 0; i < 4; i++) c.lineTo(0.6 - (i + 0.5) * 0.3, (i % 2 ? 0.9 : 0.7) + b); c.closePath(); c.globalAlpha = 0.85; fs(c, o.color); c.globalAlpha = 1;
+    ell(c, -0.2, -0.25 + b, 0.11, 0.16, '#120a20'); ell(c, 0.2, -0.25 + b, 0.11, 0.16, '#120a20'); ell(c, 0, 0.15 + b, 0.12, 0.1, '#120a20');
+  },
+  tomb(c, o) { c.beginPath(); c.moveTo(-0.6, 0.95); c.lineTo(-0.6, -0.4); c.arc(0, -0.4, 0.6, Math.PI, 0); c.lineTo(0.6, 0.95); c.closePath(); fs(c, o.color); line(c, 0, -0.65, 0, -0.05, 0.08, sh(o.color, -0.35)); line(c, -0.2, -0.45, 0.2, -0.45, 0.08, sh(o.color, -0.35)); rr(c, -0.8, 0.82, 1.6, 0.15, 0.04, '#3a2a2a'); },
+  // --- Eis
+  iceberg(c, o) { poly(c, [-0.95, 0.95, -0.7, -0.1, -0.35, -0.3, -0.1, -0.95, 0.25, -0.4, 0.55, -0.55, 0.95, 0.95], o.color); poly(c, [-0.1, -0.95, 0.05, -0.1, -0.35, -0.3], 'rgba(255,255,255,0.6)', true); line(c, -0.95, 0.6, 0.95, 0.6, 0.05, '#7fd3ff'); },
+  snowman(c, o) { circ(c, 0, 0.5, 0.48, '#ffffff'); circ(c, 0, -0.15, 0.36, '#ffffff'); circ(c, 0, -0.65, 0.27, '#ffffff'); eyes(c, -0.09, -0.7, 0.05, 0.2); eyes(c, 0.09, -0.7, 0.05, 0.2); poly(c, [0, -0.62, 0.3, -0.58, 0, -0.55], '#ff8a2a'); rr(c, -0.3, -1, 0.6, 0.12, 0.03, o.color); rr(c, -0.2, -1.2, 0.4, 0.25, 0.04, o.color); },
+  // --- Lava
+  lavablob(c, o) {
+    const t = o.anim || 0; c.beginPath();
+    for (let i = 0; i <= 14; i++) { const a = Math.PI + i / 14 * Math.PI, r = 0.85 + Math.sin(a * 4 + t * 3) * 0.08; c.lineTo(Math.cos(a) * r, 0.3 + Math.sin(a) * r * 1.1); }
+    c.lineTo(0.95, 0.95); c.lineTo(-0.95, 0.95); c.closePath(); fs(c, o.color);
+    circ(c, -0.3, -0.3, 0.15, '#fff36a', true); eyes(c, -0.2, -0.1, 0.12, 0.3); eyes(c, 0.2, -0.1, 0.12, 0.3);
+    rr(c, -0.25, 0.25, 0.5, 0.14, 0.07, '#5a1000');
+  },
+  spire(c, o) { poly(c, [-0.55, 0.95, -0.3, -0.2, -0.1, -0.98, 0.15, -0.35, 0.35, -0.6, 0.55, 0.95], o.color); line(c, -0.2, 0.5, 0.05, -0.3, 0.06, '#ff6a1f'); line(c, 0.1, 0.8, 0.3, 0.1, 0.05, '#ffb13d'); },
+  // --- Wüste / Spiegel / Traum
+  pyramid(c, o) { poly(c, [-0.98, 0.95, 0, -0.95, 0.98, 0.95], o.color); poly(c, [0, -0.95, 0.98, 0.95, 0.2, 0.95], sh(o.color, -0.2)); for (let i = 1; i < 5; i++) line(c, -0.98 + i * 0.2, 0.95 - i * 0.38, 0.98 - i * 0.2 - 0.03, 0.95 - i * 0.38, 0.03, sh(o.color, -0.3)); poly(c, [-0.08, -0.95, 0, -1.1, 0.08, -0.95], '#ffd23f'); },
+  obelisk(c, o) { poly(c, [-0.3, 0.95, -0.22, -0.7, 0, -1, 0.22, -0.7, 0.3, 0.95], o.color); rr(c, -0.5, 0.8, 1, 0.17, 0.03, sh(o.color, -0.2)); for (let i = 0; i < 3; i++) circ(c, 0, -0.3 + i * 0.35, 0.06, '#ffd23f', true); },
+  mirror(c, o) { ell(c, 0, -0.05, 0.62, 0.9, '#d8b860'); ell(c, 0, -0.05, 0.5, 0.78, o.color); poly(c, [-0.3, -0.5, -0.1, -0.7, 0.2, 0.2, 0, 0.4], 'rgba(255,255,255,0.55)', true); rr(c, -0.3, 0.8, 0.6, 0.17, 0.04, '#d8b860'); },
+  moon(c, o) { c.beginPath(); c.arc(0, 0, 0.9, 0.6, TAU - 0.6); c.arc(0.45, 0, 0.62, TAU - 1.05, 1.05, true); c.closePath(); fs(c, o.color); eyes(c, -0.45, -0.15, 0.1, -0.3); line(c, -0.55, 0.3, -0.35, 0.32, 0.05, OUT); },
+  sheep(c, o) { for (const [x, y] of [[-0.4, 0.05], [0, -0.15], [0.4, 0.05], [-0.2, 0.3], [0.2, 0.3]]) circ(c, x, y, 0.35, o.color); rr(c, -0.4, 0.5, 0.14, 0.45, 0.05, '#3a2a2a'); rr(c, 0.26, 0.5, 0.14, 0.45, 0.05, '#3a2a2a'); ell(c, 0.65, -0.15, 0.25, 0.2, '#3a2a2a'); eyes(c, 0.72, -0.2, 0.06, 0.3); },
 };

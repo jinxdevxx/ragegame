@@ -420,3 +420,17 @@ body.touch .ab-key { display: none; }
 .tal .btn { padding: 6px 0; font-size: 20px; }
 .toast { position: relative; overflow: hidden; }
 .toast .t-time { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--rage2); transform-origin: left center; transition: transform .1s linear; }
+.buy-row { display: flex; gap: 6px; }
+.buy-row > .btn:first-child { flex: 1; }
+.btn.max-btn { flex: 0 0 auto; padding-left: 10px; padding-right: 10px; background: linear-gradient(180deg, #ffd23f, #e09a1a); color: #2a1212; border-color: #ffe9a0; font-weight: 900; }
+.tal-btns { display: flex; gap: 4px; }
+.tal { grid-template-columns: 44px 1fr auto auto; }
+
+/* Große Fenster passen immer auf den Bildschirm: Kopf + Knöpfe fix, nur die Liste scrollt */
+.panel.wide { width: min(1240px, 100%); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; padding: 20px 22px; }
+.panel.wide > * { flex-shrink: 0; }
+.panel.wide > .shop-grid, .panel.wide > .char-grid, .panel.wide > .map-grid, .panel.wide > .ach-grid, .panel.wide > .help-body { flex: 1 1 auto; min-height: 0; max-height: none; }
+.panel.wide h2 { font-size: clamp(26px, 3.2vw, 40px); }
+.panel.wide .btn-row { margin-top: 12px; }
+.shop-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+@media (max-height: 760px) { .panel.wide { padding: 14px 18px; } .panel.wide .sub { margin: 4px 0; } .panel.wide .tabs { margin: 6px 0; } }

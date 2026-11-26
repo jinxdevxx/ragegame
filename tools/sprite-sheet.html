@@ -1,0 +1,15 @@
+<!doctype html><meta charset="utf-8"><title>Sprite-Blatt</title>
+<body style="margin:0;background:#3a2a4a;font:12px sans-serif"><canvas id="c" width="1400" height="900"></canvas>
+<script type="module">
+import { SPRITES, OUT } from '../js/sprites.js';
+const q = new URLSearchParams(location.search), list = (q.get('s') || Object.keys(SPRITES).join(',')).split(',');
+const c = document.getElementById('c').getContext('2d'), cols = 10, cw = 140, ch = 130;
+c.fillStyle = '#3a2a4a'; c.fillRect(0, 0, 1400, 900);
+list.forEach((name, i) => {
+  const X = (i % cols) * cw + 70, Y = Math.floor(i / cols) * ch + 60, R = 42;
+  const o = { shape: name, color: q.get('c') || '#8ad0ff', anim: 1.7, seed: 0.37, scared: 0, face: 1 };
+  c.save(); c.translate(X, Y); c.scale(R, R); c.lineWidth = 3.2 / R; c.strokeStyle = OUT; c.lineJoin = 'round'; c.lineCap = 'round';
+  try { SPRITES[name](c, o); } catch (e) { c.restore(); c.save(); c.fillStyle = 'red'; c.fillText('ERR ' + e.message, X - 60, Y); }
+  c.restore(); c.fillStyle = '#fff'; c.textAlign = 'center'; c.fillText(name, X, Y + 58);
+});
+</script>

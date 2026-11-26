@@ -6,6 +6,19 @@
 
 export const PATCH_NOTES = [
   {
+    version: '0.7.0',
+    date: '2026-11-26',
+    title: 'Echte Dimensionen',
+    summary: 'Jede Dimension ab Welt 12 hat jetzt ein eigenes Thema – mit passendem Boden und passenden Objekten.',
+    changes: [
+      'Alle 39 Dimensionen neu: eigener Boden statt nur anderer Farben – z. B. Kristallfelder, Lavaströme, Eisschollen, Pilzwald mit Myzel, Neon-Schaltkreise, Glitch-Pixel, Messing-Zahnräder, Zuckerguss mit Streuseln, Drachenhort mit Gold, Ozean mit Wellen, Wolken mit Marmortempeln, Weltenbaum-Wurzeln, Regenbogen-Dünen, Ursuppe mit Zellen.',
+      'Passende Objekte statt Augen und Planeten überall: Götterberg mit Säulen, Tempeln, Götterpalast und einem gefährlichen Donnergott; Drachenhort mit Goldbergen, Dracheneiern und Drachen; Neon-Matrix mit Chips, Servern und Viren; Ozeane mit Fischen, Quallen und Walen; Uhrwerk mit Zahnrädern und Uhrtürmen – und vieles mehr (über 40 neue Grafiken).',
+      'Weltraum-Dimensionen mit eigenem Motiv: Sternenschmiede mit Esse, Dunkle Sonne, Quantenschaum, Sternengrab, Omega-Nebel, Der Rand, Das Letzte Licht.',
+      '⏫-Knopf: Mit einem Klick alles in ein Upgrade stecken (Schurkenhöhle), in einen Masterplan-Bonus (Urknall) oder alle freien Punkte in ein Talent.',
+      'Schurkenhöhle, Monster & Co. passen jetzt immer auf den Bildschirm: breiteres Fenster, die Knöpfe unten sind immer sichtbar, nur die Liste scrollt.',
+    ],
+  },
+  {
     version: '0.6.2',
     date: '2026-11-26',
     title: 'Weltnummer im Blick',

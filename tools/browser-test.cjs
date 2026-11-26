@@ -98,6 +98,25 @@ const OUT = process.argv[2] || '/tmp';
   log('HUD zeigt Weltnummer', /WELT 12 \/ 50/.test(wn) && /Welt 13/.test(wn), wn);
   await p.close();
 
+  // ⏫ Alles in ein Upgrade / einen Masterplan-Bonus / ein Talent
+  p = await page('?slot=1');
+  await p.evaluate(() => { const s = window.__rv.save; s.upgrades = {}; s.scrap = 1e6; s.darkMatter = 500; s.dmPerks = {}; s.monsters = { grumpf: { xp: 0, lvl: 21, pts: {} } }; });
+  await click(p, '#btn-shop-menu'); await p.waitForTimeout(200);
+  await click(p, '[data-buymax="size"]'); await p.waitForTimeout(100);
+  const bm = await p.evaluate(() => { const s = window.__rv.save; return { l: s.upgrades.size, scrap: s.scrap, next: window.__rv.C.UPGRADES.find(u => u.id === 'size') }; });
+  const nextCost = await p.evaluate(() => { const u = window.__rv.C.UPGRADES.find(x => x.id === 'size'), l = window.__rv.save.upgrades.size; return l >= u.max ? Infinity : Math.floor(u.base * Math.pow(u.growth, l)); });
+  log('⏫ Upgrade: alles auf einmal, Rest reicht nicht für die nächste Stufe', bm.l >= 2 && bm.scrap >= 0 && (bm.scrap < nextCost * 1.01 || !isFinite(nextCost)), `Startgröße Lv ${bm.l}, Rest ${Math.floor(bm.scrap)}`);
+  await click(p, '[data-tab="bang"]'); await p.waitForTimeout(150);
+  await click(p, '[data-dmmax="dm_scrap"]'); await p.waitForTimeout(100);
+  const dmL = await p.evaluate(() => window.__rv.save.dmPerks.dm_scrap || 0);
+  log('⏫ Masterplan: alles in Schwarzgeld', dmL >= 2, `Stufe ${dmL}`);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(150);
+  await click(p, '#btn-chars'); await p.waitForTimeout(200); await click(p, '[data-talents="grumpf"]'); await p.waitForTimeout(150);
+  await click(p, '[data-talmax="power"]'); await p.waitForTimeout(100);
+  const tp = await p.evaluate(() => window.__rv.save.monsters.grumpf.pts.power);
+  log('⏫ Talent: alle 20 Punkte in Kraft', tp === 20, `Kraft ${tp}/25`);
+  await p.close();
+
   // Erfolge + Statistik
   p = await page('?slot=1');
   await p.evaluate(() => { const s = window.__rv.save; s.totalKills = 1500; s.runs = 12; s.stats = { bestCombo: 25, playTime: 3700 }; });

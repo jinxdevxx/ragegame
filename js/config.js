@@ -379,13 +379,100 @@ const DIMENSIONS = [
   ['Höllenschlund', ['#140000', '#3a0300', '#ff4a1f', '#5a0a00', '#c42a0a', '#ffb13d'], 'hell', 'RAGE-GOTT',
     [['Höllenglut', 'rock', '#ff4a1f'], ['Seelenkomet', 'comet', '#ffb13d'], ['~Verdammte Seele', 'nebula', '#ff6a3d'], ['Lavamond', 'planet', '#c42a0a'], ['*Schwefelsonne', 'star', '#ffd23f'], ['!Höllenwächter', 'eye', '#ff3b2f'], ['Höllentor', 'portal', '#ff4a1f'], ['Lavavulkan', 'volcano', '#3a0a05']]],
 ];
+
+// ---------------------------------------------------------------------
+// Themen der Dimensionen: passender Boden (theme) + passende Objekte.
+// objs: 8 Objekte von klein nach groß (~ flieht, * explodiert, ! gefährlich, wandert)
+// extras: [Haufen, langsamer Wanderer, schneller Flitzer, großer Schatz]
+// ---------------------------------------------------------------------
+const DIM_THEMES = {
+  'Kristallreich': ['crystal', [['Kristallsplitter', 'crystal', '#7fffff'], ['Kristallschnecke', 'snail', '#a0e0ff'], ['~Kristallwurm', 'snake', '#b06bff'], ['Geode', 'egg', '#8ad0ff'], ['*Prismabombe', 'star', '#ffffff'], ['!Kristallgolem', 'automaton', '#5ad0ff'], ['Kristallpalast', 'palace', '#bfefff'], ['Kristallberg', 'iceberg', '#d0ffff']],
+    [['Splitterhaufen', 'cluster'], ['Wandernde Geode', 'egg'], ['Glitzerkomet', 'comet'], ['Diamantader', 'goldpile']]],
+  'Lavadimension': ['lava', [['Glutbrocken', 'rock', '#ff6a1f'], ['Obsidiannadel', 'spire', '#3a1a1a'], ['~Lavaschleim', 'lavablob', '#ff5a1f'], ['Magmakessel', 'gastank', '#ff8a2a'], ['*Glutfass', 'barrel', '#ff3b2f'], ['!Feuersalamander', 'dragon', '#ff3b2f'], ['Feuerportal', 'portal', '#ff8a2a'], ['Lavavulkan', 'volcano', '#7a2a10']],
+    [['Glutfeld', 'cluster'], ['Magmawalze', 'lavablob'], ['Feuerkomet', 'comet'], ['Obsidianschatz', 'chest']]],
+  'Eiswüste der Ewigkeit': ['ice', [['Eisbrocken', 'rock', '#cfeaf7'], ['Schneemann', 'snowman', '#5ad0ff'], ['~Schneegeist', 'ghost', '#ffffff'], ['Eistanne', 'pine', '#bfe4ff'], ['*Kältebombe', 'star', '#bfe4ff'], ['!Frostgolem', 'automaton', '#9fe3ff'], ['Eisscholle', 'iceberg', '#e0f4ff'], ['Gletscher', 'mountain', '#e0f4ff']],
+    [['Hagelfeld', 'cluster'], ['Treibeis', 'iceberg'], ['Frostkomet', 'comet'], ['Eisschatz', 'chest']]],
+  'Pilz-Kosmos': ['fungal', [['Leuchtpilz', 'mushroom', '#ff6fa8'], ['Sporenwolke', 'nebula', '#c38bff'], ['~Pilzling', 'gummy', '#ffb3d9'], ['Fliegenpilz', 'mushroom', '#e8432e'], ['*Sporenbombe', 'star', '#a0f04a'], ['!Sporenqualle', 'jelly', '#a04aa0'], ['Pilzbaum', 'bigtree', '#a04aa0'], ['Riesenpilz', 'mushroom', '#ff6fa8']],
+    [['Sporenfeld', 'cluster'], ['Riesenschnecke', 'snail'], ['Sporenkomet', 'comet'], ['Trüffelschatz', 'chest']]],
+  'Neon-Matrix': ['circuit', [['Mikrochip', 'chip', '#00ffcc'], ['Datenwürfel', 'crate', '#00aaff'], ['~Virus', 'virus', '#ff00aa'], ['Serverturm', 'server', '#00ffcc'], ['*Logikbombe', 'star', '#ff00aa'], ['!Firewall-Bot', 'automaton', '#00aaff'], ['Neon-Portal', 'portal', '#00ffcc'], ['Datenzentrum', 'building', '#0a5a5a']],
+    [['Datenmüll', 'cluster'], ['Lichtrenner', 'car'], ['Pixelkomet', 'comet'], ['Krypto-Tresor', 'chest']]],
+  'Schattenreich': ['shadow', [['Schattenfetzen', 'nebula', '#3a2a5a'], ['Schattenstein', 'tomb', '#2a1a4a'], ['~Schemen', 'ghost', '#8a4aff'], ['Schattenmond', 'moon', '#5a3a8a'], ['*Leerenbombe', 'blackhole', '#000000'], ['!Schattenauge', 'eye', '#8a4aff'], ['Finstere Kapelle', 'church', '#2a1a4a'], ['Schattenturm', 'tower', '#3a2a5a']],
+    [['Schattenhaufen', 'cluster'], ['Spukgestalt', 'ghost'], ['Dunkler Komet', 'comet'], ['Schattenschatz', 'chest']]],
+  'Uhrwerk-Dimension': ['clockwork', [['Zahnrad', 'gear', '#b8860b'], ['Sanduhr', 'hourglass', '#e0c070'], ['~Uhrwerkkäfer', 'automaton', '#ffd23f'], ['Taschenuhrturm', 'clock', '#e0c070'], ['*Dampfkessel', 'gastank', '#b8860b'], ['!Pendelwächter', 'automaton', '#b8860b'], ['Großzahnrad', 'gear', '#e0c070'], ['Glockenturm', 'clock', '#8a6a2a']],
+    [['Schraubenhaufen', 'cluster'], ['Dampflok', 'train'], ['Messingkomet', 'comet'], ['Spieluhr-Truhe', 'chest']]],
+  'Zuckerkosmos': ['sweets', [['Sternbonbon', 'candy', '#7fd3ff'], ['Lolli', 'lolly', '#ff9ad0'], ['~Gummibär', 'gummy', '#ff4a5a'], ['Donut', 'donut', '#ff8ad0'], ['*Brausestern', 'star', '#a0f04a'], ['!Monster-Muffin', 'cupcake', '#ff6fa8'], ['Lebkuchenhaus', 'gingerhouse', '#c96f3a'], ['Riesentorte', 'cake', '#ff8ad0']],
+    [['Streuselhaufen', 'cluster'], ['Eiswagen', 'icecream'], ['Lolli-Komet', 'comet'], ['Bonbon-Truhe', 'chest']]],
+  'Drachenhort': ['hoard', [['Goldmünzen', 'goldpile', '#ffd23f'], ['Drachenei', 'egg', '#c96f3a'], ['~Jungdrache', 'dragon', '#e8432e'], ['Schatztruhe', 'chest', '#ffd23f'], ['*Feueratem', 'star', '#ff6a1f'], ['!Drachenwächter', 'dragon', '#8a4a2a'], ['Hortberg', 'mountain', '#6a3a2a'], ['Drachenburg', 'palace', '#7a4a3a']],
+    [['Juwelenhaufen', 'cluster'], ['Goldkarren', 'wagon'], ['Feuerkomet', 'comet'], ['Goldader', 'goldpile']]],
+  'Sternenschmiede': ['forge', [['Sternenamboss', 'anvil', '#8a8d96'], ['Schmiederad', 'gear', '#ffb13d'], ['~Schmiedegeselle', 'automaton', '#ff8a2a'], ['Rohstern', 'star', '#ff8a2a'], ['*Supernova', 'star', '#ffffff'], ['!Hammerwächter', 'automaton', '#ffb13d'], ['Sternenesse', 'station', '#8a8d96'], ['Glühende Welt', 'planet', '#ff8a2a']],
+    [['Funkenregen', 'cluster'], ['Schlackenbrocken', 'rock'], ['Funkenkomet', 'comet'], ['Sternenschatz', 'chest']]],
+  'Gedankenmeer': ['ocean', [['Gedankenfisch', 'fish', '#c38bff'], ['Erinnerungsqualle', 'jelly', '#6a6adf'], ['~Ideenfisch', 'fish', '#e0d0ff'], ['Gedankenkoralle', 'coral', '#c38bff'], ['*Geistesblitz', 'bolt', '#ffffff'], ['!Allsehendes Auge', 'eye', '#c38bff'], ['Traumwal', 'whale', '#6a6adf'], ['Gedankeninsel', 'island', '#5a6aaf']],
+    [['Gedankenblasen', 'cluster'], ['Gedankenschiff', 'ship'], ['Ideenkomet', 'comet'], ['Truhe der Erinnerung', 'chest']]],
+  'Kristallkern': ['crystal', [['Kernsplitter', 'crystal', '#3ad9b0'], ['Kristallei', 'egg', '#7fffe0'], ['~Kristallschlange', 'snake', '#7fffe0'], ['Kristallobelisk', 'obelisk', '#3ad9b0'], ['*Kristallnova', 'star', '#e0fff8'], ['!Kernwächter', 'automaton', '#3ad9b0'], ['Kernportal', 'portal', '#7fffe0'], ['Kernkristall', 'iceberg', '#e0fff8']],
+    [['Kernsplitterfeld', 'cluster'], ['Kristallkugel', 'egg'], ['Kristallregen', 'comet'], ['Kristallader', 'goldpile']]],
+  'Glitch-Zone': ['glitch', [['Glitch-Block', 'glitch', '#ff00ff'], ['Kaputter Chip', 'chip', '#00ffff'], ['~Bug', 'virus', '#ffff00'], ['Absturzserver', 'server', '#ff00ff'], ['*Systemabsturz', 'star', '#00ffff'], ['!Debug-Auge', 'eye', '#ff00ff'], ['Fehlerportal', 'portal', '#00ffff'], ['Pixelhochhaus', 'building', '#5a0a5a']],
+    [['Pixelmüll', 'cluster'], ['Fehlerauto', 'car'], ['Bug-Komet', 'comet'], ['Speicherleck', 'chest']]],
+  'Dunkle Sonne': ['darksun', [['Schattenflamme', 'nebula', '#8a1a1a'], ['Glutkomet', 'comet', '#ff6a3d'], ['~Sonnengeist', 'ghost', '#ff3b2f'], ['Rotglutplanet', 'planet', '#8a1a1a'], ['*Sonnenausbruch', 'star', '#ff3b2f'], ['!Korona-Auge', 'eye', '#ff6a3d'], ['Schwarzer Zwerg', 'planet', '#3a0a0a'], ['Dunkler Stern', 'star', '#ff3b2f']],
+    [['Aschewolke', 'cluster'], ['Glutmond', 'planet'], ['Sonnenkomet', 'comet'], ['Sonnenschatz', 'chest']]],
+  'Götterberg': ['temple', [['Tempelsäule', 'pillar', '#e8dcc4'], ['Goldene Harfe', 'harp', '#ffd23f'], ['~Götterbote', 'angel', '#ffd23f'], ['Tempel', 'temple', '#e8dcc4'], ['*Blitzschlag', 'bolt', '#fff36a'], ['!Donnergott', 'god', '#5a6aaf'], ['Götterpalast', 'palace', '#f0e8d8'], ['Olymp', 'mountain', '#c8c8e0']],
+    [['Marmorbruch', 'cluster'], ['Wolkenwagen', 'cloud'], ['Goldkomet', 'comet'], ['Ambrosia-Schatz', 'goldpile']]],
+  'Ätherfeld': ['sky', [['Ätherwölkchen', 'cloud', '#a0ffe0'], ['Irrlicht', 'nebula', '#e0fff0'], ['~Ätherfee', 'angel', '#a0ffe0'], ['Schwebewelt', 'island', '#5ab0a0'], ['*Ätherfunke', 'star', '#ffffff'], ['!Ätherauge', 'eye', '#a0ffe0'], ['Ätherturm', 'obelisk', '#a0ffe0'], ['Ätherschrein', 'temple', '#e0fff0']],
+    [['Ätherschimmer', 'cluster'], ['Treibwolke', 'cloud'], ['Ätherkomet', 'comet'], ['Ätherschatz', 'chest']]],
+  'Weltenbaum': ['forest', [['Weltenblatt', 'flower', '#7fe07f'], ['Waldpilz', 'mushroom', '#ff6a3d'], ['~Waldvogel', 'bird', '#ffd23f'], ['Weltenfrucht', 'egg', '#ff6a3d'], ['*Saftbombe', 'star', '#c9f0a0'], ['!Waldgeist', 'ghost', '#7fe07f'], ['Weltenwurzel', 'root', '#7a4a2a'], ['Baumriese', 'bigtree', '#4f9e4a']],
+    [['Laubhaufen', 'cluster'], ['Riesenschnecke', 'snail'], ['Samenkomet', 'comet'], ['Harzschatz', 'chest']]],
+  'Plasmaozean': ['ocean', [['Plasmafisch', 'fish', '#5ad0ff'], ['Plasmaqualle', 'jelly', '#3a6aff'], ['~Leuchtfisch', 'fish', '#c0f0ff'], ['Plasmakoralle', 'coral', '#5ad0ff'], ['*Plasmaentladung', 'bolt', '#c0f0ff'], ['!Tiefseeauge', 'eye', '#5ad0ff'], ['Plasmawal', 'whale', '#3a6aff'], ['Plasmainsel', 'island', '#2a5aaa']],
+    [['Plasmablasen', 'cluster'], ['Plasma-U-Boot', 'ship'], ['Plasmawelle', 'comet'], ['Perlenschatz', 'chest']]],
+  'Zeitwirbel': ['clockwork', [['Zeitsplitter', 'crystal', '#ffe07f'], ['Sanduhr', 'hourglass', '#b8a050'], ['~Gestern', 'ghost', '#fff0c0'], ['Zeitturm', 'clock', '#b8a050'], ['*Zeitbombe', 'dynamite', '#ff3b2f'], ['!Chronos-Wächter', 'automaton', '#ffe07f'], ['Zeitportal', 'portal', '#ffe07f'], ['Uralte Pyramide', 'pyramid', '#b8a050']],
+    [['Zeitstaub', 'cluster'], ['Zeitrad', 'gear'], ['Sanduhr-Komet', 'comet'], ['Schatz von morgen', 'chest']]],
+  'Traumebene': ['dream', [['Traumwolke', 'cloud', '#ffb3f0'], ['Schäfchen', 'sheep', '#ffffff'], ['~Springschaf', 'sheep', '#ffe0ff'], ['Mondsichel', 'moon', '#ffe0a0'], ['*Albtraumbombe', 'star', '#a06adf'], ['!Traumfänger-Auge', 'eye', '#ffb3f0'], ['Wolkenschloss', 'palace', '#ffe0ff'], ['Traumplanet', 'ringplanet', '#ffb3f0']],
+    [['Sternenstaub', 'cluster'], ['Zuckerwatte', 'cotton'], ['Sternschnuppe', 'comet'], ['Traumschatz', 'chest']]],
+  'Chaoskern': ['chaos', [['Chaossplitter', 'crystal', '#ff3b2f'], ['Chaosblock', 'glitch', '#c38bff'], ['~Chaosgeist', 'virus', '#ffd23f'], ['Chaosportal', 'portal', '#c38bff'], ['*Chaosbombe', 'star', '#ff3b2f'], ['!Chaosauge', 'eye', '#ff3b2f'], ['Chaoswirbel', 'galaxy', '#ff3b2f'], ['Chaosplanet', 'planet', '#c38bff']],
+    [['Chaosschutt', 'cluster'], ['Taumelnder Mond', 'planet'], ['Wirbelkomet', 'comet'], ['Chaosschatz', 'chest']]],
+  'Spiegelwelt': ['mirror', [['Spiegelscherbe', 'crystal', '#e0e8ff'], ['Handspiegel', 'mirror', '#e0e8ff'], ['~Spiegelbild', 'ghost', '#9aa0c0'], ['Zauberspiegel', 'mirror', '#ffffff'], ['*Lichtblitz', 'bolt', '#ffffff'], ['!Spiegelauge', 'eye', '#e0e8ff'], ['Spiegelpalast', 'palace', '#e0e8ff'], ['Spiegelturm', 'obelisk', '#c0c8e0']],
+    [['Scherbenhaufen', 'cluster'], ['Spiegelkugel', 'egg'], ['Lichtkomet', 'comet'], ['Silberschatz', 'chest']]],
+  'Schwarzer Garten': ['garden', [['Dornenranke', 'bush', '#2a4a2a'], ['Giftpilz', 'mushroom', '#a0ff7f'], ['~Giftfalter', 'bird', '#a0ff7f'], ['Fleischblume', 'flower', '#8a1a3a'], ['*Giftbombe', 'star', '#a0ff7f'], ['!Dornenauge', 'eye', '#5a8a3a'], ['Gartengrab', 'tomb', '#3a4a3a'], ['Galgenbaum', 'bigtree', '#2a3a2a']],
+    [['Unkrautfeld', 'cluster'], ['Giftschnecke', 'snail'], ['Sporenkomet', 'comet'], ['Giftschatz', 'chest']]],
+  'Prismenwüste': ['desert', [['Prisma', 'crystal', '#ff9a3d'], ['Kristallkaktus', 'cactus', '#7fe0c0'], ['~Lichtwurm', 'snake', '#ffd23f'], ['Prismenpyramide', 'pyramid', '#e0c070'], ['*Lichtbombe', 'star', '#ffffff'], ['!Prismenauge', 'eye', '#ff9a3d'], ['Sonnenobelisk', 'obelisk', '#e0c070'], ['Regenbogenfels', 'mesa', '#ff9a3d']],
+    [['Glitzersand', 'cluster'], ['Steppenroller', 'tumble'], ['Regenbogenkomet', 'comet'], ['Wüstenschatz', 'goldpile']]],
+  'Titanenschmiede': ['forge', [['Titanbolzen', 'rock', '#8a8d96'], ['Amboss', 'anvil', '#5a5d66'], ['~Golemschmied', 'automaton', '#ff6a1f'], ['Titanrad', 'gear', '#8a8d96'], ['*Schmelzofen', 'gastank', '#ff6a1f'], ['!Titanenwächter', 'automaton', '#ff6a1f'], ['Schlackenturm', 'spire', '#5a3a2a'], ['Erzberg', 'mountain', '#5a3a2a']],
+    [['Schlacke', 'cluster'], ['Erzlore', 'wagon'], ['Schlackekomet', 'comet'], ['Titanschatz', 'chest']]],
+  'Leere zwischen den Welten': ['void', [['Nichts-Splitter', 'crystal', '#3a3a5a'], ['Geisterkomet', 'comet', '#ffffff'], ['~Leerengeist', 'ghost', '#5a5a7a'], ['Verlorene Welt', 'planet', '#3a3a4a'], ['*Leerenriss', 'blackhole', '#000000'], ['!Auge der Leere', 'eye', '#ffffff'], ['Leerentor', 'portal', '#5a5a7a'], ['Vergessener Tempel', 'temple', '#3a3a4a']],
+    [['Nichts', 'cluster'], ['Treibender Mond', 'planet'], ['Echo', 'comet'], ['Vergessener Schatz', 'chest']]],
+  'Feuerhimmel': ['fiery', [['Feuerwolke', 'cloud', '#ff8a2a'], ['Phönixfeder', 'comet', '#ffd23f'], ['~Feuervogel', 'bird', '#ff6a1f'], ['Brennender Mond', 'moon', '#ff8a2a'], ['*Himmelsfeuer', 'star', '#ffe07f'], ['!Himmelsdrache', 'dragon', '#ffd23f'], ['Sonnenpalast', 'palace', '#ffe07f'], ['Himmelsvulkan', 'volcano', '#8a3a0a']],
+    [['Glutwolken', 'cluster'], ['Brennende Wolke', 'cloud'], ['Feuerschweif', 'comet'], ['Sonnenschatz', 'goldpile']]],
+  'Engelsruine': ['temple', [['Säulenrest', 'pillar', '#e0e0e8'], ['Engelsharfe', 'harp', '#fff8d0'], ['~Engelsfunke', 'angel', '#fff8d0'], ['Verfallener Tempel', 'temple', '#c0c0d0'], ['*Heiliges Licht', 'star', '#ffd23f'], ['!Gefallener Engel', 'angel', '#6a6a7a'], ['Engelsgrab', 'tomb', '#c0c0d0'], ['Himmelsruine', 'palace', '#a0a0b0']],
+    [['Trümmer', 'cluster'], ['Wolkenrest', 'cloud'], ['Federkomet', 'comet'], ['Engelsschatz', 'chest']]],
+  'Höllentor': ['lava', [['Höllenstein', 'rock', '#5a1a1a'], ['Höllenspitze', 'spire', '#3a0505'], ['~Teufelchen', 'gummy', '#e8262b'], ['Lavadämon', 'lavablob', '#ff3b2f'], ['*Schwefelbombe', 'star', '#ffd23f'], ['!Höllenhund', 'dragon', '#8a1a0a'], ['Höllentor', 'portal', '#ff3b2f'], ['Schwefelvulkan', 'volcano', '#5a0a0a']],
+    [['Schwefelfeld', 'cluster'], ['Lavawalze', 'lavablob'], ['Schwefelkomet', 'comet'], ['Höllenschatz', 'chest']]],
+  'Ursuppe': ['soup', [['Urzelle', 'cell', '#a0f04a'], ['Bakterie', 'cell', '#6ab04a'], ['~Ur-Amöbe', 'jelly', '#6ab04a'], ['Lebensei', 'egg', '#e0ff9a'], ['*Faulgasblase', 'star', '#a0f04a'], ['!Urauge', 'eye', '#a0f04a'], ['Urkoralle', 'coral', '#e0ff9a'], ['Ursuppen-Insel', 'island', '#4a8a3a']],
+    [['Blubberblasen', 'cluster'], ['Urfisch', 'fish'], ['Blubberkomet', 'comet'], ['Lebensschatz', 'chest']]],
+  'Quantenschaum': ['quantum', [['Quantenblase', 'planet', '#7fd3ff'], ['Teilchenstrahl', 'comet', '#ffffff'], ['~Schrödingers Katze', 'cat', '#7fd3ff'], ['Quantenchip', 'chip', '#4a6aaa'], ['*Quantenkollaps', 'star', '#ffffff'], ['!Beobachter-Auge', 'eye', '#7fd3ff'], ['Wurmloch', 'portal', '#7fd3ff'], ['Quantenwelt', 'ringplanet', '#4a6aaa']],
+    [['Quantenschaum', 'cluster'], ['Unschärfe-Mond', 'planet'], ['Teilchenkomet', 'comet'], ['Quantenschatz', 'chest']]],
+  'Sternengrab': ['grave', [['Sternenasche', 'nebula', '#3a3a4a'], ['Sternengrab', 'tomb', '#6a6a7a'], ['~Sternengeist', 'ghost', '#9aa0c0'], ['Tote Welt', 'planet', '#3a3a4a'], ['*Letzte Nova', 'star', '#9aa0c0'], ['!Totenauge', 'eye', '#9aa0c0'], ['Sternenkapelle', 'church', '#4a4a5a'], ['Grabmal', 'obelisk', '#6a6a7a']],
+    [['Asche', 'cluster'], ['Totenmond', 'planet'], ['Grabkomet', 'comet'], ['Grabbeigabe', 'chest']]],
+  'Omega-Nebel': ['omega', [['Omega-Splitter', 'crystal', '#ff4ab0'], ['Omega-Komet', 'comet', '#ffb0f0'], ['~Nebelwesen', 'ghost', '#c38bff'], ['Omega-Planet', 'ringplanet', '#ff4ab0'], ['*Omega-Nova', 'star', '#ffb0f0'], ['!Omega-Auge', 'eye', '#ff4ab0'], ['Omega-Galaxie', 'galaxy', '#ff4ab0'], ['Omega-Tor', 'portal', '#ff4ab0']],
+    [['Nebelschwaden', 'cluster'], ['Omega-Mond', 'planet'], ['Pulsar', 'comet'], ['Omega-Schatz', 'chest']]],
+  'Unendlichkeitsmeer': ['ocean', [['Sternenfisch', 'fish', '#c0f0ff'], ['Sternqualle', 'jelly', '#5ad0ff'], ['~Silberfisch', 'fish', '#e0f4ff'], ['Sternkoralle', 'coral', '#5ad0ff'], ['*Strudelbombe', 'blackhole', '#000000'], ['!Leviathan-Auge', 'eye', '#5ad0ff'], ['Kosmos-Wal', 'whale', '#1a5aaa'], ['Inselwelt', 'island', '#2a6aaa']],
+    [['Sternenperlen', 'cluster'], ['Geisterschiff', 'ship'], ['Wellenkomet', 'comet'], ['Perlenschatz', 'chest']]],
+  'Der Rand': ['edge', [['Randsplitter', 'crystal', '#ffd23f'], ['Randkomet', 'comet', '#ffd23f'], ['~Grenzgänger', 'ghost', '#ffd23f'], ['Letzte Insel', 'island', '#3a3a3a'], ['*Randexplosion', 'star', '#ffd23f'], ['!Grenzwächter', 'automaton', '#ffd23f'], ['Grenzstein', 'obelisk', '#5a5a5a'], ['Rand-Tor', 'portal', '#ffd23f']],
+    [['Randstaub', 'cluster'], ['Grenzmond', 'planet'], ['Grenzkomet', 'comet'], ['Letzter Schatz', 'goldpile']]],
+  'Jenseits': ['heaven', [['Seelenwolke', 'cloud', '#ffffff'], ['Himmelsharfe', 'harp', '#8a6bff'], ['~Seele', 'ghost', '#d0d0f0'], ['Himmelstor', 'portal', '#8a6bff'], ['*Erlösung', 'star', '#ffffff'], ['!Richter-Engel', 'angel', '#8a6bff'], ['Himmelstempel', 'temple', '#f0f0ff'], ['Jenseitspalast', 'palace', '#e0e0ff']],
+    [['Lichtfunken', 'cluster'], ['Schwebewolke', 'cloud'], ['Seelenkomet', 'comet'], ['Himmelsschatz', 'goldpile']]],
+  'Schöpfungsquelle': ['genesis', [['Urfunke', 'star', '#ffd23f'], ['Weltenei', 'egg', '#ffd23f'], ['~Ur-Idee', 'cell', '#ff8a2a'], ['Erste Welt', 'earth', '#3d8bd9'], ['*Big Bang', 'star', '#ffffff'], ['!Der Schöpfer', 'god', '#ff8a2a'], ['Baum des Lebens', 'bigtree', '#7fe07f'], ['Urgalaxie', 'galaxy', '#ff8a2a']],
+    [['Schöpfungsstaub', 'cluster'], ['Junge Welt', 'planet'], ['Schöpfungskomet', 'comet'], ['Schatz der Schöpfung', 'goldpile']]],
+  'Das Letzte Licht': ['lastlight', [['Lichtrest', 'star', '#fff8d0'], ['Letzter Komet', 'comet', '#fff8d0'], ['~Glühwürmchen', 'nebula', '#fff8d0'], ['Erloschene Welt', 'planet', '#4a4a3a'], ['*Letzter Funke', 'star', '#ffffff'], ['!Letztes Auge', 'eye', '#fff8d0'], ['Leuchtturm', 'obelisk', '#fff8d0'], ['Lichtgrab', 'tomb', '#6a6a5a']],
+    [['Glimmen', 'cluster'], ['Kalter Mond', 'planet'], ['Abschiedskomet', 'comet'], ['Letzter Schatz', 'chest']]],
+  'Höllenschlund': ['hell', [['Höllenglut', 'rock', '#ff4a1f'], ['Grabstein', 'tomb', '#5a1a1a'], ['~Verdammte Seele', 'ghost', '#ff6a3d'], ['Lavamonster', 'lavablob', '#c42a0a'], ['*Schwefelsonne', 'star', '#ffd23f'], ['!Höllenwächter', 'dragon', '#c42a0a'], ['Höllenspitze', 'spire', '#2a0505'], ['Höllenvulkan', 'volcano', '#5a0a00']],
+    [['Ascheregen', 'cluster'], ['Lavawalze', 'lavablob'], ['Seelenkomet', 'comet'], ['Höllenschatz', 'chest']]],
+};
 const DIM_SIZES = [0.22, 0.35, 0.55, 0.8, 1.1, 1.6, 2.4, 3.6];
 const DIM_VALUES = [1, 2, 3, 5, 7, 10, 15, 24];
 DIMENSIONS.forEach(([name, pal, ground, evo, objs], i) => {
-  const idx = 11 + i, M = 10 * Math.pow(4, idx);
+  const idx = 11 + i, M = 10 * Math.pow(4, idx), TH = DIM_THEMES[name];
+  if (TH) objs = TH[1];
   WORLDS.push({
     id: 'dim' + idx, name, minRadius: M, scrapMult: Math.pow(3, idx), ground,
-    bg: pal[0], bg2: pal[1], accent: pal[2], pal, evo,
+    bg: pal[0], bg2: pal[1], accent: pal[2], pal, evo, theme: TH ? TH[0] : 'crystal',
     objects: objs.map(([n, shape, color], k) => {
       const o = { name: n.replace(/^[*!~]/, ''), size: M * DIM_SIZES[k], shape, color, value: DIM_VALUES[k] };
       if (n[0] === '*') o.explosive = true;
@@ -396,11 +483,12 @@ DIMENSIONS.forEach(([name, pal, ground, evo, objs], i) => {
   });
   // 4 zusätzliche Objekte je Dimension (Trümmer, Irrläufer, Splitter, Goldader)
   const W = WORLDS[WORLDS.length - 1];
+  const X = TH ? TH[2] : [['Trümmerfeld', 'cluster'], ['Irrläufer-Mond', 'planet'], ['Splitterkomet', 'comet'], ['Goldader', 'crystal']];
   W.objects.push(
-    { name: 'Trümmerfeld', size: M * 0.28, shape: 'cluster', color: pal[4], value: 1 },
-    { name: 'Irrläufer-Mond', size: M * 0.7, shape: 'planet', color: pal[3], value: 4, move: 'drive', speed: 1.1 },
-    { name: 'Splitterkomet', size: M * 0.45, shape: 'comet', color: pal[5], value: 3, move: 'drive', speed: 2.2 },
-    { name: 'Goldader', size: M * 1.3, shape: 'crystal', color: '#ffd23f', value: 14 },
+    { name: X[0][0], size: M * 0.28, shape: X[0][1], color: pal[4], value: 1 },
+    { name: X[1][0], size: M * 0.7, shape: X[1][1], color: pal[4], value: 4, move: 'drive', speed: 1.1 },
+    { name: X[2][0], size: M * 0.45, shape: X[2][1], color: pal[5], value: 3, move: 'drive', speed: 2.2 },
+    { name: X[3][0], size: M * 1.3, shape: X[3][1], color: '#ffd23f', value: 14 },
   );
   EVOLUTION.push({ name: evo, body: pal[2], belly: pal[5], horn: pal[4] === pal[2] ? '#ffffff' : pal[4], dark: pal[0] });
 });

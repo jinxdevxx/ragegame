@@ -3,9 +3,9 @@
 //  Reihenfolge: Boden → Trümmer-Flecken → Schatten/Objekte/Monster
 //  (nach Tiefe sortiert) → Trümmer → Münzen → Effekte → Overlays
 // =====================================================================
-import { SPRITES, OUT } from './sprites.js?v=0.6.2';
-import { drawMonster } from './monster.js?v=0.6.2';
-import { shadeHex as sh, shadeHex } from './game.js?v=0.6.2';
+import { SPRITES, OUT } from './sprites.js?v=0.7.0';
+import { drawMonster } from './monster.js?v=0.7.0';
+import { shadeHex as sh, shadeHex } from './game.js?v=0.7.0';
 
 const TAU = Math.PI * 2;
 const STARS = Array.from({ length: 220 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() * 1.8 + 0.4, p: Math.random() * 0.6 + 0.1, tw: Math.random() * 6 }));
@@ -193,6 +193,193 @@ function streetGrid(k, o) {
   }
 }
 
+
+// =====================================================================
+// Dimensions-Böden: je Thema eigene, flache Landschaft (Deko ohne Umriss/Schatten,
+// damit zerstörbare Objekte klar herausstechen). Wird im Bodencache gezeichnet.
+// =====================================================================
+function scatter(kk, C, prob, key, fn) { // verstreute Deko im Weltraster C
+  const u = kk.z;
+  cells(kk.v, C, (ix, iy) => {
+    if (hash(ix, iy, key) > prob) return;
+    const x = (ix + hash(ix, iy, key + 1)) * C, y = (iy + hash(iy, ix, key + 2)) * C;
+    fn(kk.sx(x), kk.sy(y), C * u, hash(ix, iy, key + 3), x, y);
+  });
+}
+const A = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+function gearShape(c, X, Y, r, teeth, rot) { c.beginPath(); for (let i = 0; i < teeth * 2; i++) { const a = rot + i / (teeth * 2) * TAU, rr = i % 2 ? r * 0.8 : r; c.lineTo(X + Math.cos(a) * rr, Y + Math.sin(a) * rr); } c.closePath(); }
+function wavyLine(c, X, Y, w, amp, n) { c.beginPath(); for (let i = 0; i <= n; i++) { const x = X - w / 2 + i / n * w; c.lineTo(x, Y + Math.sin(i / n * TAU * 2) * amp); } c.stroke(); }
+
+const DIM_GROUND = {
+  // Kristall: blaue Kristallfelder mit Facetten und Kristallbüscheln
+  crystal: { space: true, paint(kk, p, S, sd) {
+    terrain(kk, S * 9, sd, [{ t: 0.4, color: p[3], rim: sh(p[3], -0.4) }, { t: 0.6, color: p[4], rim: sh(p[4], -0.35) }]);
+    const c = kk.c;
+    scatter(kk, S * 1.2, 0.55, 11, (X, Y, u, h, x, y) => { if (fbm(x / (S * 9), y / (S * 9), sd) < 0.42) return;
+      c.fillStyle = A(p[5], 0.25); c.beginPath(); c.moveTo(X, Y - u * 0.35); c.lineTo(X + u * 0.3, Y); c.lineTo(X, Y + u * 0.35); c.lineTo(X - u * 0.3, Y); c.closePath(); c.fill(); });
+    scatter(kk, S * 2.5, 0.35, 21, (X, Y, u, h, x, y) => { if (fbm(x / (S * 9), y / (S * 9), sd) < 0.5) return;
+      for (let i = -1; i <= 1; i++) { const hh = u * (0.35 + (i === 0 ? 0.2 : 0)), w = u * 0.09; c.fillStyle = A(i ? p[2] : p[5], 0.55); c.beginPath(); c.moveTo(X + i * w * 2 - w, Y); c.lineTo(X + i * w * 2 + i * u * 0.05, Y - hh); c.lineTo(X + i * w * 2 + w, Y); c.closePath(); c.fill(); } });
+  } },
+  // Spiegel: silberne Fliesen mit Lichtreflexen
+  mirror: { bg: p => p[1], paint(kk, p, S, sd) {
+    const c = kk.c, C = S * 1.6;
+    cells(kk.v, C, (ix, iy) => { const X = kk.sx(ix * C), Y = kk.sy(iy * C), w = C * kk.z; c.fillStyle = (ix + iy) % 2 ? A(p[3], 0.9) : A(p[4], 0.55); c.fillRect(X, Y, w + 0.5, w + 0.5);
+      if (hash(ix, iy, 5) < 0.3) { c.fillStyle = 'rgba(255,255,255,0.18)'; c.beginPath(); c.moveTo(X + w * 0.2, Y + w * 0.8); c.lineTo(X + w * 0.5, Y + w * 0.1); c.lineTo(X + w * 0.65, Y + w * 0.1); c.lineTo(X + w * 0.35, Y + w * 0.8); c.fill(); } });
+  } },
+  // Lava: Basaltplatten, glühende Lavaflüsse, Glutrisse
+  lava: { bg: p => '#140604', paint(kk, p, S, sd) {
+    terrain(kk, S * 8, sd, [{ t: 0.3, color: '#2a120c', rim: '#0e0403' }, { t: 0.55, color: '#1c0b08', rim: '#000000' }, { t: 0.0, t2: 0.26, color: p[4], rim: sh(p[4], -0.5) }, { t: 0.0, t2: 0.17, color: p[5] }]);
+    const c = kk.c; c.lineWidth = Math.max(1, S * kk.z * 0.04); c.lineCap = 'round';
+    scatter(kk, S * 1.5, 0.4, 31, (X, Y, u, h) => { c.strokeStyle = A(p[4], 0.7); c.beginPath(); c.moveTo(X, Y); c.lineTo(X + u * 0.3, Y + u * 0.15); c.lineTo(X + u * 0.45, Y - u * 0.1); c.stroke(); });
+  } },
+  // Eis: Schneefelder, Eisschollen mit Rissen, Schneeverwehungen
+  ice: { bg: p => '#8fb8d8', paint(kk, p, S, sd) {
+    terrain(kk, S * 8, sd, [{ t: 0.35, color: '#dff0fb', rim: '#a8cde6' }, { t: 0.62, color: '#ffffff', rim: '#c9e2f2' }, { t: 0.0, t2: 0.25, color: '#7fb8e0', rim: '#4a86b8' }]);
+    const c = kk.c; c.lineWidth = Math.max(1, S * kk.z * 0.03);
+    scatter(kk, S * 1.3, 0.5, 41, (X, Y, u, h, x, y) => { const f = fbm(x / (S * 8), y / (S * 8), sd); if (f > 0.25) { c.strokeStyle = 'rgba(160,200,230,0.6)'; wavyLine(c, X, Y, u * 0.7, u * 0.06, 8); } else { c.strokeStyle = 'rgba(255,255,255,0.7)'; c.beginPath(); c.moveTo(X - u * 0.3, Y); c.lineTo(X, Y - u * 0.1); c.lineTo(X + u * 0.15, Y + u * 0.2); c.lineTo(X + u * 0.35, Y + u * 0.05); c.stroke(); } });
+  } },
+  // Pilze: Moosboden, Myzelfäden, riesige Pilzhüte (von oben)
+  fungal: { bg: p => p[0], paint(kk, p, S, sd) {
+    terrain(kk, S * 7, sd, [{ t: 0.35, color: sh(p[3], -0.1), rim: sh(p[3], -0.5) }, { t: 0.6, color: p[3], rim: sh(p[3], -0.35) }]);
+    const c = kk.c; c.lineWidth = Math.max(1, S * kk.z * 0.03);
+    scatter(kk, S * 1.4, 0.6, 51, (X, Y, u, h) => { c.strokeStyle = A(p[2], 0.25); c.beginPath(); c.moveTo(X, Y); c.bezierCurveTo(X + u * 0.4, Y - u * 0.3, X + u * 0.2, Y + u * 0.5, X + u * 0.8, Y + u * 0.2); c.stroke(); });
+    scatter(kk, S * 3, 0.4, 52, (X, Y, u, h) => { const r = u * (0.25 + h * 0.25); c.fillStyle = A(h > 0.5 ? p[2] : p[4], 0.45); c.beginPath(); c.arc(X, Y, r, 0, TAU); c.fill();
+      c.fillStyle = A(p[5], 0.4); for (let i = 0; i < 5; i++) { c.beginPath(); c.arc(X + Math.cos(i * 1.3 + h * 9) * r * 0.55, Y + Math.sin(i * 1.3 + h * 9) * r * 0.55, r * 0.14, 0, TAU); c.fill(); } });
+  } },
+  // Schwarzer Garten: dunkler Boden, Dornenranken, giftige Pfützen
+  garden: { bg: p => '#081008', paint(kk, p, S, sd) {
+    terrain(kk, S * 7, sd, [{ t: 0.38, color: '#122012', rim: '#050a05' }, { t: 0.0, t2: 0.25, color: A(p[2], 0.35) }]);
+    const c = kk.c; c.lineWidth = Math.max(1, S * kk.z * 0.035);
+    scatter(kk, S * 1.6, 0.55, 61, (X, Y, u, h) => { c.strokeStyle = 'rgba(40,70,40,0.85)'; c.beginPath(); c.moveTo(X - u * 0.4, Y); c.bezierCurveTo(X - u * 0.1, Y - u * 0.4, X + u * 0.1, Y + u * 0.4, X + u * 0.45, Y - u * 0.05); c.stroke();
+      c.fillStyle = 'rgba(40,70,40,0.85)'; for (let i = 0; i < 3; i++) { const tx = X - u * 0.25 + i * u * 0.25; c.beginPath(); c.moveTo(tx, Y - u * 0.05); c.lineTo(tx + u * 0.05, Y - u * 0.15); c.lineTo(tx + u * 0.1, Y - u * 0.04); c.fill(); } });
+  } },
+  // Neon-Matrix: dunkles Raster mit leuchtenden Leiterbahnen
+  circuit: { bg: p => '#04060c', paint(kk, p, S, sd) {
+    const c = kk.c, C = S * 1.2;
+    c.strokeStyle = A(p[2], 0.12); c.lineWidth = 1;
+    cells(kk.v, C, (ix, iy) => { const X = kk.sx(ix * C), Y = kk.sy(iy * C); c.beginPath(); c.moveTo(X, Y); c.lineTo(X + C * kk.z, Y); c.moveTo(X, Y); c.lineTo(X, Y + C * kk.z); c.stroke(); });
+    c.lineWidth = Math.max(1.5, S * kk.z * 0.04);
+    scatter(kk, C, 0.35, 71, (X, Y, u, h) => { const col = h > 0.5 ? p[2] : p[4], d = h > 0.25 ? 1 : -1; c.strokeStyle = A(col, 0.55); c.beginPath(); c.moveTo(X, Y); c.lineTo(X + u * 0.6 * d, Y); c.lineTo(X + u * 0.6 * d, Y + u * 0.5); c.stroke();
+      c.fillStyle = A(col, 0.8); c.beginPath(); c.arc(X, Y, u * 0.06, 0, TAU); c.arc(X + u * 0.6 * d, Y + u * 0.5, u * 0.06, 0, TAU); c.fill(); });
+  } },
+  // Glitch: zerrissene Pixelblöcke in Neonfarben
+  glitch: { bg: p => '#070707', paint(kk, p, S, sd) {
+    const c = kk.c;
+    scatter(kk, S * 1.1, 0.5, 81, (X, Y, u, h) => { const cols = [p[2], p[4], p[5]]; c.fillStyle = A(cols[Math.floor(h * 3)], 0.22 + h * 0.2); c.fillRect(X, Y, u * (0.3 + h * 1.2), u * (0.08 + (1 - h) * 0.25)); });
+    scatter(kk, S * 2.2, 0.4, 82, (X, Y, u, h) => { c.fillStyle = A(p[2], 0.12); c.fillRect(X - u * 0.8, Y, u * 1.6, u * 0.05); c.fillStyle = A(p[4], 0.12); c.fillRect(X - u * 0.7 + u * 0.05, Y + u * 0.06, u * 1.4, u * 0.05); });
+  } },
+  // Schatten: dunkler Nebel, violette Schlieren und Spiralen
+  shadow: { space: true, paint(kk, p, S, sd) {
+    terrain(kk, S * 9, sd, [{ t: 0.45, color: A('#000000', 0.55) }, { t: 0.62, color: A(p[3], 0.6) }]);
+    const c = kk.c; c.lineWidth = Math.max(1, S * kk.z * 0.04);
+    scatter(kk, S * 2.4, 0.4, 91, (X, Y, u, h) => { c.strokeStyle = A(p[2], 0.25); c.beginPath(); for (let a = 0; a < 9; a += 0.3) { const r = a * u * 0.05; c.lineTo(X + Math.cos(a + h * 6) * r, Y + Math.sin(a + h * 6) * r); } c.stroke(); });
+  } },
+  // Uhrwerk: Messingplatten mit Nieten und großen flachen Zahnrädern
+  clockwork: { bg: p => p[1], paint(kk, p, S, sd) {
+    const c = kk.c, C = S * 2;
+    cells(kk.v, C, (ix, iy) => { const X = kk.sx(ix * C), Y = kk.sy(iy * C), w = C * kk.z; c.fillStyle = A(p[3], 0.35 + hash(ix, iy, 3) * 0.3); c.fillRect(X + 1, Y + 1, w - 2, w - 2);
+      c.fillStyle = A(p[5], 0.35); for (const [a, b] of [[0.08, 0.08], [0.92, 0.08], [0.08, 0.92], [0.92, 0.92]]) { c.beginPath(); c.arc(X + w * a, Y + w * b, w * 0.025, 0, TAU); c.fill(); } });
+    scatter(kk, S * 3.2, 0.4, 101, (X, Y, u, h) => { const r = u * (0.3 + h * 0.3); c.fillStyle = A(p[4], 0.35); gearShape(c, X, Y, r, 10 + Math.floor(h * 6), h * 3); c.fill(); c.fillStyle = A(p[1], 0.9); c.beginPath(); c.arc(X, Y, r * 0.35, 0, TAU); c.fill(); });
+  } },
+  // Schmiede (Dimensionsboden): Metallboden, glühende Schlackerinnen
+  forge: { space: true, paint(kk, p, S, sd) {
+    terrain(kk, S * 8, sd, [{ t: 0.42, color: '#2a2a30', rim: '#101014' }, { t: 0.0, t2: 0.2, color: A(p[4], 0.8), rim: sh(p[4], -0.5) }]);
+    const c = kk.c;
+    scatter(kk, S * 1.5, 0.45, 111, (X, Y, u, h, x, y) => { if (fbm(x / (S * 8), y / (S * 8), sd) < 0.42) return; c.fillStyle = 'rgba(255,255,255,0.06)'; c.fillRect(X - u * 0.4, Y - u * 0.25, u * 0.8, u * 0.5); c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.arc(X - u * 0.33, Y - u * 0.18, u * 0.03, 0, TAU); c.arc(X + u * 0.33, Y + u * 0.18, u * 0.03, 0, TAU); c.fill(); });
+  } },
+  // Zucker: rosa Zuckerguss, Streusel, Lolli-Spiralen
+  sweets: { bg: p => '#ffd6ea', paint(kk, p, S, sd) {
+    terrain(kk, S * 7, sd, [{ t: 0.42, color: '#ffb3d6', rim: '#e88ab6' }, { t: 0.64, color: '#fff2f8', rim: '#f0c8dc' }]);
+    const c = kk.c, cols = ['#ff4a5a', '#7fd3ff', '#ffd23f', '#7fe07f', '#b06bff'];
+    scatter(kk, S * 0.7, 0.6, 121, (X, Y, u, h) => { c.save(); c.translate(X, Y); c.rotate(h * 6); c.fillStyle = cols[Math.floor(h * 5)]; c.fillRect(-u * 0.12, -u * 0.035, u * 0.24, u * 0.07); c.restore(); });
+    c.lineWidth = Math.max(1.5, S * kk.z * 0.06);
+    scatter(kk, S * 3, 0.3, 122, (X, Y, u, h) => { c.strokeStyle = A('#ff6fa8', 0.35); c.beginPath(); for (let a = 0; a < 14; a += 0.25) { const r = a * u * 0.03; c.lineTo(X + Math.cos(a) * r, Y + Math.sin(a) * r); } c.stroke(); });
+  } },
+  // Drachenhort: Höhlenfels mit Goldmünzen-Feldern und Juwelen
+  hoard: { bg: p => '#1a0c08', paint(kk, p, S, sd) {
+    terrain(kk, S * 8, sd, [{ t: 0.35, color: '#3a1e14', rim: '#140806' }, { t: 0.62, color: '#4a2a1a', rim: '#1a0c08' }, { t: 0.0, t2: 0.22, color: A('#e0a020', 0.85), rim: '#8a5a10' }]);
+    const c = kk.c;
+    scatter(kk, S * 0.9, 0.5, 131, (X, Y, u, h, x, y) => { if (fbm(x / (S * 8), y / (S * 8), sd) > 0.26) return; c.fillStyle = h > 0.85 ? '#ff4a7a' : h > 0.75 ? '#5ad0ff' : '#ffd23f'; c.beginPath(); c.ellipse(X, Y, u * 0.12, u * 0.06, 0, 0, TAU); c.fill(); });
+    c.strokeStyle = 'rgba(0,0,0,0.18)'; c.lineWidth = 1;
+    scatter(kk, S * 1.2, 0.5, 132, (X, Y, u) => { c.beginPath(); c.arc(X, Y, u * 0.2, Math.PI, 0); c.stroke(); });
+  } },
+  // Ozean: Wasser mit Wellenkämmen, Inseln, Blasen
+  ocean: { bg: p => sh(p[3], -0.2), paint(kk, p, S, sd) {
+    terrain(kk, S * 9, sd, [{ t: 0.0, t2: 0.4, color: sh(p[3], -0.4) }, { t: 0.7, color: '#e8d6a0', rim: '#b8a070' }, { t: 0.76, color: '#5aa860', rim: '#3a7a40' }]);
+    const c = kk.c; c.lineWidth = Math.max(1, S * kk.z * 0.035);
+    scatter(kk, S * 1.3, 0.55, 141, (X, Y, u, h, x, y) => { if (fbm(x / (S * 9), y / (S * 9), sd) > 0.68) return; c.strokeStyle = A(p[5], 0.35); c.beginPath(); c.arc(X, Y, u * 0.25, Math.PI * 1.1, Math.PI * 1.9); c.arc(X + u * 0.45, Y, u * 0.25, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); });
+    scatter(kk, S * 2, 0.3, 142, (X, Y, u, h) => { c.strokeStyle = A(p[5], 0.4); for (let i = 0; i < 3; i++) { c.beginPath(); c.arc(X + i * u * 0.12, Y - i * u * 0.2, u * (0.05 + i * 0.03), 0, TAU); c.stroke(); } });
+  } },
+  // Ursuppe: grüne Brühe mit treibenden Zellen und Blasen
+  soup: { bg: p => '#1a3a14', paint(kk, p, S, sd) {
+    terrain(kk, S * 8, sd, [{ t: 0.45, color: '#2a5a1e', rim: '#122a0c' }, { t: 0.66, color: '#4a8a2e', rim: '#2a5a1e' }]);
+    const c = kk.c; c.lineWidth = Math.max(1, S * kk.z * 0.03);
+    scatter(kk, S * 1.5, 0.5, 151, (X, Y, u, h) => { const r = u * (0.12 + h * 0.15); c.fillStyle = A(p[2], 0.25); c.beginPath(); c.ellipse(X, Y, r * 1.3, r, h * 3, 0, TAU); c.fill(); c.fillStyle = A('#1a3a14', 0.6); c.beginPath(); c.arc(X + r * 0.2, Y, r * 0.35, 0, TAU); c.fill(); });
+    scatter(kk, S * 1, 0.4, 152, (X, Y, u, h) => { c.strokeStyle = A(p[5], 0.35); c.beginPath(); c.arc(X, Y, u * (0.04 + h * 0.06), 0, TAU); c.stroke(); });
+  } },
+  // Himmel: Wolkenboden über hellem Himmel
+  sky: { bg: p => sh(p[3], -0.1), paint(kk, p, S, sd) {
+    terrain(kk, S * 7, sd, [{ t: 0.38, color: A('#ffffff', 0.55), rim: A(p[4], 0.6) }, { t: 0.56, color: A('#ffffff', 0.85), rim: A(p[4], 0.5) }]);
+    const c = kk.c;
+    scatter(kk, S * 2.2, 0.3, 161, (X, Y, u, h) => { c.fillStyle = 'rgba(255,255,255,0.35)'; for (const [dx, dy, r] of [[-0.3, 0, 0.25], [0, -0.1, 0.32], [0.3, 0, 0.24]]) { c.beginPath(); c.arc(X + dx * u, Y + dy * u, r * u, 0, TAU); c.fill(); } });
+  } },
+  // Tempel/Ruinen: Wolken + Marmorplätze mit Säulenstümpfen und Mosaik
+  temple: { bg: p => sh(p[3], 0.05), paint(kk, p, S, sd) {
+    terrain(kk, S * 7, sd, [{ t: 0.36, color: A('#ffffff', 0.6), rim: A(p[4], 0.6) }, { t: 0.6, color: '#efe8da', rim: '#c8bca4' }]);
+    const c = kk.c, C = S * 1.4;
+    cells(kk.v, C, (ix, iy) => { const x = ix * C, y = iy * C; if (fbm(x / (S * 7), y / (S * 7), sd) < 0.62) return; const X = kk.sx(x), Y = kk.sy(y), w = C * kk.z;
+      c.strokeStyle = 'rgba(160,140,110,0.35)'; c.lineWidth = 1; c.strokeRect(X, Y, w, w);
+      if (hash(ix, iy, 7) < 0.12) { c.fillStyle = '#d8ccb4'; c.beginPath(); c.arc(X + w / 2, Y + w / 2, w * 0.22, 0, TAU); c.fill(); c.fillStyle = '#c8bca4'; c.beginPath(); c.arc(X + w / 2, Y + w / 2, w * 0.14, 0, TAU); c.fill(); }
+      else if (hash(ix, iy, 8) < 0.1) { c.fillStyle = A('#ffd23f', 0.5); c.beginPath(); c.moveTo(X + w / 2, Y + w * 0.2); c.lineTo(X + w * 0.8, Y + w / 2); c.lineTo(X + w / 2, Y + w * 0.8); c.lineTo(X + w * 0.2, Y + w / 2); c.fill(); } });
+  } },
+  // Traum: lila Nacht, Wolken, Sterne und Mondsicheln
+  dream: { bg: p => p[1], paint(kk, p, S, sd) {
+    terrain(kk, S * 7, sd, [{ t: 0.42, color: A(p[2], 0.35), rim: A(p[4], 0.5) }, { t: 0.62, color: A('#ffe0ff', 0.55) }]);
+    const c = kk.c;
+    scatter(kk, S * 1, 0.4, 171, (X, Y, u, h) => { c.fillStyle = `rgba(255,255,255,${0.4 + h * 0.5})`; c.beginPath(); for (let i = 0; i < 8; i++) { const a = i / 8 * TAU, r = i % 2 ? u * 0.03 : u * 0.09; c.lineTo(X + Math.cos(a) * r, Y + Math.sin(a) * r); } c.fill(); });
+    scatter(kk, S * 4, 0.3, 172, (X, Y, u) => { c.fillStyle = 'rgba(255,240,180,0.45)'; c.beginPath(); c.arc(X, Y, u * 0.3, 0, TAU); c.fill(); c.fillStyle = p[1]; c.beginPath(); c.arc(X + u * 0.12, Y - u * 0.05, u * 0.26, 0, TAU); c.fill(); });
+  } },
+  // Feuerhimmel: glühende Wolken über Abendrot
+  fiery: { bg: p => '#5a1a00', paint(kk, p, S, sd) {
+    terrain(kk, S * 7, sd, [{ t: 0.4, color: A(p[4], 0.55), rim: A('#3a0a00', 0.6) }, { t: 0.6, color: A(p[5], 0.6) }]);
+    const c = kk.c;
+    scatter(kk, S * 1.2, 0.4, 181, (X, Y, u, h) => { c.fillStyle = A('#ffd23f', 0.3 + h * 0.4); c.beginPath(); c.arc(X, Y, u * (0.03 + h * 0.04), 0, TAU); c.fill(); });
+  } },
+  // Himmel/Jenseits: helles Licht, weiße Wolken, Lichtstrahlen
+  heaven: { bg: p => '#d8d8f4', paint(kk, p, S, sd) {
+    terrain(kk, S * 7, sd, [{ t: 0.4, color: 'rgba(255,255,255,0.7)', rim: 'rgba(180,180,230,0.6)' }, { t: 0.6, color: '#ffffff', rim: 'rgba(200,200,240,0.7)' }]);
+    const c = kk.c;
+    scatter(kk, S * 3, 0.35, 191, (X, Y, u, h) => { c.fillStyle = A(p[2], 0.12); c.beginPath(); c.moveTo(X, Y); c.lineTo(X - u * 0.2, Y + u * 1.2); c.lineTo(X + u * 0.2, Y + u * 1.2); c.fill(); });
+  } },
+  // Schöpfung: goldenes Licht, Urnebel, junge Sterne
+  genesis: { bg: p => '#f6e6b8', paint(kk, p, S, sd) {
+    terrain(kk, S * 8, sd, [{ t: 0.42, color: A(p[4], 0.4), rim: A(p[2], 0.35) }, { t: 0.62, color: A('#ffffff', 0.6) }]);
+    const c = kk.c; c.lineWidth = Math.max(1, S * kk.z * 0.04);
+    scatter(kk, S * 2.5, 0.4, 201, (X, Y, u, h) => { c.strokeStyle = A(p[2], 0.3); c.beginPath(); for (let a = 0; a < 10; a += 0.3) { const r = a * u * 0.045; c.lineTo(X + Math.cos(a + h * 6) * r, Y + Math.sin(a + h * 6) * r * 0.6); } c.stroke(); });
+    scatter(kk, S * 0.9, 0.3, 202, (X, Y, u, h) => { c.fillStyle = A('#ffffff', 0.7); c.beginPath(); c.arc(X, Y, u * 0.04, 0, TAU); c.fill(); });
+  } },
+  // Weltenbaum: Moos, riesige Wurzeln, Laub
+  forest: { bg: p => '#1e3a16', paint(kk, p, S, sd) {
+    terrain(kk, S * 7, sd, [{ t: 0.4, color: '#2a5a20', rim: '#142e10' }, { t: 0.62, color: '#3a7a2a', rim: '#24501a' }]);
+    const c = kk.c;
+    scatter(kk, S * 4, 0.35, 211, (X, Y, u, h) => { c.strokeStyle = 'rgba(90,55,25,0.85)'; c.lineCap = 'round';
+      for (let i = 0; i < 3; i++) { c.lineWidth = u * (0.12 - i * 0.03); c.beginPath(); c.moveTo(X, Y); c.bezierCurveTo(X + Math.cos(h * 6 + i * 2) * u * 0.4, Y + Math.sin(h * 6 + i * 2) * u * 0.4, X + Math.cos(h * 6 + i * 2 + 0.6) * u * 0.6, Y + Math.sin(h * 6 + i * 2 + 0.6) * u * 0.7, X + Math.cos(h * 6 + i * 2) * u * 1.1, Y + Math.sin(h * 6 + i * 2) * u * 1.1); c.stroke(); } });
+    scatter(kk, S * 0.9, 0.35, 212, (X, Y, u, h) => { c.fillStyle = A(h > 0.5 ? '#7fe07f' : '#c9f0a0', 0.4); c.beginPath(); c.ellipse(X, Y, u * 0.1, u * 0.05, h * 6, 0, TAU); c.fill(); });
+  } },
+  // Prismenwüste: Dünen mit Regenbogen-Streifen
+  desert: { bg: p => '#e8c880', paint(kk, p, S, sd) {
+    terrain(kk, S * 8, sd, [{ t: 0.35, color: '#f0d698', rim: '#c8a860' }, { t: 0.5, color: 'rgba(255,154,61,0.35)' }, { t: 0.62, color: 'rgba(255,90,140,0.3)' }, { t: 0.74, color: 'rgba(120,200,255,0.35)' }]);
+    const c = kk.c; c.lineWidth = Math.max(1, S * kk.z * 0.03);
+    scatter(kk, S * 1.3, 0.5, 221, (X, Y, u) => { c.strokeStyle = 'rgba(160,120,60,0.35)'; c.beginPath(); c.moveTo(X - u * 0.4, Y); c.quadraticCurveTo(X, Y - u * 0.15, X + u * 0.4, Y); c.stroke(); });
+  } },
+  // Chaos: bunte Wirbel und Risse
+  chaos: { space: true, paint(kk, p, S, sd) {
+    const c = kk.c; c.lineWidth = Math.max(1.5, S * kk.z * 0.06);
+    scatter(kk, S * 2.4, 0.5, 231, (X, Y, u, h) => { c.strokeStyle = `hsla(${Math.floor(h * 360)},90%,60%,0.35)`; c.beginPath(); for (let a = 0; a < 12; a += 0.3) { const r = a * u * 0.05; c.lineTo(X + Math.cos(a + h * 6) * r, Y + Math.sin(a + h * 6) * r); } c.stroke(); });
+    scatter(kk, S * 1.5, 0.3, 232, (X, Y, u, h) => { c.strokeStyle = 'rgba(255,60,40,0.5)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(X, Y); c.lineTo(X + u * 0.3, Y + u * 0.1); c.lineTo(X + u * 0.2, Y + u * 0.35); c.lineTo(X + u * 0.5, Y + u * 0.45); c.stroke(); });
+  } },
+};
+
 const GROUNDS = {
   // ---------------- Garten: Grundstücke mit Kieswegen, Hecken, Rasen, Beeten und Teichen.
   // Regel: Alles am Boden ist FLACH (keine Umrisse, keine Schatten) – nur echte Objekte haben Umrisse.
@@ -364,28 +551,12 @@ const GROUNDS = {
     });
   },
 
-  // ---------------- Dimensionen: fremde Landschaften in den Farben der Welt, mit Sternen
+  // ---------------- Dimensionen: jede mit eigenem Thema (DIM_GROUND unten)
   dimension(k) {
-    const { c, sx, sy, z, v, S, world, time } = k, pal = world.pal || [world.bg, world.bg2, world.accent, world.bg2, world.accent, '#ffffff'];
-    drawSpace(c, k.g, k.W, k.H, z, world, time);
-    cached(k, 'dim', kk => {
-      terrain(kk, S * 10, 70 + (world.minRadius % 97), [
-        { t: 0.46, color: pal[3], rim: shadeHex(pal[3], -0.35) },
-        { t: 0.58, color: pal[4], rim: shadeHex(pal[4], -0.35) },
-        { t: 0.7, color: pal[5], rim: shadeHex(pal[5], -0.3) },
-        { t: 0.0, t2: 0.22, color: shadeHex(pal[2], -0.2), rim: shadeHex(pal[2], -0.5) },
-      ]);
-      // schwebende Splitter auf den Inseln
-      const C = S * 2.2;
-      if (C * kk.z > 12) cells(kk.v, C, (ix, iy) => {
-        if (hash(ix, iy, 77) > 0.18) return;
-        const x = (ix + hash(ix, iy, 78)) * C, y = (iy + hash(iy, ix, 79)) * C;
-        if (fbm(x / (S * 10), y / (S * 10), 70 + (world.minRadius % 97)) < 0.5) return;
-        const X = kk.sx(x), Y = kk.sy(y), u = S * kk.z * 0.35;
-        kk.c.globalAlpha = 0.55; kk.c.fillStyle = pal[2]; kk.c.beginPath(); kk.c.moveTo(X, Y - u * 1.4); kk.c.lineTo(X + u * 0.5, Y); kk.c.lineTo(X, Y + u * 0.4); kk.c.lineTo(X - u * 0.5, Y); kk.c.closePath(); kk.c.fill();
-        kk.c.fillStyle = 'rgba(255,255,255,0.45)'; kk.c.beginPath(); kk.c.moveTo(X, Y - u * 1.4); kk.c.lineTo(X - u * 0.5, Y); kk.c.lineTo(X, Y); kk.c.closePath(); kk.c.fill(); kk.c.globalAlpha = 1;
-      });
-    });
+    const { c, z, world, time } = k, T = DIM_GROUND[world.theme] || DIM_GROUND.crystal;
+    if (T.space) drawSpace(c, k.g, k.W, k.H, z, world, time);
+    else { c.fillStyle = T.bg ? T.bg(world.pal) : world.pal[0]; c.fillRect(0, 0, k.W, k.H); }
+    cached(k, 'dim-' + world.theme, kk => T.paint(kk, world.pal, k.S, 70 + (world.minRadius % 97)));
   },
 
   // ---------------- Höllenschlund (Welt 50): Obsidian, Asche, Lavaflüsse, aufsteigende Glut
@@ -533,7 +704,40 @@ function spaceTheme(o, world, w, h) {
   const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   const wrap = (fn) => { for (const dx of [-w, 0, w]) for (const dy of [-h, 0, h]) { o.save(); o.translate(dx, dy); fn(); o.restore(); } };
   const m = Math.min(w, h);
-  switch (world.id) {
+  switch (world.theme || world.id) {
+    case 'forge': { // Sternenschmiede: glühende Esse in der Ecke, Funkenbögen
+      wrap(() => { const X = w * 0.2, Y = h * 0.8, g = o.createRadialGradient(X, Y, 0, X, Y, m * 0.6); g.addColorStop(0, 'rgba(255,220,120,0.8)'); g.addColorStop(0.2, 'rgba(255,120,30,0.5)'); g.addColorStop(1, 'rgba(255,80,20,0)'); o.fillStyle = g; o.beginPath(); o.arc(X, Y, m * 0.6, 0, TAU); o.fill();
+        o.strokeStyle = 'rgba(255,180,60,0.35)'; o.lineWidth = 1.2; for (let i = 0; i < 14; i++) { const a = -Math.PI * (0.1 + rnd() * 0.5), l = m * (0.2 + rnd() * 0.5); o.beginPath(); o.moveTo(X, Y); o.quadraticCurveTo(X + Math.cos(a) * l * 0.6, Y + Math.sin(a) * l, X + Math.cos(a) * l, Y + Math.sin(a) * l * 0.5); o.stroke(); } });
+      break;
+    }
+    case 'darksun': { // Dunkle Sonne: schwarze Sonne mit roter Korona
+      wrap(() => { const X = w * 0.7, Y = h * 0.35, R = m * 0.16; const g = o.createRadialGradient(X, Y, R * 0.9, X, Y, R * 3.2); g.addColorStop(0, 'rgba(255,60,40,0.85)'); g.addColorStop(0.3, 'rgba(180,20,10,0.35)'); g.addColorStop(1, 'rgba(80,0,0,0)'); o.fillStyle = g; o.beginPath(); o.arc(X, Y, R * 3.2, 0, TAU); o.fill(); o.fillStyle = '#050000'; o.beginPath(); o.arc(X, Y, R, 0, TAU); o.fill(); });
+      break;
+    }
+    case 'void': { // Leere: fast nichts – nur einzelne verblassende Risse
+      for (let i = 0; i < 8; i++) { const X = rnd() * w, Y = rnd() * h, L = m * (0.05 + rnd() * 0.12); wrap(() => { o.strokeStyle = 'rgba(160,160,200,0.18)'; o.lineWidth = 1; o.beginPath(); o.moveTo(X, Y); o.lineTo(X + L, Y + L * 0.3); o.lineTo(X + L * 1.4, Y - L * 0.2); o.stroke(); }); }
+      break;
+    }
+    case 'quantum': { // Quantenschaum: überlagerte, schimmernde Blasen
+      for (let i = 0; i < 40; i++) { const X = rnd() * w, Y = rnd() * h, R = m * (0.01 + rnd() * 0.05), al = 0.15 + rnd() * 0.3; wrap(() => { o.strokeStyle = `rgba(127,211,255,${al})`; o.lineWidth = 1; o.beginPath(); o.arc(X, Y, R, 0, TAU); o.stroke(); }); }
+      break;
+    }
+    case 'grave': { // Sternengrab: ausgebrannte Sternhüllen
+      for (let i = 0; i < 6; i++) { const X = rnd() * w, Y = rnd() * h, R = m * (0.05 + rnd() * 0.1); wrap(() => { o.strokeStyle = 'rgba(150,150,180,0.18)'; o.lineWidth = 2; o.beginPath(); o.arc(X, Y, R, 0, TAU); o.stroke(); o.fillStyle = 'rgba(80,80,100,0.15)'; o.beginPath(); o.arc(X, Y, R * 0.4, 0, TAU); o.fill(); }); }
+      break;
+    }
+    case 'omega': { // Omega-Nebel: pinke Nebelbänder
+      for (let i = 0; i < 6; i++) { const X = rnd() * w, Y = rnd() * h, rot = rnd() * 3; wrap(() => { const g = o.createRadialGradient(X, Y, 0, X, Y, m * 0.35); g.addColorStop(0, 'rgba(255,74,176,0.35)'); g.addColorStop(1, 'rgba(255,74,176,0)'); o.fillStyle = g; o.beginPath(); o.ellipse(X, Y, m * 0.45, m * 0.18, rot, 0, TAU); o.fill(); }); }
+      break;
+    }
+    case 'edge': { // Der Rand: goldene Grenzlinie am Ende des Universums
+      wrap(() => { o.strokeStyle = 'rgba(255,210,63,0.35)'; o.lineWidth = 3; o.setLineDash([12, 10]); o.beginPath(); o.moveTo(0, h * 0.62); o.bezierCurveTo(w * 0.3, h * 0.5, w * 0.7, h * 0.75, w, h * 0.62); o.stroke(); o.setLineDash([]); });
+      break;
+    }
+    case 'lastlight': { // Das Letzte Licht: ein einziger warmer Schein
+      wrap(() => { const X = w * 0.5, Y = h * 0.5, g = o.createRadialGradient(X, Y, 0, X, Y, m * 0.5); g.addColorStop(0, 'rgba(255,248,208,0.35)'); g.addColorStop(1, 'rgba(255,248,208,0)'); o.fillStyle = g; o.beginPath(); o.arc(X, Y, m * 0.5, 0, TAU); o.fill(); });
+      break;
+    }
     case 'planet': { // Erdorbit: großer Erdrand mit Atmosphäre und Wolken
       wrap(() => {
         const X = w * 0.18, Y = h * 1.25, R = m * 0.95;

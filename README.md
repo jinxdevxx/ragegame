@@ -7,7 +7,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.6.2 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.7.0 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -181,6 +181,13 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.7.0 Echte Dimensionen
+- **Nutzer-Feedback:** Ab Pilz-Kosmos sahen alle Welten gleich aus (nur Farben), und die Objekte passten nicht zum Thema (Götterberg mit Augen und Planeten).
+- **Themen:** `DIM_THEMES` in config.js ordnet jeder Dimension ein Boden-Thema + 8 passende Objekte + 4 thematische Extras zu (Größen/Werte unverändert → Balance unverändert). `DIM_GROUND` in render.js: 21 Boden-Zeichner (crystal, mirror, lava, ice, fungal, garden, circuit, glitch, shadow, clockwork, forge, sweets, hoard, ocean, soup, sky, temple, dream, fiery, heaven, genesis, forest, desert, chaos), Weltraum-Dimensionen über `spaceTheme`. Deko bleibt flach (ohne Umriss/Schatten), Objekte haben Umriss.
+- **40 neue Sprites** in sprites.js (pillar, temple, palace, god, angel, bolt, cloud, harp, gear, clock, automaton, anvil, hourglass, dragon, goldpile, egg, chest, bigtree, root, fish, whale, jelly, coral, cell, server, chip, virus, glitch, ghost, tomb, iceberg, snowman, lavablob, spire, pyramid, obelisk, mirror, moon, sheep). Vorschau: `tools/sprite-sheet.html`.
+- **⏫ Alles investieren** für Upgrades, Masterplan und Talente (Wunsch). **Fenster-Layout:** große Fenster sind auf die Bildschirmhöhe begrenzt (Flexbox), nur die Liste scrollt.
+- Tests: browser-test um ⏫ (3) und Weltnummer erweitert, 25/25.
+
 ### 2026-11-26: v0.6.2 Weltnummer im Blick
 - Nutzer-Wunsch (dringend): Man soll immer sehen, in welcher Welt (1–50) man ist. HUD-Plakette „WELT 12 / 50“ über dem Weltnamen, „→ Welt 13: …“ als nächste Welt; Nummer auch im Banner, Mutations-Titel, Ergebnis, Spielstand-Übersicht, Statistik.
 - Update-Hinweis: 6 s statt 10 s, Titel der v0.6.1-Notiz neutraler („Immer auf dem neuesten Stand“).
@@ -285,6 +292,10 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.7.0: Echte Dimensionen (2026-11-26)
+- Alle 39 Dimensionen mit eigenem Boden und passenden Objekten (40 neue Grafiken)
+- ⏫ Alles in ein Upgrade/Talent, Fenster passen auf den Bildschirm
 
 ### v0.6.2: Weltnummer im Blick (2026-11-26)
 - Weltnummer immer oben links sichtbar (WELT x / 50)
