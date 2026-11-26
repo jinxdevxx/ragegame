@@ -8,7 +8,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Cheat-/Testversion:** https://jinxdevxx.github.io/ragegame-cheat/ (getrennter Speicher, Cheat-Menü per 🛠 oder Taste ^)
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.8.1 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.8.2 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -185,6 +185,9 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.8.2 Grow-Räume
+- Karte 420 weiter verschönert (Wunsch): Indoor-Grow-Räume (zweites Rauschen, dunkle Fliesen, lila Licht, Topfpflanzen), ziehende Rauchschwaden (pro Frame, wenige weiche Wolken), Leucht-Schein um goldene Blätter.
+
 ### 2026-11-26: v0.8.1 Skills mit Sinn
 - **Nutzer-Feedback:** Feuerflug (Phönix) ist unnötig, wenn der Ansturm hoch geskillt ist. Gemessen: Ansturm-Abklingzeit sinkt auf 0,38–0,58 s – damit waren Feuerflug („Sturzflug“) und Turbo-Rausch („Ansturm ohne Abklingzeit“) im Endgame wertlos.
 - **Analyse aller F-Skills** (`tools/skill-value.js`: Bot spielt je Monster Runs mit und ohne Skill, mittleres Spiel, 10 Runs je Seite, Streuung ±0,3 Welten). Ergebnis vorher: Flitzer schadete sogar (×0,63 Schrott), Phönix/Kraken/Mecha kaum Wirkung; Golem, Frost, Grumpf, Void, Stachel, Infernus deutlich positiv. Endgame-Profil (alles max.) erreicht immer Welt 50 – dort kein Unterschied messbar; Karte 420 als Härtetest streut zu stark (einzelne Runs 3 s vs. 200 s).
@@ -310,6 +313,9 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.8.2: Grow-Räume (2026-11-26)
+- Karte 420: Grow-Räume, ziehender Rauch, leuchtende goldene Blätter
 
 ### v0.8.1: Skills mit Sinn (2026-11-26)
 - Phönixfeuer statt Feuerflug, Schallmauer statt Turbo-Rausch, Kraken und Mecha verstärkt
