@@ -7,7 +7,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.5.2 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.6.0 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -63,6 +63,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 
 - **Eigene Gestalt je Monster** (js/monster.js): Grumpf (Klassiker), Stachelkönig (Igel), Flitzer (Sprint-Gecko), Magma-Golem (Felsblock), Goldzahn (Drache), Void (schwebendes Sternenwesen), Frostbeule (Yeti), Kraken (Oktopus), Mecha-Rex (Roboter), Phönix (Feuervogel), Infernus (Dämon). Vorschau aller Monster: `tools/sheet.html`, `tools/sheet-big.html?skin=gold`.
 - **Premium-Skins** je Monster, Stufe für Stufe mit Schrott: 🥈 Silber (500 Mio.) → 🥇 Gold (100 Bio.) → 💠 Platin (10²²) → 👑 Gott (10³³). Rein optisch: Metallglanz, Glanzstreifen, Funkeln, Aura; Platin/Gott schillern, Gott mit Heiligenschein.
+- **Monster-Level 1–99 + Talente:** EP pro Run = 20 + 0,08 × Kills (max. 2.500) + 18 × (Welt + 1) + 6 × Aufträge. EP pro Level = 25 + 6 × L^1,25 (Summe bis 99 ≈ 84.000, also ~280 Runs mit einem Monster). 1 Punkt pro Level, 4 Talente à 25 Ränge: 💪 Kraft (+0,6 % Schaden/Rang), 🍖 Hunger (+0,3 % Wachstum/Rang), 🎯 Skill-Meister ab Lvl 15 (−1 % F-Abklingzeit/Rang), ⭐ Signatur ab Lvl 40 (je Monster eigenes Talent, siehe `SIGNATURES` in config.js).
 - **Geheimes Monster Urzorn** (Easter Egg): erscheint als „???“ und wird freigeschaltet, wenn **alle** Erfolge geschafft sind. Skill Urknall-Faust (zerstört alles Zerstörbare in Sicht). Die Erfolge sind so eingestellt, dass der letzte der ZORNOS-Sieg ist.
 - **Sonder-Skin 🔥 Höllenbezwinger:** für alle Monster nach dem ZORNOS-Sieg, nicht käuflich.
 - **Mutationen ausgeschöpft?** Dann gibt es stapelbare Verstärkungen (+10 % Schaden, +8 % Wachstum, +15 % Schrott, +10 % Wut-Tank). Nach 10 s wird automatisch gewählt.
@@ -180,6 +181,11 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.6.0 Monster-Level
+- **Monster-Level & Talente** (Wunsch: bis Level 99, Skill-Tree je Monster, Balance soll bleiben).
+- **Balance-Prüfung (Bot, 160 Runs, Urknall nach 6 Runs ohne Fortschritt; Referenz v0.5.0: Welt 42):** Erste Fassung viel zu stark (mit Talenten Welt 50 nach ~115 Runs). Ursachen: Talente (Kraft +1 %, Hunger +0,6 %/Rang) und die Mutations-Verstärkungen aus v0.5.1 (in langen Runs bis zu 20× gestapelt). Fix: Verstärkungen +4 % Schaden / +3 % Wachstum / +6 % Schrott / +5 % Wut, Kraft +0,6 %, Hunger +0,3 %. Ergebnis: ohne Talente Welt 44, mit Talenten Welt 45–47 (Bot spielt nur ein Monster = Maximalfall).
+- **Fix:** `.bar.tiny > div { width: 0 }` + Standard-`scaleX(.5)` aus v0.5.2 machten Auftrags-, Erfolgs- und Upgrade-Balken falsch. Jetzt nutzt nur das HUD `transform`, Menüs nutzen `width`. Neuer Browser-Test prüft die Balkenbreite.
+
 ### 2026-11-26: v0.5.2 Flüssiger durchs All
 - **Ruckeln ab Kristallreich (Meldung vom Kollegen) analysiert:** Mit `tools/real-perf.cjs` (echte WASD-Steuerung) zeigt sich: Langsam wird es bei schnellem Wachstum in allen Welten, nicht nur in den Dimensionen. Spiel-Update 0,5 ms, Canvas-JS ~6 ms pro Frame – der Rest liegt im Browser (Chrome-Trace: Commit + Raster + Compositing). „Hängt komplett“ war sehr wahrscheinlich der Mutations-Bug (v0.5.1).
 - **Maßnahmen:** HUD schreibt nur noch Änderungen ins DOM, Balken per `transform: scaleX` (kein Neumalen), Zahlen max. 10×/s, Kombo-Hüpfer per Web Animations statt erzwungenem Layout. Adaptive Auflösung jetzt bis 0,6× CSS-Pixel auf allen Bildschirmen.
@@ -272,6 +278,10 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.6.0: Monster-Level (2026-11-26)
+- Monster-Level 1–99 mit Talentbaum (4 Talente je Monster, eigenes Signatur-Talent)
+- Verstärkungen abgeschwächt, Fix für Balken-Anzeigen
 
 ### v0.5.2: Flüssiger durchs All (2026-11-26)
 - Leistung: HUD ohne Dauer-Neumalen, adaptive Auflösung überall
