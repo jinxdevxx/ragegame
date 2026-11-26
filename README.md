@@ -6,6 +6,7 @@
 Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner ist als du, wird zertrümmert. Mit jedem Trümmerteil wächst du, und die Kamera zoomt raus. Aus dem Garten wird die Straße, aus der Straße die Stadt, bis Galaxien fallen. Danach geht es durch 39 Dimensionen bis zu Welt 50, dem **Höllenschlund** mit Endboss **ZORNOS**. Mit jeder Welt **evolviert** dein Monster sichtbar.
 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
+**Cheat-/Testversion:** https://jinxdevxx.github.io/ragegame-cheat/ (getrennter Speicher, Cheat-Menü per 🛠 oder Taste ^)
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
 **Aktuelle Version:** v0.8.0 (siehe [Patch Notes](#patch-notes))
 
@@ -98,6 +99,8 @@ tools/balance-sim.js  Bot spielt Runs ohne Grafik → prüft das Balancing
 tools/skill-test.js   Prüft automatisch, ob jedes Upgrade, jede Fähigkeit, Mutation und jedes Monster wirkt
 tools/control-test.cjs Browser-Test: Steuerung (Tastatur/Maus/hängende Maustaste), Esc-Menü, Einstellungen
 tools/browser-test.cjs Browser-Test: Erfolge, Statistik, Evolution, Aufträge, 🏁, Boss, Monster, Hölle-FPS
+tools/build-cheat.sh  Baut die Cheat-/Testversion ins Repo ragegame-cheat (Kopie + Patches: eigener Speicher rageverse_cheat_*, Cheat-Menü tools/cheat/cheat.js). Hauptspiel bleibt unverändert.
+tools/check420.js     Bot-Test der Easter-Egg-Karte 420 mit Endgame-Spielstand
 tools/real-perf.cjs   Browser-Test: echte WASD-Steuerung, misst FPS, Ruckler und Zeichenzeit je Bereich
 tools/growth-perf.cjs Browser-Test: schnelles Wachstum durch die Welten, protokolliert Ruckler
 tools/stutter-check.js Misst Treffer-Stopps (Einfrieren) je Szenario
@@ -183,6 +186,7 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 ## Dev-Log
 
 ### 2026-11-26: v0.8.0 Grüner Daumen
+- **Cheat-/Testversion** (Wunsch, mit Go): eigenes Repo `ragegame-cheat`, gebaut per `bash tools/build-cheat.sh`. Patches nur in der Kopie: Speicher-Schlüssel `rageverse_cheat_*` (gleiche Domain wie das echte Spiel!), `writeSave` für das Cheat-Menü, Titel/Kennzeichnung. Browser-Test: echter Spielstand bleibt unsichtbar und unverändert.
 - **Easter Egg 420** (Wunsch: eine schwere Welt mit Ziel, Weed-Thema, Mutter Mary Jane). Erst als 50-Welten-Karte geplant, vom Nutzer korrigiert: eine einzige Welt mit Ziel.
 - **Balance (tools/check420.js, Bot je 8 Runs):** Erste Fassung unschaffbar – Wachstum hob die Schwierigkeit endlos an, ab Level ~68 tötete der Wutverlust in 2 s. Fix: feste Schwierigkeit auf dieser Karte, kein Spätrun-Abzug. Danach zu leicht (8/8 mit vollem Endgame) → Wutverlust ×2,2, 6 % Wut pro Blatt. Ergebnis: direkt nach dem ZORNOS-Sieg (Upgrades ~85 %, Masterplan 20) 1/8, mit vollem Ausbau zuverlässig.
 - **Bug gefunden:** `worldIndexFor` nutzte immer die Vorstadt-Welten statt der Kartenwelten.
