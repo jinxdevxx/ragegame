@@ -1,7 +1,7 @@
 // =====================================================================
 //  RAGEVERSE – Spiel-Logik (Simulation, keine Grafik)
 // =====================================================================
-import * as C from './config.js?v=0.3.0';
+import * as C from './config.js?v=0.3.2';
 
 const TAU = Math.PI * 2;
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -36,7 +36,7 @@ export function prestigeGain(save) {
   const P = C.PRESTIGE, w = save.cycleBest || 0;
   if (w < P.minWorld) return 0;
   const lg = Math.max(0, Math.log10(Math.max(1, save.cycleScrap || 0)) - P.logBase);
-  return 2 + Math.floor(lg * lg * (1 + (w - P.minWorld) * P.worldBonus)); // +2 Grundbonus
+  return 5 + Math.floor(lg * lg * 3 * (1 + (w - P.minWorld) * P.worldBonus)); // +5 Grundbonus, damit sich schon der erste Urknall lohnt
 }
 export function doPrestige(save) {
   const gain = prestigeGain(save);

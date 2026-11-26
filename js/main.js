@@ -1,12 +1,12 @@
 // =====================================================================
 //  RAGEVERSE – Einstieg: Game-Loop, Steuerung, Menüs, Shop, Updates
 // =====================================================================
-import * as C from './config.js?v=0.3.0';
-import { Game, computeStats, upgradeLevel, upgradeCost, fmt, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.3.0';
-import { render, drawMonsterPreview } from './render.js?v=0.3.0';
-import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.3.0';
-import { loadSave, writeSave, resetSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.3.0';
-import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.3.0';
+import * as C from './config.js?v=0.3.2';
+import { Game, computeStats, upgradeLevel, upgradeCost, fmt, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.3.2';
+import { render, drawMonsterPreview } from './render.js?v=0.3.2';
+import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.3.2';
+import { loadSave, writeSave, resetSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.3.2';
+import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.3.2';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -387,24 +387,29 @@ function renderShop() {
     + `<button class="tab bang ${shopTab === 'bang' ? 'on' : ''}" data-tab="bang">💥 Urknall${bangReady ? '<span class="cnt">!</span>' : ''}</button>`;
   if (shopTab === 'bang') { renderBang(); return; }
   const cat = C.UPGRADE_CATS.find(c => c.id === shopTab);
-  $('shop-tab-desc').textContent = cat.desc + ' Gilt für alle Monster und Karten.';
   const base = computeStats({ upgrades: {} }, [], 'grumpf');
-  const st = computeStats({ upgrades: save.upgrades, dmPerks: {} }, [], 'grumpf');
+  const st = computeStats(save, [], 'grumpf'); // inkl. Masterplan-Boni (◆)
+  const dmOnly = computeStats({ upgrades: {}, dmPerks: save.dmPerks || {} }, [], 'grumpf');
+  const dmNote = (key, label) => { const f = dmOnly[key] / base[key]; return f > 1.001 ? ` <span class="dmtag">◆ ×${f.toFixed(2)} ${label}</span>` : ''; };
+  const parts = [];
+  const f = (k, label) => { const x = dmOnly[k] / base[k]; if (x > 1.001) parts.push(`×${x.toFixed(2)} ${label}`); };
+  f('scrapMult', 'Schrott'); f('damage', 'Schaden'); f('absorb', 'Wachstum'); f('rageMax', 'Wut'); f('startRadius', 'Startgröße'); f('chaosMult', 'Chaos');
+  $('shop-tab-desc').innerHTML = esc(cat.desc + ' Gilt für alle Monster und Karten.') + (parts.length ? `<br><span class="dmtag">🧠 Masterplan aktiv (für immer): ${parts.join(' · ')}</span>` : '');
   const effect = {
-    size: () => `Start ${(st.startRadius / base.startRadius).toFixed(2)}×`,
-    rage: () => `${Math.round(st.rageMax)} Wut`,
+    size: () => `Start ${(st.startRadius / base.startRadius).toFixed(2)}×${dmNote('startRadius', 'Masterplan')}`,
+    rage: () => `${Math.round(st.rageMax)} Wut${dmNote('rageMax', 'Masterplan')}`,
     calm: () => `−${Math.round((1 - st.rageDrain / base.rageDrain) * 100)} % Verlust`,
-    dmg: () => `${st.damage.toFixed(2)}× Schaden`,
+    dmg: () => `${st.damage.toFixed(2)}× Schaden${dmNote('damage', 'Masterplan')}`,
     hard: () => `bis ${Math.round(st.breakRatio * 100)} % deiner Größe`,
     speed: () => `${(st.speed / base.speed).toFixed(2)}× Tempo`,
-    absorb: () => `${(st.absorb / base.absorb).toFixed(2)}× Wachstum`,
-    scrap: () => `${(st.scrapMult / base.scrapMult).toFixed(2)}× Schrott`,
+    absorb: () => `${(st.absorb / base.absorb).toFixed(2)}× Wachstum${dmNote('absorb', 'Masterplan')}`,
+    scrap: () => `${(st.scrapMult / base.scrapMult).toFixed(2)}× Schrott${dmNote('scrapMult', 'Masterplan')}`,
     magnet: () => `Reichweite ${(2.5 + st.magnet * 2).toFixed(1)}× Körper`,
     dash: () => `${st.dashCooldown.toFixed(1)} s Abklingzeit`,
     slam: () => `${st.slamCooldown.toFixed(1)} s · Radius ${st.slamRadius.toFixed(1)}×`,
     berserk: () => `${st.berserkGain.toFixed(2)}× Aufladung`,
     combo: () => `Fenster ${st.comboWindow.toFixed(1)} s · bis ×${st.comboMax.toFixed(1)}`,
-    chaosup: () => `${st.chaosMult.toFixed(2)}× Chaos`,
+    chaosup: () => `${st.chaosMult.toFixed(2)}× Chaos${dmNote('chaosMult', 'Masterplan')}`,
     luck: () => `${(st.goldenChance * 100).toFixed(1)} % Gold-Chance`,
     crates: () => `${(C.CRATE_CHANCE * st.crateMult * 100).toFixed(1)} % Kisten-Chance`,
     quest: () => `${st.questMult.toFixed(2)}× Auftragsbeute`,
@@ -419,6 +424,18 @@ function renderShop() {
     </div>`;
   }).join('');
 }
+// Vorschau: was bringt der Urknall konkret beim Schrott?
+function bangPreview(gain) {
+  const d = C.DM_PERKS.find(x => x.id === 'dm_scrap');
+  let dm = (save.darkMatter || 0) + gain, l = dmLevel(save, 'dm_scrap'), n = 0;
+  while (l < d.max && dm >= dmCost(d, l)) { dm -= dmCost(d, l); l++; n++; }
+  const now = computeStats(save, [], 'grumpf').scrapMult;
+  const after = computeStats({ upgrades: {}, dmPerks: { ...(save.dmPerks || {}), dm_scrap: l } }, [], 'grumpf').scrapMult;
+  const keep = dmLevel(save, 'dm_keep') * C.DM_PERKS.find(x => x.id === 'dm_keep').per;
+  return `💡 Steckst du alles in <b>Schwarzgeld</b>, startest du danach mit <b>×${(after / C.SCRAP_SCALE).toFixed(2)} Schrott</b> (jetzt mit deinen Upgrades: ×${(now / C.SCRAP_SCALE).toFixed(2)}). `
+    + `Deine Upgrades werden ${keep > 0 ? `auf ${Math.round(keep * 100)} % ` : ''}zurückgesetzt – je später du sprengst, desto mehr ◆ gibt es.`;
+}
+
 function renderBang() {
   const gain = prestigeGain(save), P = C.PRESTIGE;
   const cycleW = C.WORLDS[Math.min(save.cycleBest || 0, C.WORLDS.length - 1)].name;
@@ -442,6 +459,7 @@ function renderBang() {
       </div>
       ${gain > 0
         ? `<div>Urknall jetzt bringt dir: <span class="bang-gain">+${fmt(gain)} ◆</span></div>
+           <div class="char-req ok">${bangPreview(gain)}</div>
            <button class="btn bang-btn ${bangArmed ? 'armed' : ''}" id="btn-bang">${bangArmed ? '⚠ Sicher? Nochmal klicken!' : '💥 URKNALL AUSLÖSEN'}</button>`
         : `<div class="char-req">🔒 Erreiche in diesem Durchgang den <b>${esc(C.WORLDS[P.minWorld].name)}</b>, um den Urknall freizuschalten. Je weiter du kommst und je mehr Schrott du sammelst, desto mehr ◆ gibt es.</div>`}
     </div>

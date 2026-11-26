@@ -6,6 +6,28 @@
 
 export const PATCH_NOTES = [
   {
+    version: '0.3.2',
+    date: '2026-11-26',
+    title: 'Neuer Garten',
+    summary: 'Die erste Karte ist komplett neu gestaltet – übersichtlich und klar lesbar.',
+    changes: [
+      'Garten neu: Grundstücke mit Kieswegen, Hecken, gemähtem Rasen, Gemüsebeeten, Teichen, Terrassen und Trittsteinen.',
+      'Klare Regel: Alles, was zur Karte gehört, ist flach (ohne Umrisse und Schatten) – alles Zerstörbare hat dicke Umrisse und Schatten. Man sieht sofort, wo man hinlaufen muss.',
+      'Entfernt: die Blumenbeet-„Stangen“, die Deko-Büsche, die wie Objekte aussahen, und die durchsichtigen Gitter-Flecken.',
+    ],
+  },
+  {
+    version: '0.3.1',
+    date: '2026-11-26',
+    title: 'Urknall-Fix',
+    summary: 'Der Urknall lohnt sich jetzt von Anfang an – und man sieht, was der Masterplan bringt.',
+    changes: [
+      'Mehr ◆ Dunkle Materie pro Urknall (z. B. am Kontinent ~11 statt ~4). Vorher konnte man nach dem ersten Urknall weniger Schrott haben als vorher.',
+      'Anzeige-Fix: Die Schurkenhöhle zeigt jetzt den Masterplan-Bonus. Vorher stand nach dem Urknall „1,00× Schrott“, obwohl Schwarzgeld aktiv war.',
+      'Neue Vorschau im Urknall-Reiter: zeigt, mit wie viel Schrott-Bonus du nach dem Urknall startest.',
+    ],
+  },
+  {
     version: '0.3.0',
     date: '2026-11-26',
     title: 'Schurkenhöhle & Urknall',
