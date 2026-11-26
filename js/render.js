@@ -3,9 +3,9 @@
 //  Reihenfolge: Boden → Trümmer-Flecken → Schatten/Objekte/Monster
 //  (nach Tiefe sortiert) → Trümmer → Münzen → Effekte → Overlays
 // =====================================================================
-import { SPRITES, OUT } from './sprites.js?v=0.3.2';
-import { drawMonster } from './monster.js?v=0.3.2';
-import { shadeHex as sh, shadeHex } from './game.js?v=0.3.2';
+import { SPRITES, OUT } from './sprites.js?v=0.4.0';
+import { drawMonster } from './monster.js?v=0.4.0';
+import { shadeHex as sh, shadeHex } from './game.js?v=0.4.0';
 
 const TAU = Math.PI * 2;
 const STARS = Array.from({ length: 220 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() * 1.8 + 0.4, p: Math.random() * 0.6 + 0.1, tw: Math.random() * 6 }));
@@ -44,7 +44,7 @@ function terrain(k, scale, seed, layers) {
   // Glatte Höhenlinien per Marching Squares: Rauschwerte an Gitterpunkten,
   // jede Höhenstufe wird als geschlossene, interpolierte Fläche gefüllt.
   const { c, z, sx, sy, v } = k;
-  let C = 14 / z;
+  let C = 16 / z;
   while (((v.x1 - v.x0) / C) * ((v.y1 - v.y0) / C) > 9000) C *= 1.5;
   const x0 = Math.floor(v.x0 / C), y0 = Math.floor(v.y0 / C);
   const nx = Math.ceil(v.x1 / C) - x0 + 1, ny = Math.ceil(v.y1 / C) - y0 + 1;
@@ -82,15 +82,18 @@ function terrain(k, scale, seed, layers) {
 const groundCache = {};
 function cached(k, key, painter) {
   const { c, z, g, W, H, sx, sy } = k;
-  const cam = g.cam, RES = 0.8;
+  const cam = g.cam, RES = 0.7;
   key = key + ':' + (g.map ? g.map.id : '') + ':' + g.world;
   let t = groundCache[key];
   const vx0 = cam.x - W / 2 / z, vx1 = cam.x + W / 2 / z, vy0 = cam.y - H / 2 / z, vy1 = cam.y + H / 2 / z;
-  if (!t || Math.abs(z / t.z - 1) > 0.07 || vx0 < t.x0 || vx1 > t.x1 || vy0 < t.y0 || vy1 > t.y1) {
+  const stale = !t || Math.abs(z / t.z - 1) > 0.2 || vx0 < t.x0 || vx1 > t.x1 || vy0 < t.y0 || vy1 > t.y1;
+  const now = performance.now();
+  // höchstens alle 0,3 s neu rechnen (bei sehr schnellem Wachstum), dazwischen altes Bild skalieren
+  if (stale && (!t || now - (t.at || 0) > 300 || vx0 < t.x0 - (t.x1 - t.x0) || vy0 < t.y0 - (t.y1 - t.y0))) {
     for (const k2 of Object.keys(groundCache)) if (k2 !== key) delete groundCache[k2];
-    const mx = W / z * 0.3, my = H / z * 0.3;
+    const mx = W / z * 0.45, my = H / z * 0.45;
     t = t || { cv: document.createElement('canvas') };
-    t.z = z; t.x0 = vx0 - mx; t.x1 = vx1 + mx; t.y0 = vy0 - my; t.y1 = vy1 + my;
+    t.at = now; t.z = z; t.x0 = vx0 - mx; t.x1 = vx1 + mx; t.y0 = vy0 - my; t.y1 = vy1 + my;
     const zz = z * RES;
     t.cv.width = Math.ceil((t.x1 - t.x0) * zz); t.cv.height = Math.ceil((t.y1 - t.y0) * zz);
     const oc = t.cv.getContext('2d');
@@ -109,8 +112,7 @@ function treeTop(c, x, y, r, col, dark) {
   circle(c, x, y, r, dark); circle(c, x - r * 0.12, y - r * 0.12, r * 0.82, col);
   circle(c, x - r * 0.35, y - r * 0.35, r * 0.28, 'rgba(255,255,255,0.18)');
 }
-function pineTop(c, x, y, r, col) {
-  c.fillStyle = 'rgba(0,0,0,0.2)'; c.beginPath(); c.ellipse(x + r * 0.3, y + r * 0.35, r * 0.9, r * 0.7, 0, 0, TAU); c.fill();
+function pineTop(c, x, y, r, col) { // Deko-Tanne: flach, ohne Schatten (Objekte haben Schatten + Umriss)
   c.fillStyle = col; c.beginPath();
   for (let i = 0; i < 16; i++) { const a = i / 16 * TAU, rr = i % 2 ? r * 0.55 : r; c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
   c.fill(); circle(c, x, y, r * 0.3, 'rgba(255,255,255,0.12)');
@@ -294,7 +296,7 @@ const GROUNDS = {
       const x = (ix + hash(ix, iy, 71)) * C, y = (iy + hash(iy, ix, 72)) * C;
       const n = fbm(x / (S * 10), y / (S * 10), 11);
       if (n > 0.38 && n < 0.58 && hash(ix, iy, 73) < 0.75) pineTop(c, sx(x), sy(y), S * z * (0.45 + hash(ix, iy, 74) * 0.35), n > 0.5 ? '#2c6b3c' : '#3a8a4a');
-      else if (n > 0.6 && n < 0.72 && hash(ix, iy, 75) < 0.25) { c.fillStyle = '#6f6c64'; c.beginPath(); c.ellipse(sx(x), sy(y), S * z * 0.4, S * z * 0.28, 0, 0, TAU); c.fill(); }
+      else if (n > 0.6 && n < 0.72 && hash(ix, iy, 75) < 0.25) { c.strokeStyle = 'rgba(70,60,50,0.3)'; c.lineWidth = Math.max(1, S * z * 0.08); c.beginPath(); c.moveTo(sx(x), sy(y)); c.lineTo(sx(x + S * 0.6), sy(y + S * 0.3)); c.lineTo(sx(x + S * 0.4), sy(y + S * 0.8)); c.stroke(); }
       else if (n < 0.5 && n > 0.34 && hash(ix, iy, 76) < 0.12) circle(c, sx(x), sy(y), S * z * 0.12, ['#ffffff', '#ffd23f', '#c38bff'][ix & 1 + (iy & 1)]);
     });
   },
@@ -357,34 +359,72 @@ const GROUNDS = {
         const x = (ix + hash(ix, iy, 78)) * C, y = (iy + hash(iy, ix, 79)) * C;
         if (fbm(x / (S * 10), y / (S * 10), 70 + (world.minRadius % 97)) < 0.5) return;
         const X = kk.sx(x), Y = kk.sy(y), u = S * kk.z * 0.35;
-        kk.c.fillStyle = 'rgba(0,0,0,0.2)'; kk.c.beginPath(); kk.c.ellipse(X + u * 0.3, Y + u * 0.5, u * 0.8, u * 0.4, 0, 0, TAU); kk.c.fill();
-        kk.c.fillStyle = pal[2]; kk.c.beginPath(); kk.c.moveTo(X, Y - u * 1.4); kk.c.lineTo(X + u * 0.5, Y); kk.c.lineTo(X, Y + u * 0.4); kk.c.lineTo(X - u * 0.5, Y); kk.c.closePath(); kk.c.fill();
-        kk.c.fillStyle = 'rgba(255,255,255,0.45)'; kk.c.beginPath(); kk.c.moveTo(X, Y - u * 1.4); kk.c.lineTo(X - u * 0.5, Y); kk.c.lineTo(X, Y); kk.c.closePath(); kk.c.fill();
+        kk.c.globalAlpha = 0.55; kk.c.fillStyle = pal[2]; kk.c.beginPath(); kk.c.moveTo(X, Y - u * 1.4); kk.c.lineTo(X + u * 0.5, Y); kk.c.lineTo(X, Y + u * 0.4); kk.c.lineTo(X - u * 0.5, Y); kk.c.closePath(); kk.c.fill();
+        kk.c.fillStyle = 'rgba(255,255,255,0.45)'; kk.c.beginPath(); kk.c.moveTo(X, Y - u * 1.4); kk.c.lineTo(X - u * 0.5, Y); kk.c.lineTo(X, Y); kk.c.closePath(); kk.c.fill(); kk.c.globalAlpha = 1;
       });
     });
+  },
+
+  // ---------------- Höllenschlund (Welt 50): Obsidian, Asche, Lavaflüsse, aufsteigende Glut
+  hell(k) {
+    const { c, S, W, H, time } = k;
+    c.fillStyle = '#1e0a06'; c.fillRect(0, 0, W, H);
+    cached(k, 'hell', kk => terrain(kk, S * 9, 666, [
+      { t: 0.42, color: '#2e120c', rim: '#140604' },               // Asche
+      { t: 0.62, color: '#140806', rim: '#000000' },               // Obsidian-Platten
+      { t: 0.0, t2: 0.3, color: '#ff5a1f', rim: '#7a1a05' },       // Lava
+      { t: 0.0, t2: 0.22, color: '#ffb13d' },                      // heiße Lava-Mitte
+    ]));
+    // pulsierendes Glühen + aufsteigende Glut (bildschirmfest, nur Deko)
+    c.fillStyle = `rgba(255,70,20,${0.05 + Math.sin(time * 2) * 0.03})`; c.fillRect(0, 0, W, H);
+    for (let i = 0; i < 40; i++) {
+      const x = (Math.sin(i * 12.9898) * 0.5 + 0.5) * W, sp = 20 + (i % 7) * 8;
+      const y = H - ((time * sp + i * 97) % (H + 40));
+      c.fillStyle = i % 3 ? 'rgba(255,140,40,0.7)' : 'rgba(255,220,80,0.8)';
+      c.fillRect(x + Math.sin(time + i) * 10, y, 2 + (i % 3), 2 + (i % 3));
+    }
   },
 
   // ---------------- Weltall
   space(k) { drawSpace(k.c, k.g, k.W, k.H, k.z, k.world, k.time); },
 
-  // ---------------- Prärie: Sand, Risse, Büsche, Wagenspuren
+  // ---------------- Prärie: Ranch-Weiden mit Zäunen, Wagenwege, flache Steppe (keine Deko-Steine!)
   sand(k) {
-    const { c, sx, sy, z, v, S } = k;
-    if (!k.skipTerrain) cached(k, 'sand', kk => terrain(kk, S * 8, 31, [{ t: 0.58, color: '#d6b36a', rim: '#c9a35a' }, { t: 0.68, color: '#c9a35a', rim: '#b8904a' }, { t: 0.0, t2: 0.32, color: '#e9cf8e' }]));
-    // Wagenspuren
-    const B = S * 18;
-    c.strokeStyle = 'rgba(120,80,40,0.35)'; c.lineWidth = Math.max(1.5, S * z * 0.12); c.beginPath();
-    for (let iy = Math.floor(v.y0 / B); iy <= Math.ceil(v.y1 / B); iy++) for (const off of [-S * 0.5, S * 0.5]) {
-      for (let x = Math.floor(v.x0 / S) * S; x < v.x1; x += S) { const y = iy * B + off + Math.sin(x / (S * 6) + iy) * S * 1.5; x === Math.floor(v.x0 / S) * S ? c.moveTo(sx(x), sy(y)) : c.lineTo(sx(x), sy(y)); }
-    }
+    const { c, sx, sy, z, v, S, W, H } = k;
+    if (!k.skipTerrain) cached(k, 'sand', kk => terrain(kk, S * 8, 31, [{ t: 0.6, color: '#d9b770' }, { t: 0.0, t2: 0.3, color: '#ead39a' }]));
+    const B = S * 16, Rw = S * 2.2;
+    const bx0 = Math.floor(v.x0 / B), bx1 = Math.ceil(v.x1 / B), by0 = Math.floor(v.y0 / B), by1 = Math.ceil(v.y1 / B);
+    // Wagenwege (flache, hellere Bänder mit Radspuren)
+    c.fillStyle = '#ecd9a6';
+    for (let ix = bx0; ix <= bx1; ix++) c.fillRect(sx(ix * B) - Rw * z / 2, 0, Rw * z, H);
+    for (let iy = by0; iy <= by1; iy++) c.fillRect(0, sy(iy * B) - Rw * z / 2, W, Rw * z);
+    c.strokeStyle = 'rgba(140,100,50,0.25)'; c.lineWidth = Math.max(1, S * z * 0.1); c.beginPath();
+    for (let ix = bx0; ix <= bx1; ix++) for (const o of [-0.4, 0.4]) { c.moveTo(sx(ix * B + Rw * o), 0); c.lineTo(sx(ix * B + Rw * o), H); }
+    for (let iy = by0; iy <= by1; iy++) for (const o of [-0.4, 0.4]) { c.moveTo(0, sy(iy * B + Rw * o)); c.lineTo(W, sy(iy * B + Rw * o)); }
     c.stroke();
+    for (let ix = bx0; ix <= bx1; ix++) for (let iy = by0; iy <= by1; iy++) {
+      const h = hash(ix, iy, 501), x = ix * B + Rw, y = iy * B + Rw, w = B - Rw * 2;
+      if (h < 0.55) { // eingezäunte Weide mit etwas grünerem Gras
+        c.fillStyle = 'rgba(160,170,80,0.35)'; c.fillRect(sx(x + S * 0.3), sy(y + S * 0.3), (w - S * 0.6) * z, (w - S * 0.6) * z);
+        c.strokeStyle = '#9a6a3a'; c.lineWidth = Math.max(1.5, S * z * 0.12);
+        c.strokeRect(sx(x), sy(y), w * z, w * z);
+        if (S * z * 6 > 30) { c.fillStyle = '#7a4e2a'; for (let q = 0; q <= 8; q++) for (const [px, py] of [[x + w * q / 8, y], [x + w * q / 8, y + w], [x, y + w * q / 8], [x + w, y + w * q / 8]]) c.fillRect(sx(px) - 2, sy(py) - 2, 4, 4); }
+      } else if (h < 0.7) { // Wasserloch (flach)
+        c.fillStyle = '#c9a35a'; c.beginPath(); c.ellipse(sx(x + w * 0.5), sy(y + w * 0.5), w * 0.22 * z, w * 0.14 * z, 0, 0, TAU); c.fill();
+        c.fillStyle = '#6fb6d9'; c.beginPath(); c.ellipse(sx(x + w * 0.5), sy(y + w * 0.5), w * 0.17 * z, w * 0.1 * z, 0, 0, TAU); c.fill();
+      }
+    }
+    // trockene Grasbüschel (sehr dezent, flach)
     const C = S * 3;
-    if (C * z > 18) cells(v, C, (ix, iy) => {
-      const h = hash(ix, iy, 33), X = sx((ix + hash(iy, ix, 34)) * C), Y = sy((iy + hash(ix, iy, 35)) * C), u = S * z;
-      if (h < 0.12) { c.strokeStyle = '#8a6a3a'; c.lineWidth = Math.max(1, u * 0.08); c.beginPath(); for (let i = 0; i < 7; i++) { const a = i * 0.9; c.moveTo(X, Y); c.lineTo(X + Math.cos(a) * u * 0.5, Y - Math.abs(Math.sin(a)) * u * 0.45); } c.stroke(); }
-      else if (h < 0.2) { c.fillStyle = '#b39a74'; c.beginPath(); c.ellipse(X, Y, u * 0.35, u * 0.24, 0, 0, TAU); c.fill(); c.fillStyle = 'rgba(255,255,255,0.25)'; c.beginPath(); c.ellipse(X - u * 0.1, Y - u * 0.08, u * 0.12, u * 0.07, 0, 0, TAU); c.fill(); }
-      else if (h < 0.28) { c.strokeStyle = 'rgba(120,80,40,0.3)'; c.lineWidth = 1; c.beginPath(); c.moveTo(X, Y); c.lineTo(X + u * 0.5, Y + u * 0.3); c.lineTo(X + u * 0.4, Y + u * 0.8); c.moveTo(X + u * 0.5, Y + u * 0.3); c.lineTo(X + u * 1, Y + u * 0.2); c.stroke(); }
-    });
+    if (C * z > 18) {
+      c.strokeStyle = 'rgba(150,120,60,0.45)'; c.lineWidth = Math.max(1, S * z * 0.06); c.beginPath();
+      cells(v, C, (ix, iy) => {
+        const h = hash(ix, iy, 33); if (h > 0.35) return;
+        const X = sx((ix + hash(iy, ix, 34)) * C), Y = sy((iy + hash(ix, iy, 35)) * C), u = S * z;
+        for (let i = 0; i < 4; i++) { const a = -Math.PI / 2 + (i - 1.5) * 0.35; c.moveTo(X, Y); c.lineTo(X + Math.cos(a) * u * 0.35, Y + Math.sin(a) * u * 0.35); }
+      });
+      c.stroke();
+    }
   },
 
   // ---------------- Westernstadt: Lehmstraßen mit Holz-Gehwegen
@@ -418,34 +458,33 @@ const GROUNDS = {
       { t: 0.62, color: '#eaa66a', rim: '#a8552a' },          // Mesa-Plateau mit Kante
       { t: 0.76, color: '#f0b47a', rim: '#b85a2a' },
     ]));
-    GROUNDS.sand.call(null, { ...k, skipTerrain: true });
+    // Flussufer-Kiesel als flache Punkte (keine Steine, die wie Objekte aussehen)
   },
 
-  // ---------------- Zuckerwiese
+  // ---------------- Zuckerwiese: Zuckerguss-Fliesen, Schoko-Bach (keine Streusel – die sind Objekte!)
   candy(k) {
-    const { c, sx, sy, z, v, S } = k;
-    cached(k, 'candy', kk => terrain(kk, S * 9, 51, [{ t: 0.6, color: '#ffd6ea', rim: '#ffb8da' }, { t: 0.7, color: '#ffffff', rim: '#ffd0e6' }, { t: 0.0, t2: 0.25, color: '#8a4a2a', rim: '#6a3418' }]));
-    const C = S * 1.4, cols = ['#ffffff', '#7fd3ff', '#ffd23f', '#a0f04a', '#c9a0ff', '#ff6fa8'];
-    if (C * z > 10) cells(v, C, (ix, iy) => {
-      const h = hash(ix, iy, 52); if (h > 0.55) return;
-      const X = sx((ix + hash(iy, ix, 53)) * C), Y = sy((iy + hash(ix, iy, 54)) * C), u = S * z;
-      c.save(); c.translate(X, Y); c.rotate(h * 12); c.fillStyle = cols[Math.floor(h * 11) % 6]; c.beginPath(); c.roundRect(-u * 0.2, -u * 0.06, u * 0.4, u * 0.12, u * 0.06); c.fill(); c.restore();
-    });
+    const { c, sx, sy, z, v, S, W, H } = k;
+    const T = S * 4;
+    if (T * z > 8) {
+      c.fillStyle = '#ffb6d6';
+      cells(v, T, (ix, iy) => { if ((ix + iy) & 1) c.fillRect(sx(ix * T), sy(iy * T), T * z + 1, T * z + 1); });
+      c.fillStyle = 'rgba(255,255,255,0.35)';
+      cells(v, T, (ix, iy) => { c.beginPath(); c.arc(sx((ix + 0.5) * T), sy((iy + 0.5) * T), T * z * 0.12, 0, TAU); c.fill(); });
+    }
+    cached(k, 'candy', kk => terrain(kk, S * 9, 51, [{ t: 0.66, color: '#ffffff', rim: '#ffd0e6' }, { t: 0.0, t2: 0.24, color: '#8a4a2a', rim: '#6a3418' }]));
   },
 
   // ---------------- Bonbonstadt
   candytown(k) {
     streetGrid(k, {
       block: 12, road: 2.6, walk: 0.9, asphalt: '#ff9ac8', curb: '#ffffff', walkCol: '#fff0f6', center: '#ffffff', zebra: 'rgba(255,255,255,0.9)',
-      lot(k, x, y, w, h, ix, iy) {
+      lot(k, x, y, w, h, ix, iy) { // Minz-Rasen mit Zuckerstangen-Beeteinfassung (flach)
         const { c, sx, sy, z, S } = k, u = S * z;
         c.fillStyle = '#b8f0d0'; c.fillRect(sx(x), sy(y), w * z, w * z);
-        for (let i = 0; i < 4; i++) {
-          const X = sx(x + w * (0.15 + hash(ix, iy, 60 + i) * 0.7)), Y = sy(y + w * (0.15 + hash(iy, ix, 70 + i) * 0.7));
-          circle(c, X + u * 0.2, Y + u * 0.25, u * 0.7, 'rgba(0,0,0,0.12)');
-          circle(c, X, Y, u * 0.7, ['#ff5aa8', '#7fd3ff', '#ffd23f', '#c9a0ff'][i]);
-          c.strokeStyle = '#ffffff'; c.lineWidth = Math.max(1, u * 0.15); c.beginPath(); c.arc(X, Y, u * 0.4, 0, 4.5); c.stroke();
-        }
+        c.fillStyle = '#a6e6c2'; for (let i = 0; i < 6; i += 2) c.fillRect(sx(x + i * w / 6), sy(y), w / 6 * z, w * z);
+        const bw = S * 0.5;
+        for (let i = 0; i < 12; i++) { c.fillStyle = i % 2 ? '#ffffff' : '#ff6fa8'; c.fillRect(sx(x + i * w / 12), sy(y), w / 12 * z + 1, bw * z); c.fillRect(sx(x + i * w / 12), sy(y + w - bw), w / 12 * z + 1, bw * z); }
+        if (h < 0.4) { c.fillStyle = '#ffe6a0'; c.beginPath(); c.ellipse(sx(x + w / 2), sy(y + w / 2), w * 0.2 * z, w * 0.14 * z, 0, 0, TAU); c.fill(); c.fillStyle = '#c98a4a'; c.beginPath(); c.ellipse(sx(x + w / 2), sy(y + w / 2), w * 0.15 * z, w * 0.09 * z, 0, 0, TAU); c.fill(); }
       },
     });
   },
@@ -535,10 +574,22 @@ export function render(c, g, W, H, time) {
     c.globalAlpha = 1;
   }
 
+  // Skill-Effekte am Boden: Lava, Singularität
+  for (const L of g.lava || []) {
+    const a = Math.min(1, L.life / 1.5);
+    c.fillStyle = `rgba(255,90,20,${0.55 * a})`; c.beginPath(); c.ellipse(sx(L.x), sy(L.y), L.r * z, L.r * z * 0.55, 0, 0, TAU); c.fill();
+    c.fillStyle = `rgba(255,210,63,${0.5 * a})`; c.beginPath(); c.ellipse(sx(L.x), sy(L.y), L.r * z * 0.55, L.r * z * 0.3, 0, 0, TAU); c.fill();
+  }
+  if (g.singularity) {
+    const s2 = g.singularity, X = sx(s2.x), Y = sy(s2.y), R = p.r * z * 1.3;
+    const gr = c.createRadialGradient(X, Y, R * 0.3, X, Y, R * 3); gr.addColorStop(0, '#000'); gr.addColorStop(0.3, '#000'); gr.addColorStop(0.45, '#ffb13d'); gr.addColorStop(0.7, 'rgba(176,107,255,0.5)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = gr; c.beginPath(); c.ellipse(X, Y, R * 3, R * 1.8, time * 2, 0, TAU); c.fill();
+  }
+
   // Magnet-Reichweite (nur wenn Magnet gelevelt)
   if (g.stats.magnet > 0 && g.state === 'play') {
     const R = g.magnetRange() * z;
-    c.strokeStyle = 'rgba(255,220,90,0.18)'; c.lineWidth = 2; c.setLineDash([6, 8]);
+    c.strokeStyle = g.stats.hole ? 'rgba(190,130,255,0.32)' : 'rgba(255,220,90,0.18)'; c.lineWidth = 2; c.setLineDash([6, 8]);
     c.beginPath(); c.ellipse(sx(p.x), sy(p.y), R, R * 0.55, 0, 0, TAU); c.stroke(); c.setLineDash([]);
   }
 
@@ -551,10 +602,14 @@ export function render(c, g, W, H, time) {
     drawList.push(o);
   }
   drawList.push(null); // Platzhalter für das Monster
-  drawList.sort((a, b) => (a ? a.y : p.y) - (b ? b.y : p.y));
+  if (g.boss) drawList.push(BOSS_TOKEN);
+  const yOf = o => o === null ? p.y : o === BOSS_TOKEN ? g.boss.y : o.y;
+  drawList.sort((a, b) => yOf(a) - yOf(b));
+  drawBossFloor(c, g, sx, sy, z, time);
   const hasFilter = 'filter' in c;
   for (const o of drawList) {
     if (o === null) { if (g.state !== 'dying' && g.state !== 'over') drawPlayer(c, g, sx(p.x), sy(p.y), g.hr() * z, time); continue; }
+    if (o === BOSS_TOKEN) { drawBoss(c, g, sx, sy, z, time); continue; }
     drawObject(c, g, o, sx(o.x), sy(o.y), o.size * z, limit, time, hasFilter);
   }
 
@@ -585,6 +640,18 @@ export function render(c, g, W, H, time) {
     c.fillStyle = k.golden ? '#fff1a0' : '#ffd23f'; c.beginPath(); c.ellipse(X - cr * 0.08 * w, Y - hz - cr * 0.05, cr * 0.82 * w, cr * 0.85, 0, 0, TAU); c.fill();
     c.fillStyle = '#ffffff'; c.globalAlpha = 0.7; c.beginPath(); c.ellipse(X - cr * 0.3 * w, Y - hz - cr * 0.35, cr * 0.18 * w, cr * 0.25, 0, 0, TAU); c.fill(); c.globalAlpha = 1;
   }
+
+  // Stacheln, Raketen, Tentakel
+  c.strokeStyle = '#f2e6c8'; c.lineWidth = Math.max(2, p.r * z * 0.12);
+  for (const sp of g.spikes || []) { c.beginPath(); c.moveTo(sx(sp.x), sy(sp.y) - p.r * z); c.lineTo(sx(sp.x - sp.vx * p.r * 0.8), sy(sp.y - sp.vy * p.r * 0.8) - p.r * z); c.stroke(); }
+  for (const rk of g.rockets || []) {
+    const k = Math.min(1, rk.t / rk.dur), X = sx(rk.x + (rk.tx - rk.x) * k), Y = sy(rk.y + (rk.ty - rk.y) * k) - Math.sin(k * Math.PI) * 80;
+    c.fillStyle = '#d0d4dc'; c.beginPath(); c.arc(X, Y, Math.max(3, p.r * z * 0.15), 0, TAU); c.fill();
+    c.fillStyle = '#ff8a1f'; c.beginPath(); c.arc(X - 4, Y + 3, Math.max(2, p.r * z * 0.1), 0, TAU); c.fill();
+  }
+  c.strokeStyle = '#7fffe0'; c.lineWidth = Math.max(3, p.r * z * 0.2);
+  for (const f of g.grabFx || []) { c.globalAlpha = f.life / 0.4; c.beginPath(); c.moveTo(sx(p.x), sy(p.y) - p.r * z); c.quadraticCurveTo(sx((p.x + f.x) / 2), sy((p.y + f.y) / 2) - p.r * z * 3, sx(f.x), sy(f.y)); c.stroke(); }
+  c.globalAlpha = 1;
 
   // Staubwolken
   for (const u of g.puffs) {
@@ -625,6 +692,51 @@ export function render(c, g, W, H, time) {
   c.globalAlpha = 1;
 
   drawOverlays(c, g, W, H, time);
+}
+
+// ---------------------------------------------------------------------
+// ENDBOSS ZORNOS
+// ---------------------------------------------------------------------
+const BOSS_TOKEN = { boss: true };
+const BOSS_CHAR = { type: 'monster', colors: { body: '#5a0a0a', belly: '#ff6a1f', horn: '#1a0505', dark: '#000000' } };
+function drawBossFloor(c, g, sx, sy, z, time) {
+  if (!g.boss && !(g.bossShots && g.bossShots.length)) return;
+  const b = g.boss, p = g.p;
+  // Warnlinie vor dem Sturmangriff
+  if (b && b.windup > 0) {
+    const len = b.size * 9, a = Math.min(1, (0.8 - b.windup) / 0.8);
+    c.strokeStyle = `rgba(255,40,20,${0.25 + 0.5 * Math.abs(Math.sin(time * 18))})`; c.lineWidth = b.size * z * 1.2 * a;
+    c.beginPath(); c.moveTo(sx(b.x), sy(b.y)); c.lineTo(sx(b.x + b.chargeX * len), sy(b.y + b.chargeY * len)); c.stroke();
+  }
+  for (const sh of g.bossShots || []) {
+    if (sh.kind === 'ring') {
+      c.strokeStyle = 'rgba(255,90,20,0.85)'; c.lineWidth = Math.max(4, p.r * z * 0.9);
+      c.beginPath(); c.ellipse(sx(sh.x), sy(sh.y), sh.r * z, sh.r * z * 0.6, 0, 0, Math.PI * 2); c.stroke();
+      c.strokeStyle = 'rgba(255,220,80,0.9)'; c.lineWidth = Math.max(2, p.r * z * 0.3); c.stroke();
+    } else if (sh.kind === 'meteor') {
+      const k = Math.max(0, 1 - sh.t / 1.1);
+      c.fillStyle = `rgba(80,0,0,${0.2 + k * 0.4})`; c.beginPath(); c.ellipse(sx(sh.x), sy(sh.y), sh.r * z, sh.r * z * 0.6, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = 'rgba(255,60,30,0.8)'; c.lineWidth = 2; c.beginPath(); c.ellipse(sx(sh.x), sy(sh.y), sh.r * z * k, sh.r * z * 0.6 * k, 0, 0, Math.PI * 2); c.stroke();
+      const fy = sy(sh.y) - (1 - k) * 600;
+      c.fillStyle = '#ffb13d'; c.beginPath(); c.arc(sx(sh.x), fy, Math.max(5, p.r * z * 0.5), 0, Math.PI * 2); c.fill();
+    }
+  }
+}
+function drawBoss(c, g, sx, sy, z, time) {
+  const b = g.boss, X = sx(b.x), Y = sy(b.y), R = b.size * z;
+  c.save();
+  if (b.flash > 0) c.globalAlpha = 0.75 + 0.25 * Math.sin(time * 60);
+  drawMonster(c, X, Y, R, { char: BOSS_CHAR, stage: 9, face: b.face, walk: b.walk, punchT: b.punchT, punchX: 1, punchY: 0, hurtT: b.flash * 0.3,
+    berserk: b.hp < 0.3 || b.charge > 0, squash: b.hitAnim * 0.6, time, lookX: b.face, lookY: 0, slamT: b.windup > 0 ? 0.3 : 0 });
+  c.restore();
+  // Krone aus Flammen
+  for (let i = 0; i < 5; i++) { const a = time * 4 + i * 1.3; c.fillStyle = i % 2 ? '#ffd23f' : '#ff6a1f'; c.beginPath(); c.arc(X + Math.cos(a) * R * 0.5, Y - R * 2.3 - Math.abs(Math.sin(a)) * R * 0.3, R * 0.1, 0, Math.PI * 2); c.fill(); }
+  // Feuerbälle
+  for (const sh of g.bossShots || []) if (sh.kind === 'fireball') {
+    const gx = sx(sh.x), gy = sy(sh.y), r = sh.r * z;
+    const gr = c.createRadialGradient(gx, gy, 0, gx, gy, r * 1.6); gr.addColorStop(0, '#fff6c0'); gr.addColorStop(0.4, '#ff8a1f'); gr.addColorStop(1, 'rgba(255,60,20,0)');
+    c.fillStyle = gr; c.beginPath(); c.arc(gx, gy, r * 1.6, 0, Math.PI * 2); c.fill();
+  }
 }
 
 const CENTERED = new Set(['planet', 'earth', 'ringplanet', 'star', 'nebula', 'cluster', 'blackhole', 'galaxy', 'station', 'satellite', 'comet', 'ufo']);
@@ -670,6 +782,12 @@ function drawObject(c, g, o, X, Y, R, limit, time, hasFilter) {
     const t = time * 3 + o.seed * 10;
     c.fillStyle = '#fff8c0';
     for (let i = 0; i < 3; i++) { const an = t + i * 2.1, s = Math.max(2, R * 0.1) * (0.6 + 0.4 * Math.sin(t * 2 + i)); star4(c, X + Math.cos(an) * R * 1.05, Y - R * 0.5 + Math.sin(an * 1.3) * R * 0.9, s); }
+  }
+  // Auftrags-Ziel markieren (kleiner gelber Pfeil)
+  if (g.quest && g.quest.type === 'kill' && o.name === g.quest.target && R > 3) {
+    const by = Y - (centered ? R * 1.2 : R * 1.75) - 14 + Math.sin(time * 6 + o.seed * 5) * 3, s = Math.max(6, Math.min(11, R * 0.3));
+    c.fillStyle = '#ffd23f'; c.strokeStyle = '#3a1d00'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(X, by + s); c.lineTo(X - s, by - s * 0.4); c.lineTo(X + s, by - s * 0.4); c.closePath(); c.fill(); c.stroke();
   }
   // Warnsymbol über Hindernissen
   if (o.hazard && tooBig && R > 6) {
@@ -727,6 +845,8 @@ function drawOverlays(c, g, W, H, time) {
     v.addColorStop(0, 'rgba(120,0,0,0)'); v.addColorStop(1, `rgba(170,0,0,${danger})`);
     c.fillStyle = v; c.fillRect(0, 0, W, H);
   }
+  if (g.freezeT > 0) { c.fillStyle = `rgba(150,220,255,${Math.min(0.28, g.freezeT * 0.1)})`; c.fillRect(0, 0, W, H); }
+  if (p.roarT > 0) { c.strokeStyle = `rgba(255,210,63,${0.3 + Math.sin(time * 10) * 0.1})`; c.lineWidth = 10; c.strokeRect(5, 5, W - 10, H - 10); }
   if (g.flash > 0) { c.fillStyle = `rgba(255,250,235,${g.flash * 0.55})`; c.fillRect(0, 0, W, H); }
 }
 

@@ -1,13 +1,13 @@
 # RAGEVERSE
 
 > Du bist ein Wut-Monster. Zerstöre alles. Wachse. Zerstöre größere Dinge.
-> Vom Gartenzwerg bis zur Galaxie.
+> Vom Gartenzwerg bis zum Höllenschlund.
 
-Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner ist als du, wird zertrümmert. Mit jedem Trümmerteil wächst du, und die Kamera zoomt raus. Aus dem Garten wird die Straße, aus der Straße die Stadt, bis am Ende Galaxien fallen. Mit jeder Welt **evolviert** dein Monster sichtbar.
+Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner ist als du, wird zertrümmert. Mit jedem Trümmerteil wächst du, und die Kamera zoomt raus. Aus dem Garten wird die Straße, aus der Straße die Stadt, bis Galaxien fallen. Danach geht es durch 39 Dimensionen bis zu Welt 50, dem **Höllenschlund** mit Endboss **ZORNOS**. Mit jeder Welt **evolviert** dein Monster sichtbar.
 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.3.0 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.4.0 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -16,7 +16,8 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 1. **Run starten:** stampfen, rammen, zerstören.
 2. **🔥 Wut** ist deine Zeit. Sie sinkt ständig und mit der Zeit immer schneller. Jede Zerstörung füllt sie wieder auf.
 3. **⚙ Schrott** fällt als Münzen heraus. Einsammeln! Damit kaufst du in der **🦹 Schurkenhöhle** (deinem geheimen Hauptquartier) permanente Upgrades.
-4. **☠ Chaos** bekommst du nur durch Zerstörung. Damit schaltest du neue **Monster** frei.
+   Ab 1 Milliarde wird Schrott zur nächsten Stufe: 🥈 Platin (10⁹) → 💎 Diamant (10¹⁸) → 🔮 Plasma (10²⁷) → ✴ Sternenstaub (10³⁶) → ♾ Antimaterie (10⁴⁵) → 👑 Rageium (10⁵⁴). Jede neue Stufe gibt einen Einschmelz-Hinweis.
+4. **☠ Chaos** bekommst du nur durch Zerstörung und Erfolge. Damit schaltest du neue **Monster** frei und entwickelst deine **Skills** weiter (Reiter „Evolution“).
 5. **Wachsen:** Bist du groß genug, steigst du in die nächste Welt auf, wählst eine **Mutation** und evolvierst.
 6. **Neue Karten** schalten sich über deinen Fortschritt frei. Sie sind härter, bringen aber viel mehr.
 7. **💥 Urknall (Prestige):** Ab dem Kontinent kannst du Schrott und Upgrades sprengen. Dafür gibt es **◆ Dunkle Materie** für den **Bösen Masterplan**, also Boni, die für immer bleiben. Chaos, Monster, Karten und Rekorde bleiben erhalten.
@@ -29,31 +30,41 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 |---|---|---|---|---|
 | ⚡ Ansturm | Leertaste / Rechtsklick | Doppeltipp oder ⚡ | Stürmt nach vorne, trifft 2,5× so hart | 2 s (Upgrade „Ansturm“) |
 | 💥 Stampfer | E | 💥 | Erdbeben im Umkreis von 3,5× deiner Größe, zerstört alles Zerstörbare | 8 s (Upgrade „Erdbeben“) |
+| 🎯 Monster-Skill | F | Knopf | Jedes Monster hat einen eigenen Skill (siehe Tabelle unten) | je Monster |
 | 😡 Berserker | R | 😡 | Lädt sich durch Zerstörung auf. Gezündet: 6 s riesig, unverwundbar, 3× Schaden, keine Wut-Abnahme | lädt sich auf (Upgrade „Berserker“) |
+
+**Skill-Evolutionen (☠ Chaos):** Ansturm → Flammen-Ansturm (Feuerspur) → Meteor-Ansturm (Einschlag am Ende). Stampfer → Nachbeben (zweite Welle) → Erdspalter (betäubt Hindernisse). Berserker → Titanenwut (größer, mehr Schaden) → Endloser Zorn (jede Zerstörung verlängert). Stufe II braucht Stufe I und ein höheres Upgrade-Level.
+
+**🏁 Run beenden:** Knopf oben rechts (zweimal klicken). Der Run endet sofort, der Schrott bleibt.
 
 **Steuerung:** Standard ist **WASD/Pfeiltasten**, die Maus steuert dann gar nicht. In den **Einstellungen (Esc)** kannst du auf **Maus** (linke Taste halten = laufen zur Maus, Rechtsklick = Ansturm) oder **Beides** umstellen. Auf dem Handy steuert immer der Finger. Pause mit P.
 
 **Einstellungen (Esc, ⚙ im Menü oder in der Pause):** Steuerung, Lautstärke Soundeffekte/Musik, Bildschirmwackeln, Effekt-Menge (für schwache Geräte), Tipps an/aus, Spielstand zurücksetzen (mit Sicherheitsabfrage). Pause mit P/Esc. Im Spiel erklärt das **❓ Hilfe**-Fenster alles mit den aktuellen Werten.
 
 ### Damit es nicht monoton wird
-- **3 Karten mit je 8 Welten:**
-  - **Vorstadt:** Garten → Straße → Stadt → Gebirge → Kontinent → Planetar → Sonnensystem → Galaxie, danach endlos.
-  - **Wilder Westen:** Prärie → Westernstadt → Canyon → … (×6 Schrott, ×2 Chaos, Objekte 2,2× zäher). Freigeschaltet, sobald du das Gebirge erreichst.
-  - **Zuckerland:** Zuckerwiese → Bonbonstadt → Schokogebirge → … (×36 Schrott, ×4 Chaos, Objekte 5,5× zäher). Freigeschaltet, sobald du Planetar erreichst.
-- **6 Monster:**
+- **50 Welten (Vorstadt):** Garten → Straße → Stadt → Gebirge → Kontinent → Planetar → Sonnensystem → Galaxie → Galaxienhaufen → Kosmisches Netz → Multiversum, danach 39 Dimensionen (je ×4 Größe, ×3 Schrott, eigene Farben, eigener Boden, 12 eigene Objekte inkl. explosiver, flüchtender und gefährlicher). Welt 50: **Höllenschlund**, danach endlos.
+- **Endboss ZORNOS (Welt 50):** Beim Betreten wird deine aktuelle Wut zu deinem Leben (Lebensbalken oben). Er greift mit Feuerringen, Meteoren, Feuerbällen, Sturmangriffen (mit Warnlinie) und Dämonen-Dienern an, du musst ausweichen. Schaden machst du per Ansturm, Stampfer, Skills und Berserker. Belohnung: ⚙, ☠ 250K, ◆ 250 und das Monster **Infernus**.
+- **2 Zusatzkarten:** **Wilder Westen** (×6 Schrott, ×2 Chaos, zäher, ab Gebirge) und **Zuckerland** (×36 Schrott, ×4 Chaos, deutlich zäher, ab Planetar).
+- **11 Monster, jedes mit eigenem Skill (F):**
 
-  | Monster | Stärken | Freischalten |
+  | Monster | Skill (F) | Freischalten |
   |---|---|---|
-  | Grumpf | ausgewogen, evolviert farblich | Start |
-  | Stachelkönig | +35 % Schaden, etwas langsamer | ☠ 1.500 + 1.500 Objekte zerstört |
-  | Flitzer | +25 % Tempo, Ansturm 35 % schneller, −10 % Wut | ☠ 4.000 + Stadt erreicht |
-  | Magma-Golem | Explosionen ×2, Stampfer +40 %, Hindernisse ½ | ☠ 12.000 + 8.000 Objekte zerstört |
-  | Goldzahn | +60 % Schrott, goldene ×2,5, Magnet | ☠ 35.000 + Kontinent erreicht |
-  | Void | Berserker +70 % Ladung, +3 s, startet 25 % größer | ☠ 90.000 + Planetar erreicht |
+  | Grumpf | 📢 Wutschrei: Druckwelle + Wut | Start |
+  | Stachelkönig | 🦔 Stachelhagel | ☠ + 1.500 Objekte |
+  | Flitzer | 💨 Turbo-Rausch | ☠ + Stadt |
+  | Magma-Golem | 🌋 Lava-Spur | ☠ + 8.000 Objekte |
+  | Goldzahn | ✨ Goldregen | ☠ + Kontinent |
+  | Void | 🕳 Singularität: schwarzes Loch frisst alles Zerstörbare | ☠ + Planetar |
+  | Frosty | ❄ Eiszeit: friert Welt und Hindernisse ein | ☠ 250K + Welt 11 |
+  | Kraken | 🐙 Tentakelgriff: packt Objekte im Umkreis | ☠ 1M + 100.000 Objekte |
+  | Mecha | 🚀 Raketensalve auf die zähsten Ziele | ☠ 5M + Welt 19 |
+  | Phönix | 🔥 Feuerflug + einmal pro Run Wiedergeburt | ☠ 25M + Welt 29 |
+  | Infernus | 😈 Höllenfeuer | ZORNOS besiegen |
 
+- **🏆 Erfolge & 📊 Statistik** (Hauptmenü): 55 Erfolge mit ☠-Belohnung und Fortschrittsbalken, dazu alle Gesamtzahlen (zerstört, Runs, beste Kombo, längster Run, Boss-Siege …).
 - **Lebendige Welt:** Tiere und Passanten fliehen, Autos und Züge fahren. **Hindernisse** (Dornenbusch, Rasenmäher, Polizei, Panzer, Hubschrauber, Tornado, UFO, Sheriff, Zahnarzt …) ziehen Wut ab, solange sie zu groß für dich sind. Erkennbar am roten ⚠.
-- **Mini-Aufträge** im Run, z. B. „Zerstöre 8× Gartenzwerg“, bringen Wut, Schrott, Chaos und Berserker-Ladung.
-- **14 Mutationen** beim Welt-Aufstieg (1 aus 3).
+- **Aufträge** links oben, z. B. „Zerstöre 8× Gartenzwerg“, zeigen Fortschritt und Belohnung (🎁 ⚙ · ☠ · 🔥 Wut · 😡 Berserker). Ein gelber Pfeil zeigt zum nächsten passenden Objekt.
+- **14 Mutationen** beim Welt-Aufstieg (1 aus 3). **Super-Magnet** vergrößert deinen Magnet-Radius um 6 Körpergrößen und saugt auch fressbare Objekte an, stapelt also mit dem Magnet-Upgrade.
 - **Kombo** bis ×4 mit Ausrufen: SMASH!, KRAWALL!, AMOK!, UNAUFHALTSAM!, WELTUNTERGANG!, GOTTMODUS!
 - **Goldene Objekte** (×6 Schrott), **Schrottkisten** (platzen wie Piñatas), **Kettenexplosionen** (⚠-Fässer).
 - **5 Events:** Glaswelt, Goldregen, Wutanfall, Meteorschauer, Kistenregen.
@@ -79,6 +90,8 @@ version.json          Live-Version für den „Update verfügbar“-Hinweis
 tools/balance-sim.js  Bot spielt Runs ohne Grafik → prüft das Balancing
 tools/skill-test.js   Prüft automatisch, ob jedes Upgrade, jede Fähigkeit, Mutation und jedes Monster wirkt
 tools/control-test.cjs Browser-Test: Steuerung (Tastatur/Maus/hängende Maustaste), Esc-Menü, Einstellungen
+tools/browser-test.cjs Browser-Test: Erfolge, Statistik, Evolution, Aufträge, 🏁, Boss, Monster, Hölle-FPS
+tools/prestige-check.js Rechnet den Urknall-Ertrag durch
 tools/bump-version.js Setzt die Version überall (version.json + Datei-Links gegen Browser-Cache)
 ```
 
@@ -110,11 +123,18 @@ node tools/balance-sim.js 2 west
 ```bash
 python3 -m http.server 8080 &
 node tools/control-test.cjs
+node tools/browser-test.cjs
+```
+
+```bash
+RUNS_TOTAL=260 PROFILE=0 node tools/balance-sim.js 1
 ```
 
 Der **Skill-Test** und der **Steuerungs-Test** müssen ohne ✘ enden. Der Skill-Test muss mit „0 fehlgeschlagen“ enden. Der **Simulator** zeigt, wie weit ein Bot je Upgrade-Stufe kommt, wie viel Leerlauf es gibt (Zeit ohne zerstörbare Objekte in Sicht, Ziel ≈ 0 %) und eine Progression über 60 Runs.
 
-**Ziel-Kurve Vorstadt (Bot, v0.2.0):**
+**Ziel-Kurve Vorstadt (Bot, v0.4.0, inkl. Urknall):** erster Urknall nach ~20 Runs, danach Durchgänge von ~30 Runs, die jeweils weiter kommen. Runs dauern 1–4 Minuten. Höllenschlund (Welt 50) erstmals nach ~225 Runs, also echtes Grinden.
+
+**Alte Ziel-Kurve (v0.2.0, erster Durchgang):**
 
 | Welt | ab Run |
 |---|---|
@@ -139,15 +159,29 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Roadmap
 
-- **Prestige „Urknall“:** nach der Galaxie alles zurücksetzen und dafür einen permanenten Bonus bekommen.
-- **Boss-Objekte** pro Welt, die sich wehren.
+- ✅ Urknall (Prestige), ✅ Erfolge & Statistik, ✅ 50 Welten + Endboss, ✅ Monster-Skills + Evolutionen
+- **Charakter-Design** überarbeiten (noch zu besprechen).
+- **Welten jenseits der Hölle** für Infernus.
 - **Farb-Skins** für jedes Monster (mit Chaos).
-- **Erfolge & Statistiken.**
 - **Tägliche Herausforderung** mit festem Seed.
 
 ---
 
 ## Dev-Log
+
+### 2026-11-26: v0.4.0 Endlose Wut
+- **50 Welten:** 11 feste Welten + 39 generierte Dimensionen (Größe ×4, Schrott ×3 je Welt). Jede hat Palette, Boden (Dimension, Hölle …) und 12 Objekte. Objekte werden nie „babyklein“: Spawngröße relativ zum Monster (minRel 0,22, sweetSpot 0,65), Wachstum pro Kill gedeckelt (5 %).
+- **Währungs-Stufen** bis 👑 Rageium (10⁵⁴), Anzeige mit Nachkommastellen.
+- **Endboss ZORNOS** mit telegrafierten Angriffen, Wut = Leben, Boss-Balken. Belohnung Infernus.
+- **Monster-Skills (F)** für alle 11 Monster, 5 neue Monster. **Skill-Evolutionen** mit Chaos (6 Stufen).
+- **Erfolge & Statistik** (55 Erfolge), Erfolgs-Toasts. **Aufträge** mit Belohnungsanzeige und Zielpfeil. **🏁 Run beenden**.
+- **Super-Magnet:** Die Mutation „Schwarzes Loch“ war mit gelevelt­em Magnet fast nutzlos (eigener Radius 7 R). Jetzt ist sie ein Magnet-Bonus (+3 Magnet = +6 R) und erweitert den Magneten auf fressbare Objekte. Ohne Upgrade 2,5 → 8,5 R, mit Magnet Stufe 5 8,5 → 14,5 R.
+- **Gefundene Bugs:** Krümel starben sofort unabhängig vom Schaden (Schaden-Upgrade spät wertlos) → Krümel nur noch, wenn ein Schlag reicht. Wut-Tank explodierte durch multiplikative Upgrades auf 2,5 Mio → gedeckelt, Wut pro Kill skaliert mit der Welt. Höllen-Boden wurde jeden Frame neu gebaut (15 fps) → Cache mit Drossel. Runs dauerten 15+ min → Spätrun-Faktor ab 150 s, Berserker-Abklingzeit 8 s.
+- **Balance-Iterationen (Bot über 260 Runs mit Urknall):** 1) zu leicht (Galaxie in Run 4). 2) Wand bei Welt 17 (Welten-HP ×1,95). 3) Durchrushen bis Welt 50 in Run 46 (HP ×1,45, Schaden ×1,42). 4) Mitte: HP ×1,68, Schaden-Upgrade ×1,52, Wachstum ×1,6 → Welt 50 erst nach ~227 Runs, jeder Urknall bringt weiter. Upgrade-Grundpreise ×2,5.
+- **Tests:** skill-test 97/97, control-test 15/15, neuer browser-test 12/12 (Hölle 42–50 fps headless).
+
+### 2026-11-26: v0.3.1 / v0.3.2
+- Urknall-Fix (mehr ◆, Masterplan-Bonus in der Anzeige), neuer Garten mit Flach-Regel: Karten-Deko ohne Umriss/Schatten, Zerstörbares mit Umriss und Schatten.
 
 ### 2026-11-26: v0.3.0 Schurkenhöhle & Urknall
 - **Spielstände:** 3 Plätze (`rageverse_slot_0..2`), globale Einstellungen in `rageverse_meta`. Der alte Einzel-Spielstand wird automatisch zu Platz 1 (getestet). Löschen mit Bestätigung.
@@ -204,6 +238,20 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.4.0: Endlose Wut (2026-11-26)
+- 50 Welten bis zum Höllenschlund, Endboss ZORNOS, Monster Infernus
+- Währungs-Stufen Platin bis Rageium
+- Eigener Skill (F) für jedes Monster, 5 neue Monster, Skill-Evolutionen mit Chaos
+- Erfolge & Statistik, Aufträge mit Belohnung, 🏁 Run beenden
+- Super-Magnet statt Schwarzes Loch (stapelt mit Magnet-Upgrade)
+- Balancing: mehr Grind, jeder Urknall bringt weiter
+
+### v0.3.2: Neuer Garten (2026-11-26)
+- Erste Karte neu gestaltet, Deko klar von Objekten unterscheidbar
+
+### v0.3.1: Urknall-Fix (2026-11-26)
+- Mehr Dunkle Materie, Masterplan-Bonus sichtbar
 
 ### v0.2.1: Volle Kontrolle (2026-11-26)
 - Maus-Steuerung nur noch bei gedrückter linker Maustaste

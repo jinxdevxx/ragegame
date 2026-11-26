@@ -6,6 +6,25 @@
 
 export const PATCH_NOTES = [
   {
+    version: '0.4.0',
+    date: '2026-11-26',
+    title: 'Endlose Wut',
+    summary: '50 Welten, neue Währungen, 11 Monster mit eigenen Skills, Skill-Evolutionen, Erfolge – und ZORNOS, der Höllenfürst in Welt 50.',
+    changes: [
+      '50 Welten: nach der Galaxie geht es durch 39 neue Dimensionen bis zum Höllenschlund. Jede Welt hat eigene Farben, eigenen Boden und neue Objekte (auch explosive, flüchtende und gefährliche).',
+      'Neue Währungs-Stufen: ab 1 Milliarde Schrott wird alles zu 🥈 Platin, danach 💎 Diamant, 🔮 Plasma, ✴ Sternenstaub, ♾ Antimaterie und 👑 Rageium.',
+      'Endboss ZORNOS in Welt 50: Deine Wut beim Betreten wird zu deinem Leben. Weiche Feuerringen, Meteoren, Feuerbällen und Sturmangriffen aus. Belohnung: das Monster Infernus.',
+      'Jedes Monster hat jetzt einen eigenen Skill auf Taste F (z. B. Wutschrei, Stachelhagel, Lava-Spur, Singularität, Eiszeit, Raketensalve, Feuerflug). 5 neue Monster, freischaltbar mit Chaos.',
+      'Skill-Evolutionen im Reiter „Evolution“: Ansturm, Stampfer und Berserker lassen sich mit Chaos zweimal weiterentwickeln (z. B. Meteor-Ansturm, Erdspalter, Endloser Zorn).',
+      'Erfolge & Statistik im Hauptmenü: 55 Erfolge mit Chaos-Belohnung, dazu alle Zahlen (insgesamt zerstört, beste Kombo, längster Run …).',
+      'Aufträge zeigen jetzt klar, was zu tun ist und was du dafür bekommst – und ein gelber Pfeil zeigt zum nächsten Ziel.',
+      '🏁-Knopf: Run jederzeit beenden und den Schrott behalten.',
+      'Super-Magnet (vorher „Schwarzes Loch“): vergrößert jetzt deinen Magnet-Radius um 6 Körpergrößen und lässt ihn auch fressbare Objekte ansaugen. Mit Magnet-Upgrade wird der Radius noch größer – das Upgrade ist also nie umsonst.',
+      'Objekte bleiben in hohen Welten gut sichtbar (keine winzigen Krümel mehr), und alle Karten haben schönere, klar lesbare Böden.',
+      'Balancing: Upgrades teurer, Welten zäher – man muss grinden, kommt aber mit jedem Urknall weiter. Lange Runs werden nach ~2,5 min härter.',
+    ],
+  },
+  {
     version: '0.3.2',
     date: '2026-11-26',
     title: 'Neuer Garten',

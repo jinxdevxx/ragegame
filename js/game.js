@@ -1,7 +1,7 @@
 // =====================================================================
 //  RAGEVERSE – Spiel-Logik (Simulation, keine Grafik)
 // =====================================================================
-import * as C from './config.js?v=0.3.2';
+import * as C from './config.js?v=0.4.0';
 
 const TAU = Math.PI * 2;
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -78,7 +78,8 @@ export function computeStats(save, muts = [], charId = save.selectedChar) {
     questMult: 1 + per('quest') * L('quest'),
     comboMax: C.COMBO.max + per('combo') * L('combo') * 2.5,
     startMuts: dmLevel(save, 'dm_mut'),
-    magnet: P.magnet + per('magnet') * L('magnet') + pk('magnet', 0),
+    magnet: P.magnet + per('magnet') * L('magnet') + pk('magnet', 0) + (has('hole') ? 3 : 0),
+    hole: has('hole'),
     dashCooldown: P.dashCooldown * Math.pow(1 - per('dash'), L('dash')) * (has('dashmore') ? 0.5 : 1) * pk('dash'),
     dashDamage: has('dashmore') ? 2 : 1,
     slamCooldown: A.slam.cooldown * Math.pow(1 - per('slam'), L('slam')),
@@ -123,11 +124,13 @@ export class Game {
       dashT: 0, dashCd: 0, dashX: 1, dashY: 0, lookX: 1, lookY: 0, face: 1, walk: 0,
       punchT: 0, punchX: 1, punchY: 0, hurtT: 0, hurtCd: 0,
       berserk: 0, berserkT: 0, squash: 0, slamCd: 0, slamT: 0,
+      skillCd: 0, roarT: 0, rushT: 0, lavaT: 0, phoenixT: 0, revived: false,
     };
     this.world = worldIndexFor(r);
     this.startWorld = this.world;
     this.clear();
     this.bossKilled = false;
+    this.rs = { golden: 0, crates: 0, explosions: 0, berserks: 0, skills: 0, slams: 0, hurts: 0 }; // Run-Statistik
     this.time = 0; this.combo = 0; this.comboT = 0; this.bestCombo = 0; this.calloutIdx = 0;
     this.runScrap = 0; this.runChaos = 0; this.kills = 0; this.maxRadius = r;
     this.event = null; this.eventT = 0; this.nextEventAt = C.EVENTS.firstAfter;
@@ -136,6 +139,7 @@ export class Game {
     this.quest = null; this.questT = C.QUESTS.firstAfter; this.questsDone = 0;
     this.pendingWorlds = 0;
     this.boss = null; this.bossDone = false; this.bossShots = [];
+    this.lava = []; this.rockets = []; this.spikes = []; this.blasts = []; this.singularity = null; this.freezeT = 0; this.grabFx = [];
     this.cam.x = 0; this.cam.y = 0; this.cam.zoom = this.targetZoom();
     // Genlabor: mit zufälligen Mutationen starten
     for (let i = 0; i < this.stats.startMuts; i++) { const ch = this.mutationChoices(); if (ch.length) this.muts.push(ch[0].id); }
@@ -160,7 +164,7 @@ export class Game {
   hr() { return this.p.r * (this.p.berserkT > 0 ? C.BERSERK.sizeBoost : 1); }
   breakLimit() {
     const glass = this.event && this.event.id === 'glass';
-    return this.p.r * this.stats.breakRatio * (glass ? 1.4 : 1) * (this.p.berserkT > 0 ? C.BERSERK.breakBoost : 1);
+    return this.p.r * this.stats.breakRatio * (glass ? 1.4 : 1) * (this.p.berserkT > 0 ? C.BERSERK.breakBoost : 1) * (this.p.phoenixT > 0 ? 1.5 : 1);
   }
   targetZoom() { return (Math.min(this.vw, this.vh) * 0.06) / this.p.r; }
   viewRadius() { return Math.hypot(this.vw, this.vh) / 2 / this.cam.zoom; }
@@ -203,9 +207,25 @@ export class Game {
     input.slam = false;
     if (input.berserk && p.berserk >= 1 && p.berserkT <= 0) this.startBerserk();
     input.berserk = false;
-    const maxV = S.speed * p.r * (berserk ? C.BERSERK.speedMult : 1);
-    if (p.dashT > 0) {
+    p.skillCd = Math.max(0, p.skillCd - dt);
+    if (input.skill && p.skillCd <= 0 && this.char.skill) this.useSkill();
+    input.skill = false;
+    this.updateSkills(dt);
+    const maxV = S.speed * p.r * (berserk ? C.BERSERK.speedMult : 1) * (p.rushT > 0 ? 1.8 : 1);
+    if (p.rushT > 0) p.dashCd = 0;
+    if (p.dashT > 0 && this.evo('dash1')) { // Flammen-Ansturm: Feuerspur
+      const last = this.lava[this.lava.length - 1];
+      if (!last || Math.hypot(last.x - p.x, last.y - p.y) > p.r * 0.7) this.lava.push({ x: p.x, y: p.y, r: p.r * 1.1, life: 1.4, tick: 0 });
+    }
+    if (p.phoenixT > 0) {
+      p.vx = p.lookX * maxV * 3; p.vy = p.lookY * maxV * 3; p.hurtCd = Math.max(p.hurtCd, 0.2);
+      if (Math.random() < 0.9) this.particle(p.x, p.y - p.r, Math.random() < 0.5 ? '#ff6a1f' : '#ffd23f', p.r * 0.4, 0.5, 0, 0, 'flame');
+    } else if (p.dashT > 0) {
       p.dashT -= dt;
+      if (p.dashT <= 0 && this.evo('dash2')) { // Meteor-Ansturm
+        this.explode(p.x, p.y, p.r * 3.2, this.oneHit() * 5, true);
+        if (this.boss && Math.hypot(this.boss.x - p.x, this.boss.y - p.y) < p.r * 3.2 + this.boss.size) this.bossHurt(1.5 * S.damage / this.bossDamageNeed());
+      }
       p.vx = p.dashX * maxV * C.PLAYER.dashPower;
       p.vy = p.dashY * maxV * C.PLAYER.dashPower;
       if (Math.random() < 0.6) this.puff(p.x, p.y + p.r * 0.6, p.r * rand(0.25, 0.45), '#f4ead8');
@@ -236,12 +256,18 @@ export class Game {
 
     // --- Wut
     const frenzy = this.event && this.event.id === 'frenzy';
-    if (!frenzy && p.berserkT <= 0) p.rage -= S.rageDrain * this.map.drainMult * scaleOf('rageDrain', this.level(this.world)) * (1 + C.PLAYER.rageDrainGrowth * this.time + Math.pow(Math.max(0, this.time - C.WORLD_SCALING.lateRunAfter) / 60, 2)) * dt;
+    if (!frenzy && p.berserkT <= 0 && !this.boss) p.rage -= S.rageDrain * this.map.drainMult * scaleOf('rageDrain', this.level(this.world)) * (1 + C.PLAYER.rageDrainGrowth * this.time + Math.pow(Math.max(0, this.time - C.WORLD_SCALING.lateRunAfter) / 60, 2)) * dt;
     p.rage = Math.min(p.rage, S.rageMax);
+    if (p.rage <= 0 && this.char.id === 'phoenix' && !p.revived) { // Wiedergeburt
+      p.revived = true; p.rage = S.rageMax * 0.5; this.flash = 1; this.shake = 1.2; this.sfx('unlock');
+      this.rings.push({ x: p.x, y: p.y, r: p.r * 6, life: 0.7, max: 0.7, color: '#ffb13d' });
+      this.explode(p.x, p.y, p.r * 4, this.oneHit() * 3, true);
+      this.hook('onCallout', 'WIEDERGEBURT!', 5);
+    }
     if (p.rage <= 0) { p.rage = 0; this.die(); return; }
 
     // --- Kombo
-    if (this.comboT > 0) { this.comboT -= dt; if (this.comboT <= 0) { this.combo = 0; this.calloutIdx = 0; } }
+    if (this.comboT > 0 && p.roarT <= 0) { this.comboT -= dt; if (this.comboT <= 0) { this.combo = 0; this.calloutIdx = 0; } }
     if (this.coinChainT > 0) { this.coinChainT -= dt; if (this.coinChainT <= 0) this.coinChain = 0; }
 
     // --- Mutationen mit Dauerwirkung
@@ -253,14 +279,6 @@ export class Game {
         this.sfx('shock');
       }
     }
-    if (this.muts.includes('hole')) {
-      for (const o of this.objects) {
-        if (o.size > p.r * 0.6) continue;
-        const dx = p.x - o.x, dy = p.y - o.y, d = Math.hypot(dx, dy);
-        if (d < p.r * 7 && d > 1e-6) { const v = p.r * 3 * dt; o.x += dx / d * v; o.y += dy / d * v; o.pulled = 0.3; }
-      }
-    }
-
     this.moveObjects(dt, maxV);
     this.magnetCrumbs(dt);
     this.collide();
@@ -274,7 +292,7 @@ export class Game {
     }
     if (this.pendingWorlds > 0) {
       this.pendingWorlds--;
-      p.rage = Math.min(S.rageMax, p.rage + S.rageMax * 0.5 / this.lateFactor());
+      if (this.world !== C.BOSS.world) p.rage = Math.min(S.rageMax, p.rage + S.rageMax * 0.5 / this.lateFactor()); // Boss-Welt: Wut = Leben, kein Bonus
       this.flash = 1;
       this.sfx('levelup');
       this.state = 'mutation';
@@ -352,17 +370,30 @@ export class Game {
       q = { type: 'boom', count: 3, label: 'Lass 3 Explosionen hochgehen' };
     }
     q.progress = 0;
+    q.reward = this.questReward(this.questsDone + 1);
     this.quest = q;
     this.hook('onQuest', q, false);
+  }
+
+  // Belohnung eines Auftrags (wird beim Erscheinen angezeigt)
+  questReward(n) {
+    const S = this.stats;
+    return {
+      rage: Math.round(C.QUESTS.rageReward * 100 / this.lateFactor()),
+      berserk: Math.round(C.QUESTS.berserkReward * S.berserkGain * 100),
+      scrap: C.QUESTS.scrapReward * this.worlds[this.world].scrapMult * this.map.scrapMult * S.scrapMult * S.questMult * (1 + n * 0.2),
+      chaos: C.CHAOS.questBonus * this.map.chaosMult * S.chaosMult * S.questMult,
+    };
   }
 
   completeQuest() {
     const p = this.p, S = this.stats, q = this.quest;
     this.quest = null; this.questT = C.QUESTS.pause; this.questsDone++;
-    p.rage = Math.min(S.rageMax, p.rage + S.rageMax * C.QUESTS.rageReward / this.lateFactor());
+    const rw = this.questReward(this.questsDone);
+    if (!this.boss) p.rage = Math.min(S.rageMax, p.rage + S.rageMax * C.QUESTS.rageReward / this.lateFactor());
     this.addBerserk(C.QUESTS.berserkReward);
-    const value = C.QUESTS.scrapReward * this.worlds[this.world].scrapMult * this.map.scrapMult * S.scrapMult * S.questMult * (1 + this.questsDone * 0.2);
-    this.runChaos += C.CHAOS.questBonus * this.map.chaosMult * S.chaosMult * S.questMult;
+    const value = rw.scrap;
+    this.runChaos += rw.chaos;
     this.coinBurst(p.x, p.y, value, 12, true);
     this.flash = Math.max(this.flash, 0.35);
     this.sfx('quest');
@@ -371,6 +402,7 @@ export class Game {
 
   // ------------------------------------------------------------------
   moveObjects(dt, playerMaxV) {
+    if (this.freezeT > 0) return; // Eiszeit: alles steht still
     const p = this.p, lim = this.breakLimit();
     const viewR = this.viewRadius() * 1.3;
     for (const o of this.objects) {
@@ -422,7 +454,10 @@ export class Game {
       const d = Math.hypot(dx, dy);
       const minD = R + o.size * 0.8;
       if (d >= minD) continue;
-      if (o.size < p.r * C.PLAYER.crumbRatio || (o.pulled > 0 && o.size <= limit * 0.65)) { this.kill(o, 'touch'); continue; }
+      // Krümel zerbröseln nur sofort, wenn ein Schlag sie auch schaffen würde (Schaden zählt bis ins Late-Game)
+      if ((o.size < p.r * C.PLAYER.crumbRatio || (o.pulled > 0 && o.size <= limit * 0.65)) && o.hp <= this.oneHit()) { this.kill(o, 'touch'); continue; }
+      if (p.phoenixT > 0 && o.size <= limit) { this.kill(o, 'hit'); continue; } // Feuerflug vernichtet alles auf dem Weg
+      if (berserk && this.evo('berserk1') && o.size <= limit) { this.kill(o, 'hit'); continue; } // Titanenwut
       const nx = d > 1e-6 ? dx / d : 1, ny = d > 1e-6 ? dy / d : 0;
       const breakable = o.size <= limit;
       if (breakable && o.hitCd <= 0) {
@@ -431,6 +466,7 @@ export class Game {
         if (p.dashT > 0) impact *= 2.5 * S.dashDamage;
         let dmg = S.damage * Math.pow(p.r, 1.5) * 0.6 * impact;
         if (glass) dmg *= 100;
+        if (this.freezeT > 0) dmg *= 10;
         if (berserk) dmg *= C.BERSERK.damageMult;
         o.hp -= dmg; o.hitCd = 0.15; o.hitAnim = 1; o.flash = 1;
         p.punchT = 0.16; p.punchX = nx; p.punchY = ny;
@@ -441,7 +477,7 @@ export class Game {
           this.particle(o.x - nx * o.size * 0.7, o.y - ny * o.size * 0.7 - o.size * 0.4, i % 2 ? '#ffffff' : o.color, o.size * 0.12, 0.35, Math.cos(a) * v, Math.sin(a) * v, 'spark');
         }
       } else if (!breakable) {
-        if (o.hazard && p.hurtCd <= 0 && !berserk) {
+        if (o.hazard && p.hurtCd <= 0 && !berserk && this.freezeT <= 0 && !(this.stunT > 0)) {
           const loss = S.rageMax * o.hazard / 100 * S.hazardMult;
           p.rage -= loss; p.hurtT = 0.45; p.hurtCd = 0.9;
           this.shake = Math.min(1.2, this.shake + 0.6);
@@ -471,6 +507,9 @@ export class Game {
     o.dead = true;
     const p = this.p, S = this.stats;
     this.kills++;
+    if (o.golden) this.rs.golden++;
+    if (o.crate) this.rs.crates++;
+    if (o.explosive) this.rs.explosions++;
     const rel = o.size / p.r;
     // Wachstum
     p.mass += Math.min(o.size * o.size * S.absorb * scaleOf('absorb', this.level(this.world)), p.mass * C.PLAYER.maxGrowPerKill);
@@ -479,8 +518,9 @@ export class Game {
     // Wut
     const late = this.lateFactor(); // lange Runs: weniger Wut pro Treffer
     const worldRage = scaleOf('rageDrain', this.level(this.world)) * this.map.drainMult; // Wut pro Treffer wächst mit der Welt mit
-    p.rage = Math.min(S.rageMax, p.rage + (C.PLAYER.ragePerKill * worldRage * clamp(Math.pow(rel, 0.7) * 1.6, 0.15, 3) + (o.crate ? S.rageMax * 0.15 : 0)) / late);
+    if (!this.boss) p.rage = Math.min(S.rageMax, p.rage + (C.PLAYER.ragePerKill * worldRage * clamp(Math.pow(rel, 0.7) * 1.6, 0.15, 3) + (o.crate ? S.rageMax * 0.15 : 0)) / late);
     // Berserker
+    if (p.berserkT > 0 && this.evo('berserk2') && (p.berserkExt || 0) < 8) { p.berserkT += 0.15; p.berserkExt = (p.berserkExt || 0) + 0.15; }
     if (p.berserkT <= 0) this.addBerserk(C.BERSERK.perKill * clamp(rel * 1.5, 0.25, 2));
     // Kombo
     this.combo++; this.comboT = S.comboWindow;
@@ -497,10 +537,10 @@ export class Game {
     // Schrott
     const w = this.worlds[o.world];
     this.runChaos += (C.CHAOS.perKill + (rel > 1 ? C.CHAOS.bigBonus * rel : 0)) * this.map.chaosMult * S.chaosMult;
-    const value = o.value * w.scrapMult * this.map.scrapMult * comboMult * S.scrapMult * (o.golden ? C.GOLDEN_MULT : 1) * (o.bonusMult || 1) * (o.crate ? C.CRATE_MULT : 1);
+    const value = (p.roarT > 0 ? 2 : 1) * o.value * w.scrapMult * this.map.scrapMult * comboMult * S.scrapMult * (o.golden ? C.GOLDEN_MULT : 1) * (o.bonusMult || 1) * (o.crate ? C.CRATE_MULT : 1);
     const n = o.crate ? 14 : clamp(Math.ceil(Math.sqrt(o.value) * (o.golden ? 2 : 1)), 1, 8);
     this.coinBurst(o.x, o.y, value, n, o.golden);
-    if ((rel > 0.35 || o.golden || o.crate) && value >= 1) this.text(o.x, o.y - o.size * 1.4, '+' + fmt(value), o.golden || o.crate ? '#ffd23f' : '#fff3c4', 0.9, p.r * 0.7, rel > 0.8 || o.crate);
+    if ((rel > 0.35 || o.golden || o.crate) && value >= 1) this.text(o.x, o.y - o.size * 1.4, '+' + money(value), o.golden || o.crate ? '#ffd23f' : '#fff3c4', 0.9, p.r * 0.7, rel > 0.8 || o.crate);
     // Trümmer
     const big = rel > 0.7;
     const nChunks = clamp(Math.round(4 + rel * 6), 3, 10);
@@ -540,6 +580,7 @@ export class Game {
     this.boss = { x: p.x + Math.cos(a) * p.r * 9, y: p.y + Math.sin(a) * p.r * 9, size: p.r * B.sizeMult, hp: 1, attackT: 4, hitCd: 0, hitAnim: 0, flash: 0,
       face: 1, walk: 0, vx: 0, vy: 0, charge: 0, chargeX: 0, chargeY: 0, punchT: 0, intro: 2.5 };
     this.bossShots = [];
+    this.event = null; this.nextEventAt = Infinity; this.quest = null; this.questT = Infinity; this.meteors = [];
     this.hook('onBoss', 'spawn', this.boss);
     this.sfx('berserk'); this.shake = 1.5; this.flash = 0.6;
   }
@@ -575,12 +616,16 @@ export class Game {
     const enraged = b.hp < 0.3;
     const dx = p.x - b.x, dy = p.y - b.y, d = Math.hypot(dx, dy) || 1;
     if (b.intro > 0) { b.intro -= dt; }
+    if (b.frozen > 0) { b.vx = 0; b.vy = 0; b.charge = 0; b.windup = 0; }
     // Bewegung: verfolgen oder Sturmangriff
     const maxV = S.speed * p.r;
-    if (b.charge > 0) {
+    if (b.windup > 0) { // Ausholen: Warnlinie, dann Sturm
+      b.windup -= dt;
+      if (b.windup <= 0) { b.charge = 0.9; this.sfx('dash'); }
+    } else if (b.charge > 0) {
       b.charge -= dt; b.x += b.chargeX * maxV * 2.6 * dt; b.y += b.chargeY * maxV * 2.6 * dt;
       if (Math.random() < 0.8) this.puff(b.x, b.y + b.size * 0.4, b.size * 0.3, '#5a2a1a');
-    } else if (b.intro <= 0) {
+    } else if (b.intro <= 0 && !(b.frozen > 0)) {
       const v = maxV * B.speed * (enraged ? 1.4 : 1);
       b.vx += (dx / d * v - b.vx) * Math.min(1, dt * 3); b.vy += (dy / d * v - b.vy) * Math.min(1, dt * 3);
       b.x += b.vx * dt; b.y += b.vy * dt;
@@ -588,14 +633,19 @@ export class Game {
     b.walk += Math.hypot(b.vx, b.vy) / b.size * dt * 2; if (Math.abs(dx) > 1e-6) b.face = dx > 0 ? 1 : -1;
     if (Math.random() < 0.6) this.particle(b.x + rand(-1, 1) * b.size * 0.7, b.y - rand(0.5, 2) * b.size, Math.random() < 0.5 ? '#ff6a1f' : '#ffd23f', b.size * 0.08, 0.6, 0, -b.size * 2, 'flame');
     // Angriffe
-    if (b.intro <= 0) b.attackT -= dt * (enraged ? 1.4 : 1);
+    if (b.intro <= 0 && !(b.frozen > 0)) b.attackT -= dt * (enraged ? 1.4 : 1);
     if (b.attackT <= 0) {
       b.attackT = rand(...B.attackEvery);
       const r = Math.random();
       b.punchT = 0.5;
+      if (enraged && Math.random() < 0.5) { // Feuerbälle in einem Fächer auf dich
+        const base = Math.atan2(dy, dx);
+        for (let i = -2; i <= 2; i++) { const a = base + i * 0.22; this.bossShots.push({ kind: 'fireball', x: b.x, y: b.y - b.size * 0.4, vx: Math.cos(a) * maxV * 1.1, vy: Math.sin(a) * maxV * 1.1, r: p.r * 0.7, life: 4 }); }
+        this.sfx('boom', 0.4);
+      }
       if (r < 0.32) { this.bossShots.push({ kind: 'ring', x: b.x, y: b.y, r: b.size * 0.8, speed: maxV * 1.3, max: b.size * 7, hit: false }); this.sfx('slam'); }
       else if (r < 0.6) { for (let i = 0; i < (enraged ? 8 : 5); i++) { const a = Math.random() * TAU, dd = Math.random() * p.r * 4; this.bossShots.push({ kind: 'meteor', x: p.x + p.vx * 0.8 + Math.cos(a) * dd, y: p.y + p.vy * 0.8 + Math.sin(a) * dd, r: p.r * 1.6, t: 1.1 + i * 0.12 }); } this.sfx('event'); }
-      else if (r < 0.8) { b.charge = 0.9; b.chargeX = dx / d; b.chargeY = dy / d; this.sfx('dash'); this.text(b.x, b.y - b.size * 2, 'STURMANGRIFF!', '#ff3b2f', 1, p.r, true); }
+      else if (r < 0.8) { b.windup = 0.8; b.chargeX = dx / d; b.chargeY = dy / d; this.text(b.x, b.y - b.size * 2, 'STURMANGRIFF!', '#ff3b2f', 1, p.r, true); this.sfx('ready'); }
       else { // Diener rufen
         for (let i = 0; i < 3; i++) { const a = Math.random() * TAU; this.spawnMinion(b.x + Math.cos(a) * b.size * 2, b.y + Math.sin(a) * b.size * 2); }
         this.text(b.x, b.y - b.size * 2, 'DIENER!', '#ffb13d', 1, p.r, true);
@@ -614,6 +664,11 @@ export class Game {
         const pd = Math.hypot(p.x - sh.x, p.y - sh.y);
         if (!sh.hit && Math.abs(pd - sh.r) < p.r * 0.7 && p.dashT <= 0) { sh.hit = true; hurt(B.ringDamage, (p.x - sh.x) / (pd || 1), (p.y - sh.y) / (pd || 1)); }
         sh.dead = sh.r > sh.max;
+      } else if (sh.kind === 'fireball') {
+        sh.x += sh.vx * dt; sh.y += sh.vy * dt; sh.life -= dt; sh.dead = sh.life <= 0;
+        if (Math.random() < 0.6) this.particle(sh.x, sh.y, Math.random() < 0.5 ? '#ff6a1f' : '#ffd23f', sh.r * 0.4, 0.4, 0, 0, 'flame');
+        const pd = Math.hypot(p.x - sh.x, p.y - sh.y);
+        if (pd < sh.r + p.r * 0.6) { sh.dead = true; hurt(C.BOSS.fireballDamage, (p.x - sh.x) / (pd || 1), (p.y - sh.y) / (pd || 1)); }
       } else if (sh.kind === 'meteor') {
         sh.t -= dt;
         if (sh.t <= 0) {
@@ -640,7 +695,6 @@ export class Game {
         b.hitCd = 0.18; p.punchT = 0.16; p.punchX = nx; p.punchY = ny;
         this.sfx('hit', 1); this.text(b.x, b.y - b.size * 1.8, '-' + (hits / (C.BOSS.hp * (this.map.hpMult || 1)) * 100).toFixed(1) + '%', '#ffd23f', 0.6, p.r * 0.6);
         for (let i = 0; i < 6; i++) { const a = Math.random() * TAU, v = rand(2, 5) * p.r; this.particle(b.x - nx * b.size * 0.7, b.y - ny * b.size * 0.7 - b.size * 0.5, i % 2 ? '#ffd23f' : '#ff3b2f', p.r * 0.15, 0.4, Math.cos(a) * v, Math.sin(a) * v, 'spark'); }
-        p.rage = Math.min(S.rageMax, p.rage + C.PLAYER.ragePerKill * scaleOf('rageDrain', this.level(this.world)) * 0.6);
         this.bossHurt(hits);
         if (!this.boss) return;
       }
@@ -669,6 +723,8 @@ export class Game {
 
   startBerserk() {
     const p = this.p;
+    this.rs.berserks++;
+    p.berserkExt = 0;
     p.berserkT = this.stats.berserkTime;
     this.hitStop = 0.12; this.flash = 0.8; this.shake = 1.2; p.squash = 1;
     this.rings.push({ x: p.x, y: p.y, r: p.r * 6, life: 0.6, max: 0.6, color: '#ff4a2a' });
@@ -676,10 +732,124 @@ export class Game {
     this.hook('onBerserk', true);
   }
 
+  evo(id) { return !!(this.save.evos && this.save.evos[id]); }
+
+  // ------------------------------------------------------------------
+  // EINZIGARTIGE MONSTER-SKILLS (Taste F)
+  // ------------------------------------------------------------------
+  inView(o, f = 1) { const vr = this.viewRadius() * f; return Math.hypot(o.x - this.p.x, o.y - this.p.y) < vr; }
+
+  useSkill() {
+    const p = this.p, S = this.stats, sk = this.char.skill, lim = this.breakLimit(), hit = this.oneHit();
+    p.skillCd = sk.cd; p.squash = 1; this.rs.skills++;
+    this.sfx('berserk', 0.5);
+    this.hook('onCallout', sk.name.toUpperCase() + '!', 2);
+    switch (sk.id) {
+      case 'roar':
+        if (!this.boss) p.rage = Math.min(S.rageMax, p.rage + S.rageMax * 0.35); else p.rage = Math.min(S.rageMax, p.rage + S.rageMax * 0.08);
+        p.roarT = 6; this.rings.push({ x: p.x, y: p.y, r: p.r * 5, life: 0.6, max: 0.6, color: '#ffd23f' }); this.shake = 0.8;
+        break;
+      case 'spikes':
+        for (let i = 0; i < 16; i++) { const a = i / 16 * TAU; this.spikes.push({ x: p.x, y: p.y, vx: Math.cos(a), vy: Math.sin(a), d: 0, max: p.r * 7, hitSet: new Set() }); }
+        break;
+      case 'rush': p.rushT = 5; break;
+      case 'lava': p.lavaT = 6; break;
+      case 'gold': for (const o of this.objects) if (this.inView(o, 1.05) && !o.crate) o.golden = true; this.flash = 0.4; break;
+      case 'singularity': this.singularity = { x: p.x + p.lookX * p.r * 4, y: p.y + p.lookY * p.r * 4, t: 4, tick: 0 }; break;
+      case 'freeze': this.freezeT = 5; if (this.boss) this.boss.frozen = 2.5; this.flash = 0.5; break;
+      case 'grab': {
+        const targets = this.objects.filter(o => !o.dead && o.size <= lim * 1.2).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y)).slice(0, 6)
+          .filter(o => Math.hypot(o.x - p.x, o.y - p.y) < p.r * 9);
+        for (const o of targets) { this.grabFx.push({ x: o.x, y: o.y, life: 0.4 }); this.kill(o, 'hit'); }
+        if (this.boss && Math.hypot(this.boss.x - p.x, this.boss.y - p.y) < p.r * 9 + this.boss.size) this.bossHurt(4 * S.damage / this.bossDamageNeed());
+        this.objects = this.objects.filter(o => !o.dead);
+        break;
+      }
+      case 'rockets': {
+        const targets = this.objects.filter(o => !o.dead && o.size <= lim * 1.3 && this.inView(o)).sort(() => Math.random() - 0.5).slice(0, 10);
+        if (this.boss && this.inView(this.boss)) for (let i = 0; i < 3; i++) targets.push(this.boss);
+        targets.forEach((o, i) => this.rockets.push({ x: p.x, y: p.y - p.r, tx: o.x, ty: o.y, target: o, t: 0, dur: 0.45 + i * 0.05 }));
+        break;
+      }
+      case 'phoenixdash': p.phoenixT = 1; break;
+      case 'hellfire':
+        for (let i = 0; i < 3; i++) this.blasts.push({ t: i * 0.22, r: p.r * (2.5 + i * 2) });
+        break;
+    }
+  }
+
+  updateSkills(dt) {
+    const p = this.p, S = this.stats, lim = this.breakLimit(), hit = this.oneHit();
+    p.roarT = Math.max(0, p.roarT - dt); p.rushT = Math.max(0, p.rushT - dt); p.phoenixT = Math.max(0, p.phoenixT - dt);
+    this.freezeT = Math.max(0, this.freezeT - dt);
+    if (this.boss && this.boss.frozen > 0) this.boss.frozen -= dt;
+    // Lava-Spur
+    if (p.lavaT > 0) { p.lavaT -= dt; if (!this.lava.length || Math.hypot(this.lava[this.lava.length - 1].x - p.x, this.lava[this.lava.length - 1].y - p.y) > p.r * 0.8) this.lava.push({ x: p.x, y: p.y, r: p.r * 1.5, life: 3, tick: 0 }); }
+    for (const L of this.lava) {
+      L.life -= dt; L.tick -= dt;
+      if (L.tick <= 0) {
+        L.tick = 0.3;
+        for (const o of this.objects) if (!o.dead && o.size <= lim * 1.2 && Math.hypot(o.x - L.x, o.y - L.y) < L.r + o.size * 0.5) { o.hp -= hit * 1.2; o.flash = 1; if (o.hp <= 0) this.kill(o, 'boom'); }
+        if (this.boss && Math.hypot(this.boss.x - L.x, this.boss.y - L.y) < L.r + this.boss.size * 0.6) this.bossHurt(0.6 * S.damage / this.bossDamageNeed());
+      }
+    }
+    this.lava = this.lava.filter(L => L.life > 0);
+    // Stacheln
+    for (const sp of this.spikes) {
+      const step = p.r * 14 * dt; sp.x += sp.vx * step; sp.y += sp.vy * step; sp.d += step;
+      for (const o of this.objects) if (!o.dead && !sp.hitSet.has(o) && o.size <= lim && Math.hypot(o.x - sp.x, o.y - sp.y) < o.size * 0.9 + p.r * 0.2) {
+        sp.hitSet.add(o); o.hp -= hit * 2.5; o.flash = 1; if (o.hp <= 0) this.kill(o, 'hit');
+      }
+      if (this.boss && !sp.hitSet.has(this.boss) && Math.hypot(this.boss.x - sp.x, this.boss.y - sp.y) < this.boss.size) { sp.hitSet.add(this.boss); this.bossHurt(0.5 * S.damage / this.bossDamageNeed()); }
+    }
+    this.spikes = this.spikes.filter(sp => sp.d < sp.max);
+    // Singularität
+    const sg = this.singularity;
+    if (sg) {
+      sg.t -= dt; sg.tick -= dt;
+      for (const o of this.objects) {
+        if (o.dead || o.size > lim) continue;
+        const dx = sg.x - o.x, dy = sg.y - o.y, d = Math.hypot(dx, dy);
+        if (d < p.r * 8 && d > 1e-6) { const v = p.r * 6 * dt; o.x += dx / d * Math.min(v, d); o.y += dy / d * Math.min(v, d); }
+        if (d < p.r * 1.2 && sg.tick <= 0) { o.hp -= hit * 3; if (o.hp <= 0) this.kill(o, 'boom'); }
+      }
+      if (sg.tick <= 0) sg.tick = 0.15;
+      if (Math.random() < 0.8) this.particle(sg.x + rand(-3, 3) * p.r, sg.y + rand(-3, 3) * p.r, '#b06bff', p.r * 0.15, 0.5, 0, 0, 'bit');
+      if (sg.t <= 0) this.singularity = null;
+    }
+    // Raketen
+    for (const rk of this.rockets) {
+      rk.t += dt;
+      if (rk.t >= rk.dur && !rk.done) {
+        rk.done = true;
+        const tg = rk.target;
+        if (tg === this.boss && this.boss) { this.bossHurt(1.2 * S.damage / this.bossDamageNeed()); this.rings.push({ x: tg.x, y: tg.y, r: tg.size * 0.6, life: 0.4, max: 0.4, color: '#ffb13d' }); }
+        else { const r = Math.max(tg.size * 1.6, p.r * 0.8); this.explosionQueue.push({ x: rk.tx, y: rk.ty, r, dmg: hit * 4, big: false, maxSize: lim * 1.3 }); }
+        this.sfx('boom', 0.5);
+      }
+    }
+    this.rockets = this.rockets.filter(rk => !rk.done);
+    // Höllenfeuer-Wellen
+    for (const b of this.blasts) {
+      b.t -= dt;
+      if (b.t <= 0 && !b.done) {
+        b.done = true;
+        if (b.slam) { this.explosionQueue.push({ x: p.x, y: p.y, r: b.r, dmg: b.dmg, big: false, maxSize: lim, silent: true }); this.rings.push({ x: p.x, y: p.y, r: b.r, life: 0.5, max: 0.5, color: '#fff3c4', ground: true }); this.shake = Math.min(1.4, this.shake + 0.8); this.sfx('slam'); continue; }
+        this.explosionQueue.push({ x: p.x, y: p.y, r: b.r, dmg: hit * 3, big: true, maxSize: lim * 1.5 });
+        if (this.boss && Math.hypot(this.boss.x - p.x, this.boss.y - p.y) < b.r + this.boss.size) this.bossHurt(2 * S.damage / this.bossDamageNeed());
+      }
+    }
+    this.blasts = this.blasts.filter(b => !b.done);
+    this.stunT = Math.max(0, (this.stunT || 0) - dt); this.coinPullT = Math.max(0, (this.coinPullT || 0) - dt);
+    for (const f of this.grabFx) f.life -= dt;
+    this.grabFx = this.grabFx.filter(f => f.life > 0);
+    if (this.explosionQueue.length) this.processExplosions();
+  }
+
   // Stampfer: Erdbeben um den Spieler
   slam() {
     const p = this.p, S = this.stats;
-    p.slamCd = S.slamCooldown; p.slamT = 0.35; p.squash = 1;
+    p.slamCd = S.slamCooldown; p.slamT = 0.35; p.squash = 1; this.rs.slams++;
     const R = p.r * S.slamRadius * (p.berserkT > 0 ? C.BERSERK.sizeBoost : 1);
     this.hitStop = Math.max(this.hitStop, 0.07);
     this.shake = Math.min(1.4, this.shake + 1);
@@ -690,6 +860,8 @@ export class Game {
     const dmg = Math.pow(p.r, 1.5) * S.slamDamage * S.damage * (p.berserkT > 0 ? C.BERSERK.damageMult : 1);
     this.explosionQueue.push({ x: p.x, y: p.y, r: R, dmg, big: false, maxSize: this.breakLimit(), silent: true });
     this.processExplosions();
+    if (this.evo('slam1')) this.blasts.push({ t: 0.4, r: R * 1.5, dmg: dmg, slam: true });
+    if (this.evo('slam2')) { this.stunT = 4; this.coinPullT = 1.5; }
     if (this.boss && Math.hypot(this.boss.x - p.x, this.boss.y - p.y) < R + this.boss.size) this.bossHurt(3 * S.slamDamage * S.damage / this.bossDamageNeed() * (p.berserkT > 0 ? C.BERSERK.damageMult : 1));
   }
 
@@ -705,7 +877,7 @@ export class Game {
 
   updateCoins(dt, sp) {
     const p = this.p, S = this.stats;
-    const pick = p.r * 1.3, pull = this.magnetRange();
+    const pick = p.r * 1.3, pull = this.coinPullT > 0 ? p.r * 14 : this.magnetRange();
     for (const c of this.coins) {
       c.age += dt; c.life -= dt; c.spin += dt * 10;
       if (c.z > 0 || c.vz > 0) {
@@ -727,15 +899,24 @@ export class Game {
     this.coins = this.coins.filter(c => c.life > 0);
   }
 
+  // Schaden eines normalen Schlags (für Krümel-Regel und Magnet)
+  oneHit() {
+    const p = this.p, S = this.stats;
+    const glass = this.event && this.event.id === 'glass';
+    return S.damage * Math.pow(p.r, 1.5) * 0.6 * 1.3 * (glass ? 100 : 1) * (p.berserkT > 0 ? C.BERSERK.damageMult : 1);
+  }
+
   magnetRange() { return this.p.r * (2.5 + this.stats.magnet * 2); }
 
   // Magnet saugt auch Krümel an
   magnetCrumbs(dt) {
     const S = this.stats;
     if (S.magnet <= 0) return;
-    const p = this.p, R = this.magnetRange(), lim = p.r * C.PLAYER.crumbRatio * 0.98; // nur echte Krümel (zerbröseln bei Berührung)
+    // normal: nur echte Krümel; mit „Super-Magnet“ alles, was man auch fressen kann
+    const p = this.p, R = this.magnetRange(), lim = S.hole ? p.r * 0.6 : p.r * C.PLAYER.crumbRatio * 0.98;
+    const hit = this.oneHit() * (S.hole ? 1.6 : 1);
     for (const o of this.objects) {
-      if (o.size > lim) continue;
+      if (o.size > lim || o.hp > hit) continue;
       const dx = p.x - o.x, dy = p.y - o.y, d = Math.hypot(dx, dy);
       if (d < R && d > 1e-6) { const v = p.r * (2 + S.magnet * 1.2) * dt; o.x += dx / d * Math.min(v, d); o.y += dy / d * Math.min(v, d); o.pulled = 0.2; }
     }
@@ -960,6 +1141,14 @@ export class Game {
     s.chaos = (s.chaos || 0) + chaos; s.totalChaos = (s.totalChaos || 0) + chaos;
     s.totalKills = (s.totalKills || 0) + this.kills;
     s.cycleScrap = (s.cycleScrap || 0) + earned;
+    // Statistik
+    const st = s.stats = s.stats || {};
+    const add = (k, v) => { st[k] = (st[k] || 0) + v; };
+    for (const [k, v] of Object.entries(this.rs)) add(k, v);
+    add('quests', this.questsDone); add('playTime', this.time);
+    st.bestCombo = Math.max(st.bestCombo || 0, this.bestCombo);
+    st.longestRun = Math.max(st.longestRun || 0, this.time);
+    st.bestRadius = Math.max(st.bestRadius || 0, this.maxRadius);
     if (this.bossKilled) {
       s.bossKills = (s.bossKills || 0) + 1;
       s.darkMatter = (s.darkMatter || 0) + C.BOSS.rewardDM; s.totalDarkMatter = (s.totalDarkMatter || 0) + C.BOSS.rewardDM;
@@ -992,6 +1181,14 @@ export function shadeHex(hex, amt) {
   if (amt < 0) { r *= 1 + amt; g *= 1 + amt; b *= 1 + amt; }
   else { r += (255 - r) * amt; g += (255 - g) * amt; b += (255 - b) * amt; }
   return '#' + [r, g, b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+}
+
+// Schrott in der passenden Währungs-Stufe (1 Platin = 1 Mrd. Schrott …)
+export function tierOf(n) { let t = 0; for (let i = 0; i < C.CURRENCY_TIERS.length; i++) if (n >= C.CURRENCY_TIERS[i].value) t = i; return t; }
+export function money(n, withName = false) {
+  const t = tierOf(n), T = C.CURRENCY_TIERS[t], v = n / T.value;
+  const num = t === 0 || v >= 1000 ? fmt(v) : v < 10 ? v.toFixed(2) : v < 100 ? v.toFixed(1) : String(Math.floor(v));
+  return T.icon + ' ' + num + (withName ? ' ' + T.name : '');
 }
 
 export function fmt(n) {

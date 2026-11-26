@@ -1,12 +1,12 @@
 // =====================================================================
 //  RAGEVERSE – Einstieg: Game-Loop, Steuerung, Menüs, Shop, Updates
 // =====================================================================
-import * as C from './config.js?v=0.3.2';
-import { Game, computeStats, upgradeLevel, upgradeCost, fmt, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.3.2';
-import { render, drawMonsterPreview } from './render.js?v=0.3.2';
-import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.3.2';
-import { loadSave, writeSave, resetSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.3.2';
-import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.3.2';
+import * as C from './config.js?v=0.4.0';
+import { Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.4.0';
+import { render, drawMonsterPreview } from './render.js?v=0.4.0';
+import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.4.0';
+import { loadSave, writeSave, resetSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.4.0';
+import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.4.0';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -41,6 +41,11 @@ const game = new Game(save, {
   onBerserk: on => { if (inRun) { setIntensity(on ? 2 : 1); if (on) callout('BERSERKER!', 5); } },
   onBerserkReady: () => { if (inRun) hint('😡 Berserker bereit! Drück <b>R</b> (oder tippe 😡)', 3); },
   onQuest: (q, done) => { if (inRun) questUpdate(q, done); },
+  onBoss: (what) => {
+    if (!inRun) return;
+    if (what === 'spawn') { $('boss-bar').hidden = false; document.body.classList.add('bossfight'); $('hud-quest').hidden = true; $('hud-event').hidden = true; callout('ZORNOS ERWACHT!', 5); setIntensity(2); }
+    if (what === 'dead') { $('boss-bar').hidden = true; document.body.classList.remove('bossfight'); callout('ZORNOS BESIEGT!', 5); setIntensity(1); }
+  },
 });
 window.__rv = { game, save, C, get pointer() { return pointer; }, get input() { return input; } };
 
@@ -60,7 +65,7 @@ resize();
 // ------------------------------------------------------------------
 // Steuerung
 // ------------------------------------------------------------------
-const input = { dx: 0, dy: 0, dash: false, slam: false, berserk: false };
+const input = { dx: 0, dy: 0, dash: false, slam: false, berserk: false, skill: false };
 const keys = new Set();
 const pointer = { active: false, x: 0, y: 0, touch: false };
 let lastTap = 0;
@@ -76,6 +81,7 @@ window.addEventListener('keydown', e => {
   if (k === ' ') input.dash = true;
   if (k === 'e' || k === 'shift') input.slam = true;
   if (k === 'r' || k === 'q') input.berserk = true;
+  if (k === 'f') input.skill = true;
   if (k === 'p') pause();
 });
 // Escape: im Run → Pause + Einstellungen; in Fenstern → zurück
@@ -121,7 +127,7 @@ document.addEventListener('mouseleave', () => { if (!pointer.touch) pointer.acti
 canvas.addEventListener('pointercancel', () => { pointer.active = false; });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 const abBtn = (id, key) => $(id).addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); input[key] = true; });
-abBtn('ab-dash', 'dash'); abBtn('ab-slam', 'slam'); abBtn('ab-berserk', 'berserk');
+abBtn('ab-dash', 'dash'); abBtn('ab-slam', 'slam'); abBtn('ab-berserk', 'berserk'); abBtn('ab-skill', 'skill');
 
 function readInput() {
   let dx = 0, dy = 0;
@@ -175,7 +181,7 @@ function frame(t) {
 // ------------------------------------------------------------------
 // Screens
 // ------------------------------------------------------------------
-const SCREENS = ['screen-menu', 'screen-shop', 'screen-chars', 'screen-maps', 'screen-help', 'screen-results', 'screen-mutation', 'screen-pause', 'screen-settings', 'screen-slots'];
+const SCREENS = ['screen-achievements', 'screen-menu', 'screen-shop', 'screen-chars', 'screen-maps', 'screen-help', 'screen-results', 'screen-mutation', 'screen-pause', 'screen-settings', 'screen-slots'];
 let current = 'screen-menu', helpFrom = 'screen-menu';
 function show(id) {
   current = id;
@@ -192,8 +198,10 @@ function startRun() {
   if (params.has('world')) { const w = C.WORLDS[Number(params.get('world'))]; if (w) opts.radius = Math.max(w.minRadius * 1.15, 10); }
   game.start(opts);
   lastCombo = 0; hudCache = {};
+  const sk = game.char.skill; $('ab-skill-ic').textContent = sk.icon; $('ab-skill-name').textContent = sk.name;
   renderMuts();
   $('hud-quest').hidden = true; $('hud-event').hidden = true; $('callout').hidden = true; $('hint').hidden = true;
+  $('boss-bar').hidden = true; document.body.classList.remove('bossfight');
   setIntensity(1);
   show(null);
   showBanner(game.worlds[game.world].name.toUpperCase());
@@ -216,6 +224,76 @@ $('btn-pause-help').onclick = () => openHelp('screen-pause');
 $('btn-pause-settings').onclick = () => openSettings('screen-pause');
 $('btn-settings').onclick = () => openSettings('screen-menu');
 $('menu-slot').onclick = () => openSlots();
+$('btn-achievements').onclick = () => openAchievements();
+
+// ------------------------------------------------------------------
+// Erfolge & Statistik
+// ------------------------------------------------------------------
+function statValue(stat) {
+  const st = save.stats || {};
+  switch (stat) {
+    case 'kills': return save.totalKills || 0;
+    case 'maxWorld': return bestWorldAny();
+    case 'runs': return save.runs || 0;
+    case 'prestiges': return save.prestiges || 0;
+    case 'monsters': return save.unlockedChars.length;
+    case 'bestTier': return Math.max(save.bestTier || 0, tierOf(save.scrap));
+    case 'evos': return Object.keys(save.evos || {}).length;
+    case 'maps': return Object.keys(save.mapBest || {}).length;
+    case 'bossKills': return save.bossKills || 0;
+    default: return st[stat] || 0;
+  }
+}
+function checkAchievements() {
+  const got = [];
+  for (const a of C.ACHIEVEMENTS) {
+    if (save.achievements[a.id] || statValue(a.stat) < a.goal) continue;
+    save.achievements[a.id] = Date.now(); save.chaos += a.reward; save.totalChaos = (save.totalChaos || 0) + a.reward; got.push(a);
+  }
+  if (got.length) { writeSave(save); got.forEach((a, i) => setTimeout(() => achToast(a), i * 700)); }
+  return got;
+}
+function achToast(a) {
+  const el = document.createElement('div'); el.className = 'ach-toast';
+  el.innerHTML = `<div class="ai">${a.icon}</div><div><small>ERFOLG FREIGESCHALTET</small><b>${esc(a.name)}</b><span>+${fmt(a.reward)} ☠ Chaos</span></div>`;
+  $('ach-toasts').appendChild(el); sfx('quest'); setTimeout(() => el.remove(), 4100);
+}
+let achTab = 'ach';
+function openAchievements() { sfx('click'); checkAchievements(); renderAchievements(); show('screen-achievements'); }
+function renderAchievements() {
+  const done = C.ACHIEVEMENTS.filter(a => save.achievements[a.id]).length;
+  $('ach-count').textContent = `${done}/${C.ACHIEVEMENTS.length}`;
+  document.querySelectorAll('#ach-tabs [data-atab]').forEach(b => b.classList.toggle('on', b.dataset.atab === achTab));
+  if (achTab === 'stats') {
+    const st = save.stats || {};
+    const h = Math.floor((st.playTime || 0) / 3600), m = Math.floor((st.playTime || 0) % 3600 / 60);
+    const rows = [
+      ['💥', 'Objekte zerstört', fmt(save.totalKills || 0)], ['⚙', 'Schrott verdient (gesamt)', money(save.totalScrap || 0, true)],
+      ['☠', 'Chaos verdient (gesamt)', fmt(save.totalChaos || 0)], ['🔁', 'Runs gespielt', fmt(save.runs || 0)],
+      ['⏱', 'Spielzeit', `${h} h ${m} min`], ['🗺', 'Weiteste Welt', `${C.WORLDS[bestWorldAny()].name} (Welt ${bestWorldAny() + 1})`],
+      ['⛓', 'Beste Kombo', fmt(st.bestCombo || 0)], ['⏳', 'Längster Run', `${Math.floor((st.longestRun || 0) / 60)}:${String(Math.floor((st.longestRun || 0) % 60)).padStart(2, '0')}`],
+      ['✨', 'Goldene Objekte', fmt(st.golden || 0)], ['📦', 'Schrottkisten', fmt(st.crates || 0)],
+      ['🧨', 'Explosionen', fmt(st.explosions || 0)], ['😡', 'Berserker gezündet', fmt(st.berserks || 0)],
+      ['💥', 'Stampfer', fmt(st.slams || 0)], ['🎯', 'Monster-Skills', fmt(st.skills || 0)],
+      ['📜', 'Aufträge erfüllt', fmt(st.quests || 0)], ['💥', 'Urknalle', fmt(save.prestiges || 0)],
+      ['◆', 'Dunkle Materie (gesamt)', fmt(save.totalDarkMatter || 0)], ['😈', 'ZORNOS besiegt', fmt(save.bossKills || 0)],
+      ['👹', 'Monster', `${save.unlockedChars.length}/${C.CHARACTERS.length}`], ['🧬', 'Evolutionen', `${Object.keys(save.evos || {}).length}/${C.SKILL_EVOS.length}`],
+    ];
+    $('ach-grid').innerHTML = `<div class="stat-list">${rows.map(([i, l, v]) => `<div class="stat"><b>${v}</b><small>${i} ${l}</small></div>`).join('')}</div>`;
+    return;
+  }
+  // nach Gruppen: erreichte + nächste Stufe je Gruppe zeigen
+  const groups = [...new Set(C.ACHIEVEMENTS.map(a => a.group))];
+  $('ach-grid').innerHTML = groups.map(gid => {
+    const list = C.ACHIEVEMENTS.filter(a => a.group === gid);
+    return list.filter((a, i) => save.achievements[a.id] || i === 0 || save.achievements[list[i - 1].id]).map(a => {
+      const v = statValue(a.stat), d = !!save.achievements[a.id], pct = Math.min(100, v / a.goal * 100);
+      return `<div class="ach ${d ? 'done' : ''}"><div class="ai">${a.icon}</div><div class="at"><b>${esc(a.name)}</b><small>${esc(a.desc)}</small>
+        ${d ? `<span class="rw">✔ erhalten: +${fmt(a.reward)} ☠</span>` : `<span class="rw">Belohnung: +${fmt(a.reward)} ☠</span><div class="bar tiny"><div style="width:${pct.toFixed(1)}%"></div></div>`}</div></div>`;
+    }).join('');
+  }).join('');
+}
+$('ach-tabs').addEventListener('click', e => { const b = e.target.closest('[data-atab]'); if (!b) return; achTab = b.dataset.atab; sfx('click'); renderAchievements(); });
 
 // ------------------------------------------------------------------
 // Spielstände
@@ -249,7 +327,7 @@ function openSlots() {
       <div class="slot-stats">
         <span>Monster: <b>${esc(ch.name)}</b></span><span>Karte: <b>${esc(mp.name)}</b></span>
         <span>Weiteste Welt: <b>${esc(C.WORLDS[best].name)}</b></span><span>Runs: <b>${d.runs || 0}</b></span>
-        <span>⚙ <b>${fmt(d.scrap || 0)}</b></span><span>☠ <b>${fmt(d.chaos || 0)}</b></span>
+        <span><b>${money(d.scrap || 0)}</b></span><span>☠ <b>${fmt(d.chaos || 0)}</b></span>
         <span style="grid-column:1/-1">Zuletzt: <b>${fmtDate(d.lastPlayed)}</b></span>
       </div>
       <div class="slot-actions">
@@ -337,12 +415,21 @@ $('btn-settings-close').onclick = closeSettings;
 $('btn-settings-done').onclick = closeSettings;
 $('btn-pause').onclick = pause;
 $('btn-resume').onclick = resume;
-$('btn-quit').onclick = () => { game.state = 'play'; game.p.rage = 0; game.die(); show(null); };
+// Run beenden: Schrott und Chaos werden behalten (wie bei einem normalen Run-Ende)
+function endRun() { if (!inRun || !game.p || (game.state !== 'play' && game.state !== 'paused')) return; game.state = 'play'; game.p.rage = 0; game.die(); show(null); }
+$('btn-quit').onclick = endRun;
+let endArmed = 0;
+$('btn-endrun').onclick = () => {
+  const b = $('btn-endrun');
+  if (!endArmed) { endArmed = setTimeout(() => { endArmed = 0; b.classList.remove('armed'); b.textContent = '🏁'; }, 2500); b.classList.add('armed'); b.textContent = '🏁 Beenden?'; return; }
+  clearTimeout(endArmed); endArmed = 0; b.classList.remove('armed'); b.textContent = '🏁'; endRun();
+};
 
 function bestWorldAny() { return Math.max(save.bestWorld || 0, ...Object.values(save.mapBest || {}), 0); }
 function reqMet(req) {
   if (!req) return true;
   if (req.kills && (save.totalKills || 0) < req.kills) return false;
+  if (req.boss && !(save.bossKills > 0)) return false;
   if (req.world !== undefined && bestWorldAny() < req.world) return false;
   return true;
 }
@@ -350,6 +437,7 @@ function reqProgress(req) {
   if (!req) return '';
   if (req.kills) return `${fmt(Math.min(save.totalKills || 0, req.kills))} / ${fmt(req.kills)}`;
   if (req.world !== undefined) return reqMet(req) ? 'erreicht' : `bisher: ${C.WORLDS[bestWorldAny()].name}`;
+  if (req.boss) return reqMet(req) ? 'besiegt' : 'noch nicht besiegt';
   return '';
 }
 
@@ -360,9 +448,11 @@ function openMenu() {
   const ch = charDef(save.selectedChar), mp = mapDef(save.selectedMap);
   $('menu-char').innerHTML = `👹 <b>${esc(ch.name)}</b> <small>${esc(ch.title)}</small>`;
   $('menu-map').innerHTML = `${mp.icon} <b>${esc(mp.name)}</b>${mp.scrapMult > 1 ? ` <small>×${mp.scrapMult} Schrott</small>` : ''}`;
-  $('menu-scrap').textContent = fmt(save.scrap);
+  $('menu-scrap').textContent = money(save.scrap);
+  $('menu-scrap-name').textContent = C.CURRENCY_TIERS[tierOf(save.scrap)].name;
   $('menu-chaos').textContent = fmt(save.chaos);
   $('menu-dm').textContent = fmt(save.darkMatter || 0);
+  $('menu-ach').textContent = `${C.ACHIEVEMENTS.filter(a => save.achievements[a.id]).length}/${C.ACHIEVEMENTS.length}`;
   $('menu-dm-pill').hidden = !(save.darkMatter || save.prestiges);
   const w = C.WORLDS[bestWorldAny()] || C.WORLDS[0];
   $('menu-stats').innerHTML = save.runs ? `
@@ -378,14 +468,16 @@ function openMenu() {
 let shopTab = 'body', bangArmed = false;
 function openShop() { inRun = false; setIntensity(0); sfx('click'); bangArmed = false; renderShop(); show('screen-shop'); }
 function renderShop() {
-  $('shop-scrap').textContent = fmt(save.scrap);
+  $('shop-scrap').textContent = money(save.scrap, true);
   $('shop-dm').textContent = fmt(save.darkMatter || 0);
   $('shop-dm-pill').hidden = !(save.darkMatter || save.prestiges || prestigeGain(save) > 0);
   const bangReady = prestigeGain(save) > 0;
   const affordable = cat => C.UPGRADES.filter(u => u.cat === cat && upgradeLevel(save, u.id) < u.max && save.scrap >= upgradeCost(u, upgradeLevel(save, u.id))).length;
   $('shop-tabs').innerHTML = C.UPGRADE_CATS.map(c => { const n = affordable(c.id); return `<button class="tab ${shopTab === c.id ? 'on' : ''}" data-tab="${c.id}">${c.icon} ${c.name}${n ? `<span class="cnt">${n}</span>` : ''}</button>`; }).join('')
+    + `<button class="tab evo ${shopTab === 'evo' ? 'on' : ''}" data-tab="evo">🧬 Evolution${evoReady() ? `<span class="cnt">${evoReady()}</span>` : ''}</button>`
     + `<button class="tab bang ${shopTab === 'bang' ? 'on' : ''}" data-tab="bang">💥 Urknall${bangReady ? '<span class="cnt">!</span>' : ''}</button>`;
   if (shopTab === 'bang') { renderBang(); return; }
+  if (shopTab === 'evo') { renderEvo(); return; }
   const cat = C.UPGRADE_CATS.find(c => c.id === shopTab);
   const base = computeStats({ upgrades: {} }, [], 'grumpf');
   const st = computeStats(save, [], 'grumpf'); // inkl. Masterplan-Boni (◆)
@@ -420,7 +512,7 @@ function renderShop() {
       <div class="upg-top"><div class="upg-icon">${u.icon}</div><div class="upg-txt"><div class="upg-name">${u.name} <span class="lv">Lv ${l}/${u.max}</span></div><div class="upg-lvl">${effect[u.id] ? effect[u.id]() : ''}</div></div></div>
       <div class="upg-desc">${u.desc}</div>
       <div class="bar tiny"><div style="width:${Math.round(l / u.max * 100)}%"></div></div>
-      <button class="btn ${can ? 'primary' : ''}" data-buy="${u.id}" ${can ? '' : 'disabled'}>${maxed ? 'MAX' : '⚙ ' + fmt(cost)}</button>
+      <button class="btn ${can ? 'primary' : ''}" data-buy="${u.id}" ${can ? '' : 'disabled'}>${maxed ? 'MAX' : money(cost)}</button>
     </div>`;
   }).join('');
 }
@@ -434,6 +526,29 @@ function bangPreview(gain) {
   const keep = dmLevel(save, 'dm_keep') * C.DM_PERKS.find(x => x.id === 'dm_keep').per;
   return `💡 Steckst du alles in <b>Schwarzgeld</b>, startest du danach mit <b>×${(after / C.SCRAP_SCALE).toFixed(2)} Schrott</b> (jetzt mit deinen Upgrades: ×${(now / C.SCRAP_SCALE).toFixed(2)}). `
     + `Deine Upgrades werden ${keep > 0 ? `auf ${Math.round(keep * 100)} % ` : ''}zurückgesetzt – je später du sprengst, desto mehr ◆ gibt es.`;
+}
+
+// Skill-Evolutionen (☠ Chaos)
+const evoState = e => {
+  if (save.evos[e.id]) return 'owned';
+  if (e.needs && !save.evos[e.needs]) return 'needs';
+  if (upgradeLevel(save, e.upg) < e.lvl) return 'locked';
+  return save.chaos >= e.cost ? 'buy' : 'poor';
+};
+const evoReady = () => C.SKILL_EVOS.filter(e => evoState(e) === 'buy').length;
+function renderEvo() {
+  $('shop-tab-desc').innerHTML = 'Entwickle deine Fähigkeiten mit <b style="color:var(--chaos)">☠ Chaos</b> weiter. Voraussetzung ist eine Upgrade-Stufe – gekaufte Evolutionen bleiben <b>für immer</b> (auch nach dem Urknall).';
+  const abName = { dash: '⚡ Ansturm', slam: '💥 Stampfer', berserk: '😡 Berserker' };
+  $('shop-grid').innerHTML = C.SKILL_EVOS.map(e => {
+    const st = evoState(e), u = C.UPGRADES.find(x => x.id === e.upg);
+    const btn = st === 'owned' ? '<button class="btn" disabled>✔ Entwickelt</button>'
+      : st === 'needs' ? `<button class="btn" disabled>🔒 Erst ${esc(C.SKILL_EVOS.find(x => x.id === e.needs).name)}</button>`
+      : st === 'locked' ? `<button class="btn" disabled>🔒 ${esc(u.name)} Stufe ${e.lvl} (jetzt ${upgradeLevel(save, e.upg)})</button>`
+      : `<button class="btn ${st === 'buy' ? 'primary' : ''}" data-evo="${e.id}" ${st === 'buy' ? '' : 'disabled'}>☠ ${fmt(e.cost)} entwickeln</button>`;
+    return `<div class="upg ${st === 'buy' ? 'can' : ''} ${st === 'owned' ? 'owned' : ''}">
+      <div class="upg-top"><div class="upg-icon">${e.icon}</div><div class="upg-txt"><div class="upg-name">${esc(e.name)}</div><div class="upg-lvl">${abName[e.ability]} · Evolution ${e.needs ? 'II' : 'I'}</div></div></div>
+      <div class="upg-desc">${esc(e.desc)}</div>${btn}</div>`;
+  }).join('');
 }
 
 function renderBang() {
@@ -454,7 +569,7 @@ function renderBang() {
       <div>Sprenge deinen Fortschritt in die Luft: <b>Schrott und Upgrades</b> sind danach weg. Dafür bekommst du <b>◆ Dunkle Materie</b> für den <b>Bösen Masterplan</b> – Boni, die für immer bleiben. <b>Chaos, Monster, Karten und Rekorde bleiben erhalten.</b></div>
       <div class="bang-stats">
         <div class="stat"><b>${esc(cycleW)}</b><small>Weiteste Welt (dieser Durchgang)</small></div>
-        <div class="stat"><b>${fmt(save.cycleScrap || 0)}</b><small>Schrott seit letztem Urknall</small></div>
+        <div class="stat"><b>${money(save.cycleScrap || 0)}</b><small>Schrott seit letztem Urknall</small></div>
         <div class="stat"><b>${save.prestiges || 0}</b><small>Urknalle bisher</small></div>
       </div>
       ${gain > 0
@@ -471,12 +586,18 @@ $('shop-grid').addEventListener('click', e => {
   const bang = e.target.closest('#btn-bang');
   if (bang) {
     if (!bangArmed) { bangArmed = true; sfx('ready'); renderShop(); setTimeout(() => { bangArmed = false; if (current === 'screen-shop' && shopTab === 'bang') renderShop(); }, 4000); return; }
-    const gain = doPrestige(save); writeSave(save); bangArmed = false;
+    const gain = doPrestige(save); writeSave(save); bangArmed = false; checkAchievements();
     const fl = document.createElement('div'); fl.className = 'bang-flash'; document.body.appendChild(fl); setTimeout(() => fl.remove(), 1500);
     sfx('berserk'); setTimeout(() => sfx('unlock'), 400);
     game.start(); renderShop();
     hintMenu(`💥 URKNALL! +${fmt(gain)} ◆ Dunkle Materie`);
     return;
+  }
+  const evb = e.target.closest('[data-evo]');
+  if (evb) {
+    const ev = C.SKILL_EVOS.find(x => x.id === evb.dataset.evo);
+    if (evoState(ev) !== 'buy') { sfx('deny'); return; }
+    save.chaos -= ev.cost; save.evos[ev.id] = true; writeSave(save); sfx('unlock'); checkAchievements(); renderShop(); return;
   }
   const dmb = e.target.closest('[data-dm]');
   if (dmb) {
@@ -515,6 +636,7 @@ function openChars() {
       <canvas width="240" height="200" data-prev="${ch.id}"></canvas>
       <div class="char-name">${esc(ch.name)} <small>${esc(ch.title)}</small></div>
       <div class="char-desc">${esc(ch.desc)}</div>
+      <div class="char-skill">${ch.skill.icon} <b>${esc(ch.skill.name)}</b> (F · ${ch.skill.cd} s): ${esc(ch.skill.desc)}</div>
       ${!owned && ch.req ? `<div class="char-req ${met ? 'ok' : ''}">${met ? '✔' : '🔒'} ${esc(ch.req.label)} <span>${reqProgress(ch.req)}</span></div>` : ''}
       ${btn}
     </div>`;
@@ -529,7 +651,7 @@ $('char-grid').addEventListener('click', e => {
   if (b) {
     const ch = charDef(b.dataset.buychar);
     if (save.chaos < ch.cost || !reqMet(ch.req)) { sfx('deny'); return; }
-    save.chaos -= ch.cost; save.unlockedChars.push(ch.id); save.selectedChar = ch.id; writeSave(save);
+    save.chaos -= ch.cost; save.unlockedChars.push(ch.id); save.selectedChar = ch.id; writeSave(save); checkAchievements();
     sfx('unlock'); openChars();
   }
 });
@@ -588,6 +710,7 @@ function openHelp(from) {
     <div class="help-abs">
       <div class="habs"><span class="ab-ic">⚡</span><div><b>${A.dash.name}</b> <kbd>Leertaste</kbd> · Doppeltipp<br>${A.dash.desc}<br><small>Abklingzeit: <b>${st.dashCooldown.toFixed(1)} s</b> (Upgrade „Ansturm“ in der Schurkenhöhle)</small></div></div>
       <div class="habs"><span class="ab-ic">💥</span><div><b>${A.slam.name}</b> <kbd>E</kbd> · 💥-Button<br>${A.slam.desc}<br><small>Abklingzeit: <b>${st.slamCooldown.toFixed(1)} s</b> · Radius: <b>${st.slamRadius.toFixed(1)}× Körper</b> (Upgrade „Erdbeben“)</small></div></div>
+      <div class="habs"><span class="ab-ic">${charDef(save.selectedChar).skill.icon}</span><div><b>${esc(charDef(save.selectedChar).skill.name)}</b> <kbd>F</kbd> · Knopf ganz links<br>${esc(charDef(save.selectedChar).skill.desc)}<br><small>Einzigartiger Skill deines Monsters (${esc(charDef(save.selectedChar).name)}) · Abklingzeit: <b>${charDef(save.selectedChar).skill.cd} s</b>. Jedes Monster hat einen anderen – schau in der Monster-Auswahl.</small></div></div>
       <div class="habs"><span class="ab-ic">😡</span><div><b>${A.berserk.name}</b> <kbd>R</kbd> · 😡-Button<br>${A.berserk.desc}<br><small>Dauer: <b>${st.berserkTime.toFixed(0)} s</b> (Upgrade „Berserker“ lädt schneller)</small></div></div>
     </div>
     <h3>Wie es funktioniert</h3>
@@ -621,7 +744,7 @@ function showResults(s) {
   const maps = C.MAPS.filter(m => reqMet(m.req) && !(save.seenMaps || []).includes(m.id) && m.req);
   $('results-body').innerHTML = `
     <div class="res-earned">
-      <div><b id="res-scrap">0</b><span>⚙ Schrott</span></div>
+      <div><b id="res-scrap">0</b><span>${C.CURRENCY_TIERS[tierOf(s.earned)].name}</span></div>
       <div class="chaos"><b id="res-chaos">0</b><span>☠ Chaos</span></div>
     </div>
     <div class="res-grid">
@@ -635,18 +758,27 @@ function showResults(s) {
     ${unlockables.length ? `<div class="res-unlock">🎉 Du kannst jetzt <b>${unlockables.map(c => esc(c.name)).join(', ')}</b> freischalten! → Monster</div>` : ''}
     ${prestigeGain(save) > 0 ? `<div class="res-unlock">💥 <b>Urknall möglich:</b> +${fmt(prestigeGain(save))} ◆ Dunkle Materie → Schurkenhöhle › Urknall</div>` : ''}
     ${maps.length ? `<div class="res-unlock">🗺 Neue Karte freigeschaltet: <b>${maps.map(m => esc(m.name)).join(', ')}</b>!</div>` : ''}`;
+  // Einschmelzen: neue Währungs-Stufe zum ersten Mal erreicht
+  const tNow = tierOf(save.scrap);
+  if (tNow > (save.bestTier || 0)) {
+    save.bestTier = tNow; writeSave(save);
+    const T = C.CURRENCY_TIERS[tNow], P = C.CURRENCY_TIERS[tNow - 1];
+    $('results-body').insertAdjacentHTML('beforeend', `<div class="res-unlock melt">🔥 <b>EINGESCHMOLZEN!</b> Dein ${P.name} wird jetzt zu <b>${T.icon} ${T.name}</b> – 1 ${T.name} = 1 Mrd. ${P.name}.</div>`);
+    setTimeout(() => { callout(T.icon + ' ' + T.name.toUpperCase() + '!', 5); sfx('unlock'); $('hud').hidden = false; setTimeout(() => $('hud').hidden = !inRun, 1300); }, 400);
+  }
   if (maps.length) { save.seenMaps = [...(save.seenMaps || []), ...maps.map(m => m.id)]; writeSave(save); }
   inRun = false;
   show('screen-results');
-  countUp($('res-scrap'), s.earned, 900);
+  setTimeout(checkAchievements, 1000);
+  countUp($('res-scrap'), s.earned, 900, true);
   countUp($('res-chaos'), s.chaos, 900);
 }
-function countUp(el, target, ms) {
+function countUp(el, target, ms, isMoney = false) {
   const t0 = performance.now();
   let lastTick = 0;
   function step(t) {
     const k = Math.min(1, (t - t0) / ms), v = target * (1 - Math.pow(1 - k, 3));
-    el.textContent = '+' + fmt(v);
+    el.textContent = '+' + (isMoney ? money(v) : fmt(v));
     if (t - lastTick > 60 && k < 1) { sfx('coin', Math.floor(k * 14)); lastTick = t; }
     if (k < 1) requestAnimationFrame(step); else el.classList.add('done');
   }
@@ -692,6 +824,9 @@ function questUpdate(q, done) {
   el.hidden = false;
   $('q-label').textContent = q.label;
   el.classList.toggle('done', done);
+  const r = q.reward;
+  if (r) $('q-reward').innerHTML = `🎁 Belohnung: ${money(r.scrap)} · ☠ ${fmt(r.chaos)}${game.boss ? '' : ` · 🔥 +${r.rage} % Wut`} · 😡 +${r.berserk} % Berserker`;
+  if (!done) { el.classList.remove('fresh'); void el.offsetWidth; el.classList.add('fresh'); sfx('event'); hint('📜 Neuer Auftrag: <b>' + esc(q.label) + '</b>', 3); }
   if (done) { $('q-bar').style.width = '100%'; callout('AUFTRAG ERFÜLLT!', 3); setTimeout(() => { if (!game.quest) el.hidden = true; }, 1500); }
 }
 let hintTimer = 0;
@@ -708,6 +843,7 @@ function tutorial() {
     [3, '<b>Esc</b> = Einstellungen (z. B. Maus- oder Tastatursteuerung)'],
     [5, '<b>Leertaste</b> (oder Doppeltipp) = ⚡ Ansturm nach vorne'],
     [10, '<b>E</b> = 💥 Stampfer: Erdbeben um dich herum'],
+    [13, '<b>F</b> = Monster-Skill: ' + game.char.skill.icon + ' ' + game.char.skill.name],
     [15, 'Die 🔥 <b>Wut</b> sinkt ständig – zerstör weiter, sonst ist der Run vorbei!'],
   ];
   for (const [t, txt] of steps) setTimeout(() => { if (inRun) hint(txt, 4.5); }, t * 1000);
@@ -730,7 +866,7 @@ function updateHud() {
   const p = game.p, S = game.stats, rf = p.rage / S.rageMax;
   $('hud-rage-bar').style.width = (rf * 100).toFixed(1) + '%';
   $('hud-rage-bar').parentElement.classList.toggle('low', rf < 0.25);
-  setText('hud-scrap', fmt(game.runScrap));
+  setText('hud-scrap', money(game.runScrap));
   setText('hud-chaos', fmt(game.runChaos));
   const w = game.worlds[game.world], next = game.worlds[game.world + 1];
   setText('hud-world-name', w.name);
@@ -745,8 +881,10 @@ function updateHud() {
   } else comboEl.hidden = true;
   lastCombo = game.combo;
   if (!game.event) $('hud-event').hidden = true;
+  if (game.boss) $('boss-hp').style.width = Math.max(0, game.boss.hp * 100).toFixed(1) + '%';
   if (game.quest) { $('q-bar').style.width = (Math.min(1, game.quest.progress / game.quest.count) * 100) + '%'; setText('q-label', `${game.quest.label} (${Math.min(game.quest.progress, game.quest.count)}/${game.quest.count})`); }
   // Fähigkeiten
+  setAb('ab-skill', p.skillCd / game.char.skill.cd, p.skillCd > 0 ? p.skillCd.toFixed(1) : '', p.skillCd <= 0);
   setAb('ab-dash', p.dashCd / S.dashCooldown, p.dashCd > 0 ? p.dashCd.toFixed(1) : '', p.dashCd <= 0);
   setAb('ab-slam', p.slamCd / S.slamCooldown, p.slamCd > 0 ? p.slamCd.toFixed(1) : '', p.slamCd <= 0);
   if (p.berserkT > 0) setAb('ab-berserk', 1 - p.berserkT / S.berserkTime, p.berserkT.toFixed(1), false, 'active');

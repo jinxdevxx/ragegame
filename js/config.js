@@ -53,14 +53,25 @@ export const GOLDEN_CHANCE = 0.025;  // Chance auf goldenes Objekt
 export const GOLDEN_MULT = 6;         // Schrott-Multiplikator goldener Objekte
 export const CRATE_CHANCE = 0.03;     // Chance, dass statt eines Objekts eine Schrottkiste spawnt
 export const CRATE_MULT = 10;         // Schrott-Inhalt einer Kiste (× Objektwert)
-export const SCRAP_SCALE = 0.12;      // globaler Schrott-Faktor
+export const SCRAP_SCALE = 0.12;
+
+// Währungs-Stufen: Ab 1 Milliarde wird Schrott „eingeschmolzen“ und eine Stufe höher angezeigt
+export const CURRENCY_TIERS = [
+  { icon: '⚙', name: 'Schrott', value: 1 },
+  { icon: '🥈', name: 'Platin', value: 1e9 },
+  { icon: '💎', name: 'Diamant', value: 1e18 },
+  { icon: '🔮', name: 'Plasma', value: 1e27 },
+  { icon: '✴', name: 'Sternenstaub', value: 1e36 },
+  { icon: '♾', name: 'Antimaterie', value: 1e45 },
+  { icon: '👑', name: 'Rageium', value: 1e54 },
+];      // globaler Schrott-Faktor
 
 // Jede Welt ist härter als die davor (Faktor pro Welt-Stufe):
 export const WORLD_SCALING = {
   // frühe Welten (bis Galaxie) steigen stärker an, danach gleichmäßig bis Welt 50+
   early: 8,
-  hp: 1.95,        hpEarly: 2.6,       // Objekte halten mehr aus  → Wucht-Upgrades werden wichtig
-  absorb: 0.8,     absorbEarly: 0.7,   // man wächst langsamer     → Hunger-Upgrades werden wichtig
+  hp: 1.68,        hpEarly: 2.6,       // Objekte halten mehr aus  → Wucht-Upgrades werden wichtig
+  absorb: 0.85,    absorbEarly: 0.7,   // man wächst langsamer     → Hunger-Upgrades werden wichtig
   rageDrain: 1.08, rageDrainEarly: 1.12, // Wut sinkt schneller    → Wut-Upgrades werden wichtig
   lateRunAfter: 150, // ab so vielen Sekunden steigt der Wut-Verlust immer schneller (Runs bleiben kurz)
 };
@@ -363,7 +374,7 @@ const DIMENSIONS = [
     [['Urfunke', 'star', '#ffd23f'], ['Schöpfungskomet', 'comet', '#ff8a2a'], ['~Ur-Idee', 'nebula', '#ff8a2a'], ['Erste Welt', 'earth', '#3d8bd9'], ['*Big Bang', 'star', '#ffffff'], ['!Auge des Schöpfers', 'eye', '#ff8a2a'], ['Schöpfungstor', 'portal', '#ffd23f'], ['Ur-Galaxie', 'galaxy', '#ff8a2a']]],
   ['Das Letzte Licht', ['#0a0a0a', '#1a1a14', '#fff8d0', '#2a2a20', '#4a4a3a', '#fff8d0'], 'space', 'Lichtlöscher',
     [['Lichtrest', 'star', '#fff8d0'], ['Letzter Komet', 'comet', '#fff8d0'], ['~Glühwürmchen', 'nebula', '#fff8d0'], ['Erloschene Welt', 'planet', '#4a4a3a'], ['*Letzter Funke', 'star', '#ffffff'], ['!Letztes Auge', 'eye', '#fff8d0'], ['Ausgang', 'portal', '#fff8d0'], ['Die letzte Sonne', 'star', '#ffd23f']]],
-  ['Höllenschlund', ['#140000', '#3a0300', '#ff4a1f', '#5a0a00', '#c42a0a', '#ffb13d'], 'dimension', 'RAGE-GOTT',
+  ['Höllenschlund', ['#140000', '#3a0300', '#ff4a1f', '#5a0a00', '#c42a0a', '#ffb13d'], 'hell', 'RAGE-GOTT',
     [['Höllenglut', 'rock', '#ff4a1f'], ['Seelenkomet', 'comet', '#ffb13d'], ['~Verdammte Seele', 'nebula', '#ff6a3d'], ['Lavamond', 'planet', '#c42a0a'], ['*Schwefelsonne', 'star', '#ffd23f'], ['!Höllenwächter', 'eye', '#ff3b2f'], ['Höllentor', 'portal', '#ff4a1f'], ['Lavavulkan', 'volcano', '#3a0a05']]],
 ];
 const DIM_SIZES = [0.22, 0.35, 0.55, 0.8, 1.1, 1.6, 2.4, 3.6];
@@ -409,6 +420,7 @@ export const BOSS = {
   ringDamage: 16,          // % Wut bei Treffer durch Feuerring
   meteorDamage: 12,        // % Wut bei Meteortreffer
   chargeDamage: 20,        // % Wut beim Sturmangriff
+  fireballDamage: 10,      // % Wut pro Feuerball (nur in der Wutphase unter 30 % Leben)
   rewardScrap: 3000,       // × Welt-Schrott-Multiplikator
   rewardChaos: 250000,
   rewardDM: 250,           // ◆ Dunkle Materie
@@ -447,23 +459,23 @@ export const UPGRADE_CATS = [
 ];
 // mult: true = Wirkung pro Stufe multiplikativ (z. B. 1,12^Stufe) – skaliert endlos mit
 export const UPGRADES = [
-  { id: 'size',    cat: 'body',   name: 'Startgröße',     icon: '🦖', desc: 'Du startest größer (überspringt frühe Welten schneller).', base: 60,  growth: 1.8,  max: 80,  per: 0.08, mult: true },
-  { id: 'rage',    cat: 'body',   name: 'Wut-Tank',       icon: '🔥', desc: 'Mehr maximale Wut = längere Runs.',                       base: 40,  growth: 1.6,  max: 40,  per: 0.05, mult: true },
-  { id: 'calm',    cat: 'body',   name: 'Dauerwut',       icon: '⏳', desc: 'Wut sinkt langsamer.',                                     base: 90,  growth: 1.9,  max: 25,  per: 0.05 },
-  { id: 'absorb',  cat: 'body',   name: 'Hunger',         icon: '🍖', desc: 'Wachse schneller durch Zerstörung.',                       base: 80,  growth: 1.7, max: 200, per: 0.055, mult: true },
-  { id: 'speed',   cat: 'body',   name: 'Tempo',          icon: '💨', desc: 'Schneller stampfen.',                                      base: 45,  growth: 1.9,  max: 30,  per: 0.06 },
-  { id: 'dmg',     cat: 'combat', name: 'Wucht',          icon: '👊', desc: 'Mehr Schaden pro Schlag.',                                 base: 50,  growth: 1.65,  max: 300, per: 0.11, mult: true },
-  { id: 'hard',    cat: 'combat', name: 'Härte',          icon: '🪨', desc: 'Zerstöre Objekte, die größer sind als du.',               base: 150, growth: 2.2,  max: 15,  per: 0.06 },
-  { id: 'dash',    cat: 'combat', name: 'Ansturm',        icon: '⚡', desc: 'Ansturm (Leertaste) lädt schneller auf.',                  base: 90,  growth: 2.0,  max: 20,  per: 0.06 },
-  { id: 'slam',    cat: 'combat', name: 'Erdbeben',       icon: '💥', desc: 'Stampfer (E): größerer Radius, kürzere Abklingzeit.',      base: 120, growth: 2.0,  max: 20,  per: 0.06 },
-  { id: 'berserk', cat: 'combat', name: 'Berserker',      icon: '😡', desc: 'Berserker (R) lädt sich schneller auf.',                   base: 135, growth: 2.0,  max: 20,  per: 0.1 },
-  { id: 'combo',   cat: 'combat', name: 'Kettenreaktion', icon: '⛓', desc: 'Längeres Kombo-Fenster und höherer Kombo-Bonus.',          base: 110, growth: 2.0,  max: 15,  per: 0.08 },
-  { id: 'scrap',   cat: 'loot',   name: 'Schrottgier',    icon: '⚙', desc: 'Mehr Schrott pro Objekt.',                                 base: 70,  growth: 1.75, max: 300, per: 0.1, mult: true },
-  { id: 'magnet',  cat: 'loot',   name: 'Magnet',         icon: '🧲', desc: 'Zieht Schrott und kleine Krümel aus der Ferne an.',       base: 105, growth: 2.0,  max: 20,  per: 0.6 },
-  { id: 'chaosup', cat: 'loot',   name: 'Chaos-Rausch',   icon: '☠', desc: 'Mehr ☠ Chaos pro Zerstörung.',                            base: 100, growth: 1.7,  max: 150, per: 0.06, mult: true },
-  { id: 'luck',    cat: 'loot',   name: 'Gold-Riecher',   icon: '✨', desc: 'Goldene Objekte (×6 Schrott) tauchen öfter auf.',         base: 140, growth: 2.1,  max: 15,  per: 0.15 },
-  { id: 'crates',  cat: 'loot',   name: 'Kistenfinder',   icon: '📦', desc: 'Schrottkisten tauchen öfter auf.',                        base: 140, growth: 2.1,  max: 15,  per: 0.15 },
-  { id: 'quest',   cat: 'loot',   name: 'Auftragskiller', icon: '📜', desc: 'Aufträge bringen mehr Schrott und Chaos.',                base: 100, growth: 2.0,  max: 10,  per: 0.25 },
+  { id: 'size',    cat: 'body',   name: 'Startgröße',     icon: '🦖', desc: 'Du startest größer (überspringt frühe Welten schneller).', base: 150,  growth: 1.8,  max: 80,  per: 0.08, mult: true },
+  { id: 'rage',    cat: 'body',   name: 'Wut-Tank',       icon: '🔥', desc: 'Mehr maximale Wut = längere Runs.',                       base: 100,  growth: 1.6,  max: 40,  per: 0.05, mult: true },
+  { id: 'calm',    cat: 'body',   name: 'Dauerwut',       icon: '⏳', desc: 'Wut sinkt langsamer.',                                     base: 225,  growth: 1.9,  max: 25,  per: 0.05 },
+  { id: 'absorb',  cat: 'body',   name: 'Hunger',         icon: '🍖', desc: 'Wachse schneller durch Zerstörung.',                       base: 200,  growth: 1.6, max: 200, per: 0.055, mult: true },
+  { id: 'speed',   cat: 'body',   name: 'Tempo',          icon: '💨', desc: 'Schneller stampfen.',                                      base: 112,  growth: 1.9,  max: 30,  per: 0.06 },
+  { id: 'dmg',     cat: 'combat', name: 'Wucht',          icon: '👊', desc: 'Mehr Schaden pro Schlag.',                                 base: 125,  growth: 1.52,  max: 300, per: 0.11, mult: true },
+  { id: 'hard',    cat: 'combat', name: 'Härte',          icon: '🪨', desc: 'Zerstöre Objekte, die größer sind als du.',               base: 375, growth: 2.2,  max: 15,  per: 0.06 },
+  { id: 'dash',    cat: 'combat', name: 'Ansturm',        icon: '⚡', desc: 'Ansturm (Leertaste) lädt schneller auf.',                  base: 225,  growth: 2.0,  max: 20,  per: 0.06 },
+  { id: 'slam',    cat: 'combat', name: 'Erdbeben',       icon: '💥', desc: 'Stampfer (E): größerer Radius, kürzere Abklingzeit.',      base: 300, growth: 2.0,  max: 20,  per: 0.06 },
+  { id: 'berserk', cat: 'combat', name: 'Berserker',      icon: '😡', desc: 'Berserker (R) lädt sich schneller auf.',                   base: 337, growth: 2.0,  max: 20,  per: 0.1 },
+  { id: 'combo',   cat: 'combat', name: 'Kettenreaktion', icon: '⛓', desc: 'Längeres Kombo-Fenster und höherer Kombo-Bonus.',          base: 275, growth: 2.0,  max: 15,  per: 0.08 },
+  { id: 'scrap',   cat: 'loot',   name: 'Schrottgier',    icon: '⚙', desc: 'Mehr Schrott pro Objekt.',                                 base: 175,  growth: 1.75, max: 300, per: 0.1, mult: true },
+  { id: 'magnet',  cat: 'loot',   name: 'Magnet',         icon: '🧲', desc: 'Zieht Schrott und kleine Krümel aus der Ferne an.',       base: 262, growth: 2.0,  max: 20,  per: 0.6 },
+  { id: 'chaosup', cat: 'loot',   name: 'Chaos-Rausch',   icon: '☠', desc: 'Mehr ☠ Chaos pro Zerstörung.',                            base: 250, growth: 1.7,  max: 150, per: 0.06, mult: true },
+  { id: 'luck',    cat: 'loot',   name: 'Gold-Riecher',   icon: '✨', desc: 'Goldene Objekte (×6 Schrott) tauchen öfter auf.',         base: 350, growth: 2.1,  max: 15,  per: 0.15 },
+  { id: 'crates',  cat: 'loot',   name: 'Kistenfinder',   icon: '📦', desc: 'Schrottkisten tauchen öfter auf.',                        base: 350, growth: 2.1,  max: 15,  per: 0.15 },
+  { id: 'quest',   cat: 'loot',   name: 'Auftragskiller', icon: '📜', desc: 'Aufträge bringen mehr Schrott und Chaos.',                base: 250, growth: 2.0,  max: 10,  per: 0.25 },
 ];
 
 // ---------------------------------------------------------------------
@@ -475,7 +487,7 @@ export const MUTATIONS = [
   { id: 'turbo',    name: 'Turbo',          icon: '💨', desc: '+30 % Tempo.' },
   { id: 'greed',    name: 'Gier',           icon: '💰', desc: '+60 % Schrott.' },
   { id: 'zen',      name: 'Kochende Ruhe',  icon: '🧘', desc: 'Wut sinkt 30 % langsamer.' },
-  { id: 'hole',     name: 'Schwarzes Loch', icon: '🌀', desc: 'Saugt kleine Objekte an.' },
+  { id: 'hole',     name: 'Super-Magnet',   icon: '🧲', desc: 'Magnet-Radius +6 Körpergrößen – dein Magnet saugt jetzt auch fressbare Objekte an (nicht nur Krümel).' },
   { id: 'shock',    name: 'Schockwelle',    icon: '🔊', desc: 'Alle 4 s eine Druckwelle um dich herum.' },
   { id: 'glutton',  name: 'Vielfraß',       icon: '😋', desc: '+40 % Wachstum.' },
   { id: 'hardhead', name: 'Dickschädel',    icon: '🪖', desc: 'Zerstöre noch größere Objekte (+20 %).' },
@@ -513,6 +525,18 @@ export const ABILITIES = {
 };
 
 // ---------------------------------------------------------------------
+// Skill-Evolutionen: ab einer Upgrade-Stufe mit ☠ Chaos freischalten (bleiben für immer)
+// ---------------------------------------------------------------------
+export const SKILL_EVOS = [
+  { id: 'dash1',    ability: 'dash',    name: 'Flammen-Ansturm', icon: '🔥', upg: 'dash',    lvl: 8,  cost: 20000,   desc: 'Der Ansturm hinterlässt eine Feuerspur, die alles Zerstörbare darin verbrennt.' },
+  { id: 'dash2',    ability: 'dash',    name: 'Meteor-Ansturm',  icon: '☄', upg: 'dash',    lvl: 16, cost: 400000,  desc: 'Am Ende jedes Ansturms schlägt ein Meteor ein – große Explosion um dich herum.', needs: 'dash1' },
+  { id: 'slam1',    ability: 'slam',    name: 'Nachbeben',       icon: '🌊', upg: 'slam',    lvl: 8,  cost: 30000,   desc: 'Nach 0,4 s folgt eine zweite, 50 % größere Erdbebenwelle.' },
+  { id: 'slam2',    ability: 'slam',    name: 'Erdspalter',      icon: '⛰', upg: 'slam',    lvl: 16, cost: 600000,  desc: 'Der Stampfer macht Hindernisse 4 s lang harmlos und zieht alle Münzen im großen Umkreis zu dir.', needs: 'slam1' },
+  { id: 'berserk1', ability: 'berserk', name: 'Titanenwut',      icon: '🗿', upg: 'berserk', lvl: 8,  cost: 50000,   desc: 'Im Berserker zerbröselt alles Zerstörbare sofort bei Berührung.' },
+  { id: 'berserk2', ability: 'berserk', name: 'Endloser Zorn',   icon: '♾', upg: 'berserk', lvl: 16, cost: 1000000, desc: 'Jede Zerstörung im Berserker verlängert ihn um 0,15 s (bis zu +8 s).', needs: 'berserk1' },
+];
+
+// ---------------------------------------------------------------------
 // Monster (spielbare Charaktere) – freischalten mit ☠ Chaos
 //   perks: Multiplikatoren auf die Grundwerte
 //   req:   Meilenstein, der zusätzlich erreicht sein muss
@@ -520,31 +544,58 @@ export const ABILITIES = {
 export const CHARACTERS = [
   { id: 'grumpf', name: 'Grumpf', type: 'monster', title: 'Der Klassiker',
     desc: 'Ausgewogen, stur und immer schlecht gelaunt. Evolviert mit jeder Welt.',
-    colors: null, perks: {}, cost: 0, req: null },
+    colors: null, skill: { id: 'roar', name: 'Wutschrei', icon: '📢', cd: 22, desc: '+35 % Wut sofort, 6 s doppelter Schrott und die Kombo läuft nicht ab.' },
+    perks: {}, cost: 0, req: null },
   { id: 'stachel', name: 'Stachelkönig', type: 'spiky', title: 'Zerfetzer',
     desc: '+35 % Schaden. Seine Stacheln reißen alles auf. Etwas langsamer.',
     colors: { body: '#3f8a4f', belly: '#d6f0a8', horn: '#fff6dc', dark: '#14361c' },
+    skill: { id: 'spikes', name: 'Stachelhagel', icon: '🦔', cd: 9, desc: '16 Stacheln schießen rundum und zerlegen alles Zerstörbare in ihrer Bahn.' },
     perks: { damage: 1.35, speed: 0.92 }, cost: 1500, req: { kills: 1500, label: 'Zerstöre insgesamt 1.500 Objekte' } },
   { id: 'flitzer', name: 'Flitzer', type: 'lizard', title: 'Sprinter',
     desc: '+25 % Tempo, Ansturm lädt 35 % schneller. Dafür 10 % kleinerer Wut-Tank.',
     colors: { body: '#2fb8d9', belly: '#fff2a8', horn: '#ffffff', dark: '#0b3a4a' },
+    skill: { id: 'rush', name: 'Turbo-Rausch', icon: '💨', cd: 16, desc: '5 s lang 80 % schneller und Ansturm ohne Abklingzeit.' },
     perks: { speed: 1.25, dash: 0.65, rage: 0.9 }, cost: 4000, req: { world: 2, label: 'Erreiche die Stadt' } },
   { id: 'golem', name: 'Magma-Golem', type: 'golem', title: 'Wandelnde Katastrophe',
     desc: 'Explosionen doppelt so groß, Stampfer 40 % stärker, Hindernisse tun halb so weh. Wächst 10 % langsamer.',
     colors: { body: '#5a4a48', belly: '#ff8a2a', horn: '#2a1c1a', dark: '#1a1010' },
+    skill: { id: 'lava', name: 'Lava-Spur', icon: '🌋', cd: 15, desc: '6 s lang hinterlässt du Lava, die alles Zerstörbare darin schmilzt.' },
     perks: { boom: 2, slam: 1.4, hazard: 0.5, absorb: 0.9 }, cost: 12000, req: { kills: 8000, label: 'Zerstöre insgesamt 8.000 Objekte' } },
   { id: 'goldzahn', name: 'Goldzahn', type: 'dragon', title: 'Gieriger Drache',
     desc: '+60 % Schrott, goldene Objekte 2,5× so häufig, Münzen fliegen ihm von selbst zu.',
     colors: { body: '#e8a72a', belly: '#fff0b0', horn: '#fffaf0', dark: '#6a3a00' },
+    skill: { id: 'gold', name: 'Goldregen', icon: '✨', cd: 28, desc: 'Alles im Sichtfeld wird golden (×6 Schrott).' },
     perks: { scrap: 1.6, golden: 2.5, magnet: 2 }, cost: 35000, req: { world: 4, label: 'Erreiche den Kontinent' } },
-  { id: 'infernus', name: 'Infernus', type: 'dragon', title: 'Bezwinger der Hölle',
-    desc: 'Die Belohnung für den Sieg über ZORNOS. ×2,5 Schaden, ×1,4 Wachstum, +40 % Wut, Explosionen ×1,5, doppelter Schrott, Berserker +4 s. Gebaut für das, was nach Welt 50 kommt.',
-    colors: { body: '#2a0505', belly: '#ff6a1f', horn: '#ffd23f', dark: '#000000' },
-    perks: { damage: 2.5, absorb: 1.4, rage: 1.4, boom: 1.5, scrap: 2, berserkTime: 4 }, cost: 0, req: { boss: true, label: 'Besiege ZORNOS in Welt 50' }, bossOnly: true },
   { id: 'void', name: 'Void', type: 'alien', title: 'Wesen aus dem Nichts',
     desc: 'Berserker lädt 70 % schneller und hält 3 s länger. Startet 25 % größer.',
     colors: { body: '#2a1a5a', belly: '#b06bff', horn: '#7fffe0', dark: '#0a0520' },
+    skill: { id: 'singularity', name: 'Singularität', icon: '🕳', cd: 18, desc: 'Erschafft 4 s lang ein Schwarzes Loch vor dir, das alles Zerstörbare einsaugt und frisst.' },
     perks: { berserk: 1.7, berserkTime: 3, size: 1.25 }, cost: 90000, req: { world: 5, label: 'Erreiche Planetar' } },
+  { id: 'frost', name: 'Frostbeule', type: 'spiky', title: 'Eiskalter Zorn',
+    desc: 'Hindernisse tun 40 % weniger weh, +20 % Schaden, +10 % Wut.',
+    colors: { body: '#bfe8ff', belly: '#ffffff', horn: '#5ad0ff', dark: '#0a3a5a' },
+    skill: { id: 'freeze', name: 'Eiszeit', icon: '❄', cd: 20, desc: '5 s lang friert alles im Sichtfeld ein: nichts bewegt sich, Hindernisse sind harmlos, alles zerbricht mit einem Schlag.' },
+    perks: { hazard: 0.6, damage: 1.2, rage: 1.1 }, cost: 250000, req: { world: 11, label: 'Erreiche das Kristallreich (Welt 12)' } },
+  { id: 'kraken', name: 'Kraken', type: 'alien', title: 'Griff aus der Tiefe',
+    desc: 'Magnet +2, +20 % Wachstum, +15 % Schrott.',
+    colors: { body: '#3a2a7a', belly: '#7fffe0', horn: '#ff6fa8', dark: '#120a30' },
+    skill: { id: 'grab', name: 'Tentakelgriff', icon: '🐙', cd: 10, desc: 'Packt die 6 nächsten zerstörbaren Objekte (auch zähe) und zerquetscht sie sofort.' },
+    perks: { magnet: 2, absorb: 1.2, scrap: 1.15 }, cost: 1000000, req: { kills: 100000, label: 'Zerstöre insgesamt 100.000 Objekte' } },
+  { id: 'mecha', name: 'Mecha-Rex', type: 'golem', title: 'Kampfmaschine',
+    desc: '+30 % Schaden, Explosionen ×1,4, Ansturm lädt 20 % schneller.',
+    colors: { body: '#8a8d96', belly: '#ffd23f', horn: '#2a2d36', dark: '#1a1c22' },
+    skill: { id: 'rockets', name: 'Raketensalve', icon: '🚀', cd: 14, desc: '10 Raketen fliegen auf Ziele im Sichtfeld und sprengen sie.' },
+    perks: { damage: 1.3, boom: 1.4, dash: 0.8 }, cost: 5000000, req: { world: 19, label: 'Erreiche die Sternenschmiede (Welt 20)' } },
+  { id: 'phoenix', name: 'Phönix', type: 'dragon', title: 'Aus der Asche',
+    desc: '+30 % Wut, +15 % Tempo, +15 % Wachstum. Einmal pro Run: Wiedergeburt mit halber Wut statt Run-Ende.',
+    colors: { body: '#ff6a1f', belly: '#ffe46a', horn: '#fff8d0', dark: '#6a1a00' },
+    skill: { id: 'phoenixdash', name: 'Feuerflug', icon: '🔥', cd: 12, desc: '1 s unverwundbarer Feuer-Sturzflug, der alles bis 150 % Zerstörbarkeit auf dem Weg vernichtet.' },
+    perks: { rage: 1.3, speed: 1.15, absorb: 1.15 }, cost: 25000000, req: { world: 29, label: 'Erreiche den Zeitwirbel (Welt 30)' } },
+  { id: 'infernus', name: 'Infernus', type: 'dragon', title: 'Bezwinger der Hölle',
+    desc: 'Die Belohnung für den Sieg über ZORNOS. ×2,5 Schaden, ×1,4 Wachstum, +40 % Wut, Explosionen ×1,5, doppelter Schrott, Berserker +4 s. Gebaut für das, was nach Welt 50 kommt.',
+    colors: { body: '#2a0505', belly: '#ff6a1f', horn: '#ffd23f', dark: '#000000' },
+    skill: { id: 'hellfire', name: 'Höllenfeuer', icon: '😈', cd: 12, desc: '3 Explosionswellen um dich herum – sprengen auch Objekte, die eigentlich zu groß sind.' },
+    perks: { damage: 2.5, absorb: 1.4, rage: 1.4, boom: 1.5, scrap: 2, berserkTime: 4 }, cost: 0, req: { boss: true, label: 'Besiege ZORNOS in Welt 50' }, bossOnly: true },
 ];
 
 // ---------------------------------------------------------------------
@@ -692,4 +743,29 @@ export const DM_PERKS = [
   { id: 'dm_chaos',  name: 'Chaostheorie',  icon: '🌀', desc: '+10 % ☠ Chaos pro Stufe (multiplikativ).',            base: 1, growth: 1.24, max: 150, per: 0.1, mult: true },
   { id: 'dm_mut',    name: 'Genlabor',      icon: '🧬', desc: 'Starte jeden Run mit einer zufälligen Mutation (pro Stufe eine mehr).', base: 5, growth: 3, max: 3, per: 1 },
   { id: 'dm_keep',   name: 'Schurken-Erbe', icon: '👑', desc: 'Nach dem Urknall behältst du 10 % deiner Upgrade-Stufen pro Stufe.', base: 4, growth: 2.2, max: 5, per: 0.1 },
+];
+
+// ---------------------------------------------------------------------
+// ERFOLGE – jede Stufe bringt ☠ Chaos. stat: Wert aus der Statistik.
+// ---------------------------------------------------------------------
+const ach = (id, name, icon, stat, steps, rewards, desc) => steps.map((goal, i) => ({ id: `${id}${i + 1}`, group: id, name: `${name} ${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][i]}`, icon, stat, goal, reward: rewards[i], desc: desc(goal) }));
+const de = n => n.toLocaleString('de-DE');
+export const ACHIEVEMENTS = [
+  ...ach('kills', 'Zerstörer', '💥', 'kills', [100, 1000, 10000, 100000, 1000000], [100, 500, 2500, 15000, 100000], g => `Zerstöre insgesamt ${de(g)} Objekte`),
+  ...ach('world', 'Weltenwanderer', '🗺', 'maxWorld', [1, 4, 7, 11, 19, 29, 39, 49], [100, 800, 4000, 20000, 100000, 400000, 1500000, 5000000], g => `Erreiche Welt ${g + 1}`),
+  ...ach('combo', 'Kombo-König', '⛓', 'bestCombo', [20, 50, 100, 200], [200, 1500, 8000, 40000], g => `Schaffe eine ${g}er-Kombo`),
+  ...ach('golden', 'Goldjäger', '✨', 'golden', [10, 100, 1000], [300, 3000, 30000], g => `Zerstöre ${de(g)} goldene Objekte`),
+  ...ach('crates', 'Kistenknacker', '📦', 'crates', [10, 100, 1000], [300, 3000, 30000], g => `Knacke ${de(g)} Schrottkisten`),
+  ...ach('booms', 'Kettenreaktion', '🧨', 'explosions', [50, 500, 5000], [300, 3000, 30000], g => `Lass ${de(g)} Explosionen hochgehen`),
+  ...ach('berserk', 'Berserker', '😡', 'berserks', [10, 100, 1000], [300, 3000, 30000], g => `Zünde ${de(g)}-mal den Berserker`),
+  ...ach('skills', 'Spezialist', '🎯', 'skills', [25, 250, 2500], [300, 3000, 30000], g => `Setze ${de(g)}-mal einen Monster-Skill (F) ein`),
+  ...ach('quests', 'Auftragskiller', '📜', 'quests', [10, 100, 1000], [300, 3000, 30000], g => `Erfülle ${de(g)} Aufträge`),
+  ...ach('runs', 'Dauerwüter', '🔁', 'runs', [10, 100, 1000], [200, 2000, 20000], g => `Spiele ${de(g)} Runs`),
+  ...ach('bang', 'Urknall', '💥', 'prestiges', [1, 5, 20, 50], [1000, 10000, 100000, 1000000], g => `Löse ${g}-mal den Urknall aus`),
+  ...ach('monsters', 'Monstersammler', '👹', 'monsters', [3, 6, 11], [2000, 50000, 2000000], g => `Besitze ${g} Monster`),
+  ...ach('rich', 'Neureich', '🥈', 'bestTier', [1, 2, 3, 4], [20000, 500000, 5000000, 50000000], g => `Erreiche ${['', 'Platin', 'Diamant', 'Plasma', 'Sternenstaub'][g]}`),
+  ...ach('evo', 'Evolutionär', '🧬', 'evos', [1, 3, 6], [5000, 100000, 2000000], g => `Entwickle ${g} Fähigkeit${g === 1 ? '' : 'en'} weiter`),
+  { id: 'maps1', group: 'maps', name: 'Kartograf', icon: '🌍', stat: 'maps', goal: 3, reward: 50000, desc: 'Spiele auf allen 3 Karten' },
+  { id: 'long1', group: 'long', name: 'Zähe Wut', icon: '⏱', stat: 'longestRun', goal: 180, reward: 5000, desc: 'Überlebe einen Run 3 Minuten lang' },
+  { id: 'boss1', group: 'boss', name: 'Höllenbezwinger', icon: '😈', stat: 'bossKills', goal: 1, reward: 10000000, desc: 'Besiege ZORNOS, den Höllenfürsten, in Welt 50' },
 ];

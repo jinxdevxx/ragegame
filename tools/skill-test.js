@@ -67,7 +67,7 @@ const L = 5;
   check('Tempo', b.p.x > a.p.x * 1.2, `Strecke ${a.p.x.toFixed(0)} → ${b.p.x.toFixed(0)}`);
 }
 {
-  const grow = up => { const g = makeGame(up); const r0 = g.p.r; const o = obj(g, g.p.r * 1.6, 0, g.p.r * 0.6); o.hp = 0.0001; run(g, 0.4, input({ dx: 1 })); return g.p.r - r0; };
+  const grow = up => { const g = makeGame(up); const r0 = g.p.r; const o = obj(g, g.p.r * 1.6, 0, g.p.r * 0.3); o.hp = 0.0001; run(g, 0.4, input({ dx: 1 })); return g.p.r - r0; };
   const a = grow({}), b = grow({ absorb: L });
   check('Hunger', b > a * 1.2, `Wachstum ${a.toFixed(3)} → ${b.toFixed(3)}`);
 }
@@ -207,7 +207,9 @@ for (const m of C.MUTATIONS) {
   let ok = false, info = '';
   switch (m.id) {
     case 'boom': { const o = obj(g, g.p.r * 1.5, 0, g.p.r * 0.6); const n = obj(g, g.p.r * 2.3, 0, g.p.r * 0.4); g.kill(o, 'hit'); g.processExplosions(); ok = n.dead; info = 'Nachbar mitgerissen'; break; }
-    case 'hole': { const o = obj(g, g.p.r * 3, 0, g.p.r * 0.5); o.hp = o.maxHp = 1e12; run(g, 1.5); ok = o.dead && Math.abs(g.p.x) < 1; info = 'angesaugt und gefressen, ohne Schubsen'; break; }
+    case 'hole': { const o = obj(g, g.p.r * 3, 0, g.p.r * 0.5); const tough = obj(g, -g.p.r * 3, 0, g.p.r * 0.5); tough.hp = tough.maxHp = 1e12; const tx = tough.x; run(g, 1.5); const mg = makeGame({ magnet: 5 }), mh = makeGame({ magnet: 5 }, ['hole']); const far = obj(g, g.p.r * 7.5, g.p.r * 2, g.p.r * 0.5); run(g, 2.5);
+      ok = o.dead && far.dead && tough.x === tx && Math.abs(g.p.x) < 1 && g.magnetRange() > base.magnetRange() && mh.magnetRange() > mg.magnetRange();
+      info = `frisst Fressbares, lässt Zähes liegen, Magnet-Radius ${(base.magnetRange() / base.p.r).toFixed(1)}→${(g.magnetRange() / g.p.r).toFixed(1)} R, mit Magnet-Upgrade ${(mg.magnetRange() / mg.p.r).toFixed(1)}→${(mh.magnetRange() / mh.p.r).toFixed(1)} R`; break; }
     case 'shock': { const o = obj(g, g.p.r * 2.5, 0, g.p.r * 0.5); run(g, 0.2); ok = o.dead; info = 'Druckwelle zerstört'; break; }
     case 'spikes': ok = S.damage > B.damage; break;
     case 'turbo': ok = S.speed > B.speed; break;
@@ -251,6 +253,135 @@ console.log('\nHindernisse:');
   run(g, 0.4, input({ dx: 1 }));
   const a = makeGame(); obj(a, a.p.r * 2.2, 0, a.p.r * 1.6, { hazard: 15 }); const a0 = a.p.rage; run(a, 0.4, input({ dx: 1 }));
   check('Panzerhaut halbiert Hindernis-Schaden', (r0 - g.p.rage) < (a0 - a.p.rage) * 0.7);
+}
+
+// ---------------------------------------------------------------- Monster-Skills (Taste F)
+console.log('\nMonster-Skills (F):');
+function charGame(id) { const g = makeGame({}, [], id); return g; }
+const ring = (g, n, dist, size, extra = {}) => Array.from({ length: n }, (_, i) => { const a = i / n * Math.PI * 2; return obj(g, Math.cos(a) * g.p.r * dist, Math.sin(a) * g.p.r * dist, g.p.r * size, extra); });
+{
+  const g = charGame('grumpf'); g.p.rage = 30; g.useSkill();
+  const o = obj(g, g.p.r * 1.5, 0, g.p.r * 0.5); o.hp = 1e-9; g.kill(o, 'hit'); const withRoar = g.coins.reduce((s, c) => s + c.value, 0);
+  const h = charGame('grumpf'); const o2 = obj(h, h.p.r * 1.5, 0, h.p.r * 0.5); o2.hp = 1e-9; h.kill(o2, 'hit'); const without = h.coins.reduce((s, c) => s + c.value, 0);
+  check('Grumpf · Wutschrei: Wut + doppelter Schrott', g.p.rage > 60 && withRoar > without * 1.8, `Wut 30 → ${g.p.rage.toFixed(0)}, Schrott ×${(withRoar / without).toFixed(2)}`);
+}
+{
+  const g = charGame('stachel'); const os = ring(g, 8, 4, 0.5); g.useSkill(); run(g, 1);
+  check('Stachelkönig · Stachelhagel: zerlegt Objekte rundum', os.filter(o => o.dead).length >= 6, `${os.filter(o => o.dead).length}/8 zerstört`);
+}
+{
+  const g = charGame('flitzer'), h = charGame('flitzer'); g.useSkill(); run(g, 1, input({ dx: 1 })); run(h, 1, input({ dx: 1 }));
+  check('Flitzer · Turbo-Rausch: schneller + Ansturm ohne Abklingzeit', g.p.x > h.p.x * 1.5 && g.p.dashCd === 0, `Strecke ${h.p.x.toFixed(0)} → ${g.p.x.toFixed(0)}`);
+}
+{
+  const g = charGame('golem'); g.useSkill(); run(g, 0.4); const os = [obj(g, 0, 0, g.p.r * 0.5)]; os[0].x = g.p.x; os[0].y = g.p.y + g.p.r * 0.2; os[0].hp = os[0].maxHp = g.oneHit() * 2; run(g, 1.5);
+  check('Magma-Golem · Lava-Spur: schmilzt Objekte in der Lava', os[0].dead, os[0].dead ? 'geschmolzen' : 'heil');
+}
+{
+  const g = charGame('goldzahn'); const os = ring(g, 6, 5, 0.5); g.useSkill();
+  check('Goldzahn · Goldregen: Objekte im Sichtfeld werden golden', os.every(o => o.golden));
+}
+{
+  const g = charGame('void'); g.p.lookX = 1; g.p.lookY = 0; const os = [obj(g, g.p.r * 6, g.p.r * 2, 0.5 * 1), obj(g, g.p.r * 4, -g.p.r * 3, 0.5)]; os.forEach(o => { o.size = g.p.r * 0.5; o.hp = o.maxHp = g.oneHit() * 2; }); g.useSkill(); run(g, 3);
+  check('Void · Singularität: saugt ein und frisst', os.every(o => o.dead), `${os.filter(o => o.dead).length}/2 gefressen`);
+}
+{
+  const g = charGame('frost'); const mover = obj(g, g.p.r * 5, 0, g.p.r * 0.5, { move: 'drive', speed: 2, vx: 50, vy: 0 }); const hz = obj(g, g.p.r * 2.2, 0, g.p.r * 1.6, { hazard: 15 }); const x0 = mover.x; g.useSkill();
+  const r0 = g.p.rage; run(g, 0.6, input({ dx: 1 }));
+  check('Frostbeule · Eiszeit: alles steht still, Hindernisse harmlos', mover.x === x0 && g.p.rage > r0 - 6, `Objekt bewegt ${(mover.x - x0).toFixed(1)}, Wut ${r0.toFixed(0)} → ${g.p.rage.toFixed(0)}`);
+}
+{
+  const g = charGame('kraken'); const os = ring(g, 8, 4, 0.6); os.forEach(o => { o.hp = o.maxHp = 1e12; }); g.useSkill();
+  check('Kraken · Tentakelgriff: zerquetscht 6 Objekte (auch zähe)', os.filter(o => o.dead).length === 6, `${os.filter(o => o.dead).length}/8`);
+}
+{
+  const g = charGame('mecha'); const os = ring(g, 10, 6, 0.5); g.useSkill(); run(g, 1.5);
+  check('Mecha-Rex · Raketensalve: sprengt Ziele im Sichtfeld', os.filter(o => o.dead).length >= 7, `${os.filter(o => o.dead).length}/10`);
+}
+{
+  const g = charGame('phoenix'); g.p.lookX = 1; g.p.lookY = 0; const os = [1, 2, 3].map(i => obj(g, g.p.r * (3 + i * 3), 0, g.p.r * 0.9)); os.forEach(o => { o.hp = o.maxHp = 1e12; }); g.useSkill(); run(g, 1.2);
+  check('Phönix · Feuerflug: vernichtet alles auf dem Weg', os.every(o => o.dead), `${os.filter(o => o.dead).length}/3`);
+  const h = charGame('phoenix'); h.p.rage = 0.001; run(h, 0.2);
+  check('Phönix · Wiedergeburt (einmal pro Run)', h.state === 'play' && h.p.rage > 10 && h.p.revived);
+}
+{
+  const g = charGame('infernus'); const big = ring(g, 6, 3, 1.3); big.forEach(o => { o.hp = o.maxHp = g.oneHit() * 2; }); g.useSkill(); run(g, 1);
+  check('Infernus · Höllenfeuer: sprengt auch zu große Objekte', big.filter(o => o.dead).length >= 5, `${big.filter(o => o.dead).length}/6 (130 % deiner Größe)`);
+}
+check('Jedes Monster hat einen Skill', C.CHARACTERS.every(c => c.skill && c.skill.id && c.skill.cd > 0));
+
+// ---------------------------------------------------------------- Skill-Evolutionen
+console.log('\nSkill-Evolutionen:');
+function evoGame(evos) { const save = defaultSave(); save.evos = evos; const g = new Game(save, {}); g.vw = 1280; g.vh = 720; g.start(); g.objects = []; freeze(g); return g; }
+{
+  const g = evoGame({ dash1: true }); const o = obj(g, g.p.r * 3, g.p.r * 1.4, g.p.r * 0.5); o.hp = o.maxHp = g.oneHit() * 2;
+  run(g, 0.05, input({ dash: true, dx: 1 })); run(g, 0.4); o.x = g.lava[0] ? g.lava[0].x : o.x; o.y = g.lava[0] ? g.lava[0].y : o.y; run(g, 1);
+  check('Flammen-Ansturm: Feuerspur verbrennt', g.lava.length > 0 || o.dead, `${o.dead ? 'verbrannt' : 'heil'}`);
+}
+{
+  const g = evoGame({ dash1: true, dash2: true }); const os = ring(g, 6, 2.5, 0.6); os.forEach(o => { o.hp = o.maxHp = g.oneHit() * 2; });
+  g.p.dashT = 0.01; g.p.dashX = 1; run(g, 0.1);
+  check('Meteor-Ansturm: Explosion am Ende', os.filter(o => o.dead).length >= 4, `${os.filter(o => o.dead).length}/6`);
+}
+{
+  const g = evoGame({ slam1: true }); const far = ring(g, 6, 4.6, 0.5); far.forEach(o => { o.hp = o.maxHp = g.oneHit() * 1.5; });
+  const h = evoGame({}); const far2 = ring(h, 6, 4.6, 0.5); far2.forEach(o => { o.hp = o.maxHp = h.oneHit() * 1.5; });
+  run(g, 0.05, input({ slam: true })); run(g, 0.6); run(h, 0.05, input({ slam: true })); run(h, 0.6);
+  check('Nachbeben: zweite, größere Welle', far.filter(o => o.dead).length > far2.filter(o => o.dead).length, `${far2.filter(o => o.dead).length} → ${far.filter(o => o.dead).length} zerstört`);
+}
+{
+  const g = evoGame({ slam1: true, slam2: true });
+  g.coins.push({ x: g.p.x + g.p.r * 10, y: g.p.y, z: 0, vx: 0, vy: 0, vz: 0, g: 1, value: 10, age: 1, life: 10, golden: false, spin: 0 });
+  run(g, 0.05, input({ slam: true })); obj(g, g.p.r * 2.2, 0, g.p.r * 1.6, { hazard: 15 }); let hurt = false; for (let t = 0; t < 1.2; t += DT) { freeze(g); g.update(DT, input({ dx: 1 })); if (g.p.hurtT > 0) hurt = true; }
+  check('Erdspalter: Münzen fliegen zu dir, Hindernisse harmlos', g.runScrap > 0 && !hurt, `Schrott ${g.runScrap.toFixed(0)}, Treffer durch Hindernis: ${hurt ? 'ja' : 'nein'}`);
+}
+{
+  const g = evoGame({ berserk1: true }); g.p.berserk = 1; run(g, 0.05, input({ berserk: true }));
+  const o = obj(g, g.p.r * 2.2, 0, g.p.r * 1.0); o.hp = o.maxHp = 1e12; run(g, 0.5, input({ dx: 1 }));
+  check('Titanenwut: zerbröselt alles bei Berührung', o.dead);
+}
+{
+  const g = evoGame({ berserk1: true, berserk2: true }); g.p.berserk = 1; run(g, 0.05, input({ berserk: true })); const t0 = g.p.berserkT;
+  for (let i = 0; i < 10; i++) { const o = obj(g, g.p.r * 1.5, 0, g.p.r * 0.5); g.kill(o, 'hit'); }
+  check('Endloser Zorn: Zerstörung verlängert den Berserker', g.p.berserkT > t0 + 1, `${t0.toFixed(2)} s → ${g.p.berserkT.toFixed(2)} s`);
+}
+
+// ---------------------------------------------------------------- Run beenden
+console.log('\nRun beenden:');
+{
+  const save = defaultSave(); const g = new Game(save, {}); g.vw = 1280; g.vh = 720; g.start(); g.objects = [];
+  g.runScrap = 1234.6; g.runChaos = 55.2; g.p.rage = 0; g.die(); g.dyingT = 0; g.update(DT, input());
+  check('Run beenden behält Schrott und Chaos', save.scrap === 1234 && save.chaos === 55 && g.state === 'over', `Schrott ${save.scrap}, Chaos ${save.chaos}`);
+}
+
+// ---------------------------------------------------------------- Endboss
+console.log('\nEndboss ZORNOS (Welt 50):');
+{
+  const save = defaultSave(); C.UPGRADES.forEach(u => save.upgrades[u.id] = Math.min(u.max, 200));
+  const g = new Game(save, {}); g.vw = 1280; g.vh = 720;
+  g.start({ radius: C.WORLDS[C.BOSS.world].minRadius * 1.2 });
+  g.objects = []; g.spawnT = 1e9;
+  for (let t = 0; t < 0.2; t += DT) g.update(DT, input());
+  check('Boss erscheint in Welt 50', !!g.boss, g.worlds[g.world].name);
+  const rage0 = g.p.rage; g.boss.intro = 0; g.boss.attackT = 1e9;
+  for (let t = 0; t < 3; t += DT) { g.spawnT = 1e9; g.update(DT, input()); }
+  check('Wut sinkt im Bosskampf nicht (Wut = Leben)', Math.abs(g.p.rage - rage0) < 1e-6, `${rage0.toFixed(1)} → ${g.p.rage.toFixed(1)}`);
+  const o = obj(g, g.p.r * 1.5, 0, g.p.r * 0.4); o.hp = 1e-9; g.kill(o, 'hit');
+  check('Zerstörung füllt im Bosskampf keine Wut auf', g.p.rage <= rage0 + 1e-6);
+  // Feuerring trifft
+  g.bossShots.push({ kind: 'ring', x: g.p.x - g.p.r * 3, y: g.p.y, r: g.p.r * 2.6, speed: g.p.r * 3, max: g.p.r * 20, hit: false });
+  for (let t = 0; t < 0.5; t += DT) { g.spawnT = 1e9; g.update(DT, input()); }
+  check('Feuerring zieht Wut (Leben) ab', g.p.rage < rage0 - 1, `${rage0.toFixed(0)} → ${g.p.rage.toFixed(0)}`);
+  // Treffer am Boss
+  g.p.hurtCd = 0; const hp0 = g.boss.hp; g.boss.x = g.p.x + g.boss.size * 0.9; g.boss.y = g.p.y; g.boss.hitCd = 0;
+  for (let t = 0; t < 0.3; t += DT) { g.spawnT = 1e9; g.update(DT, input({ dx: 1 })); }
+  check('Treffer machen dem Boss Schaden', g.boss && g.boss.hp < hp0, `${(hp0 * 100).toFixed(1)} % → ${g.boss ? (g.boss.hp * 100).toFixed(1) : 0} %`);
+  // Sieg
+  g.bossHurt(1e9);
+  check('Boss besiegt', !g.boss && g.bossKilled);
+  g.p.rage = 0; g.die(); g.dyingT = 0; g.update(DT, input());
+  check('Sieg schaltet Infernus frei', save.unlockedChars.includes('infernus') && save.bossKills === 1);
+  check('Sieg gibt Dunkle Materie', save.darkMatter >= C.BOSS.rewardDM);
 }
 
 console.log(`\n${passes} bestanden, ${fails} fehlgeschlagen`);
