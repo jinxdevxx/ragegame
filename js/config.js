@@ -502,10 +502,10 @@ export const MUTATIONS = [
 
 // Stapelbare Verstärkungen: kommen beim Welt-Aufstieg, sobald alle Mutationen vergeben sind
 export const BOOSTS = [
-  { id: 'b_dmg',   name: 'Mehr Wucht',   icon: '💪', desc: '+10 % Schaden (stapelbar).', stack: true },
-  { id: 'b_grow',  name: 'Mehr Hunger',  icon: '🍖', desc: '+8 % Wachstum (stapelbar).', stack: true },
-  { id: 'b_scrap', name: 'Mehr Beute',   icon: '💰', desc: '+15 % Schrott (stapelbar).', stack: true },
-  { id: 'b_rage',  name: 'Mehr Zorn',    icon: '🔥', desc: '+10 % Wut-Tank (stapelbar).', stack: true },
+  { id: 'b_dmg',   name: 'Mehr Wucht',   icon: '💪', desc: '+4 % Schaden (stapelbar).', stack: true },
+  { id: 'b_grow',  name: 'Mehr Hunger',  icon: '🍖', desc: '+3 % Wachstum (stapelbar).', stack: true },
+  { id: 'b_scrap', name: 'Mehr Beute',   icon: '💰', desc: '+6 % Schrott (stapelbar).', stack: true },
+  { id: 'b_rage',  name: 'Mehr Zorn',    icon: '🔥', desc: '+5 % Wut-Tank (stapelbar).', stack: true },
 ];
 
 // ---------------------------------------------------------------------
@@ -551,6 +551,39 @@ export const SKILL_EVOS = [
 //   perks: Multiplikatoren auf die Grundwerte
 //   req:   Meilenstein, der zusätzlich erreicht sein muss
 // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// MONSTER-LEVEL & TALENTE – jedes Monster sammelt beim Spielen EP (bis Level 99).
+// Pro Level 1 Talentpunkt. 4 Talente je Monster (je max. 25 Ränge):
+// Kraft + Hunger ab Lvl 1, Skill-Meister ab Lvl 15, Signatur-Talent ab Lvl 40.
+// Boni bewusst klein, damit die Balance erhalten bleibt.
+// ---------------------------------------------------------------------
+export const MONSTER_LEVEL = {
+  max: 99,
+  xpFor: L => Math.round(25 + 6 * Math.pow(L, 1.25)), // EP von Level L auf L+1 (Summe bis 99 ≈ 83.000)
+  xpRun: { base: 20, perKill: 0.08, perWorld: 18, perQuest: 6, killCap: 2500 }, // EP pro Run (unabhängig von Zahlengrößen)
+};
+export const TALENTS = [
+  { id: 'power', name: 'Kraft',        icon: '💪', max: 25, per: 0.006, stat: 'damage', lvl: 1,  desc: r => `+${(r * 0.6).toFixed(1)} % Schaden` },
+  { id: 'hunger', name: 'Hunger',      icon: '🍖', max: 25, per: 0.003, stat: 'absorb', lvl: 1,  desc: r => `+${(r * 0.3).toFixed(1)} % Wachstum` },
+  { id: 'mastery', name: 'Skill-Meister', icon: '🎯', max: 25, per: 0.01, stat: 'skillCd', lvl: 15, desc: r => `−${r} % Abklingzeit des Monster-Skills (F)` },
+  { id: 'sig', name: 'Signatur', icon: '⭐', max: 25, lvl: 40, sig: true }, // je Monster eigenes Talent (char.sig)
+];
+// Signatur-Talente: stat → Wirkung in computeStats (per pro Rang)
+export const SIGNATURES = {
+  grumpf:   { name: 'Sturkopf',     icon: '🔥', stat: 'rage',        per: 0.012, desc: r => `+${(r * 1.2).toFixed(1)} % Wut-Tank` },
+  stachel:  { name: 'Dornenpanzer', icon: '🦔', stat: 'hazard',      per: 0.015, desc: r => `−${(r * 1.5).toFixed(1)} % Schaden durch Hindernisse` },
+  flitzer:  { name: 'Windläufer',   icon: '💨', stat: 'speed',       per: 0.01,  desc: r => `+${r} % Tempo` },
+  golem:    { name: 'Glutkern',     icon: '🌋', stat: 'boom',        per: 0.02,  desc: r => `+${r * 2} % Explosionen` },
+  goldzahn: { name: 'Goldgier',     icon: '💰', stat: 'scrap',       per: 0.02,  desc: r => `+${r * 2} % Schrott` },
+  void:     { name: 'Leere',        icon: '🕳', stat: 'berserk',     per: 0.02,  desc: r => `+${r * 2} % Berserker-Ladung` },
+  frost:    { name: 'Eisherz',      icon: '❄', stat: 'berserkTime', per: 0.08,  desc: r => `+${(r * 0.08).toFixed(1)} s Berserker-Dauer` },
+  kraken:   { name: 'Saugnäpfe',    icon: '🐙', stat: 'magnet',      per: 0.06,  desc: r => `+${(r * 0.06).toFixed(1)} Magnet-Reichweite` },
+  mecha:    { name: 'Turbolader',   icon: '🚀', stat: 'dash',        per: 0.01,  desc: r => `−${r} % Ansturm-Abklingzeit` },
+  phoenix:  { name: 'Glutfunken',   icon: '✨', stat: 'golden',      per: 0.03,  desc: r => `+${r * 3} % goldene Objekte` },
+  infernus: { name: 'Höllenglut',   icon: '😈', stat: 'boom',        per: 0.02,  desc: r => `+${r * 2} % Explosionen` },
+  urzorn:   { name: 'Urkraft',      icon: '🌌', stat: 'damage',      per: 0.01,  desc: r => `+${r} % Schaden (zusätzlich)` },
+};
+
 // Premium-Skins: rein optisch, je Monster einzeln zu kaufen (mit Schrott, Stufe für Stufe)
 export const SKINS = [
   { id: 'silver',   name: 'Silber', icon: '🥈', cost: 5e8,  desc: 'Poliertes Silber mit Glanz und Funkeln' },

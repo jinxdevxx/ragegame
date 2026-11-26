@@ -68,6 +68,19 @@ const OUT = process.argv[2] || '/tmp';
   log('Mutation: volle Auswahl, nach 10 s automatisch gewählt, Run geht weiter', mut1.scr === 'screen-mutation' && mut1.cards === 3 && /10 s/.test(mut1.auto) && mut2.state === 'play' && mut2.n === 15, `${mut1.cards} Karten, danach ${mut2.state}`);
   await p.close();
 
+  // Monster-Level & Talente: Punkt vergeben, Run gibt EP, Balken korrekt (nicht halbiert/leer)
+  p = await page('?slot=1');
+  await p.evaluate(() => { const s = window.__rv.save; s.monsters = { grumpf: { xp: 0, lvl: 20, pts: {} } }; s.totalKills = 50; s.achievements = {}; });
+  await click(p, '#btn-chars'); await p.waitForTimeout(200); await click(p, '[data-talents="grumpf"]'); await p.waitForTimeout(200);
+  await click(p, '[data-tal="mastery"]'); await p.waitForTimeout(100);
+  const tal = await p.evaluate(() => ({ scr: [...document.querySelectorAll('.screen')].filter(s => !s.hidden).map(s => s.id).join(), pts: window.__rv.save.monsters.grumpf.pts, sigLocked: document.querySelector('[data-tal="sig"]').disabled }));
+  log('Talente: Skill-Meister ab Lvl 15 vergeben, Signatur (Lvl 40) gesperrt', tal.scr === 'screen-talents' && tal.pts.mastery === 1 && tal.sigLocked);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(150); await p.keyboard.press('Escape'); await p.waitForTimeout(150);
+  await click(p, '#btn-achievements'); await p.waitForTimeout(300);
+  const bw = await p.evaluate(() => { const e = document.querySelector('.ach:not(.done) .bar.tiny > div'); return e.getBoundingClientRect().width / e.parentElement.getBoundingClientRect().width; });
+  log('Erfolgs-Balken zeigt echten Fortschritt (50/100)', Math.abs(bw - 0.5) < 0.05, (bw * 100).toFixed(0) + ' %');
+  await p.close();
+
   // Erfolge + Statistik
   p = await page('?slot=1');
   await p.evaluate(() => { const s = window.__rv.save; s.totalKills = 1500; s.runs = 12; s.stats = { bestCombo: 25, playTime: 3700 }; });

@@ -3,7 +3,7 @@
 // Zeigt pro Upgrade-Stufe: Run-Dauer, erreichte Welt, Schrott, Chaos
 // und eine Progression über viele Runs (Bot kauft nach jedem Run Upgrades).
 import * as C from '../js/config.js';
-import { Game, upgradeCost, fmt, prestigeGain, doPrestige, dmCost } from '../js/game.js';
+import { raiseTalent, Game, upgradeCost, fmt, prestigeGain, doPrestige, dmCost } from '../js/game.js';
 import { defaultSave } from '../js/save.js';
 
 const RUNS = Number(process.argv[2]) || 6;
@@ -81,6 +81,8 @@ if (isMain) {
   const NOPRESTIGE = !!process.env.NOPRESTIGE, STUCK = Number(process.env.STUCK || 6); // Vergleich: ohne Urknall / früher Urknall
   const RUNS_TOTAL = Number(process.env.RUNS_TOTAL || 120);
   const buy = () => {
+    // Talentpunkte des Monsters verteilen (reihum, so weit freigeschaltet)
+    if (!process.env.NOTALENTS) for (let k = 0; k < 200; k++) { let any = false; for (const T of C.TALENTS) if (raiseTalent(save, save.selectedChar || 'grumpf', T.id)) any = true; if (!any) break; }
     for (;;) {
       let cheapest = null, cc = Infinity;
       for (const u of C.UPGRADES) { const l = save.upgrades[u.id] || 0; if (l >= u.max) continue; const c = upgradeCost(u, l); if (c < cc) { cc = c; cheapest = u; } }

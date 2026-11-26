@@ -1,7 +1,7 @@
 // =====================================================================
 //  RAGEVERSE – Spiel-Logik (Simulation, keine Grafik)
 // =====================================================================
-import * as C from './config.js?v=0.5.2';
+import * as C from './config.js?v=0.6.0';
 
 const TAU = Math.PI * 2;
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -50,6 +50,36 @@ export function doPrestige(save) {
   return gain;
 }
 
+// ---------------- Monster-Level & Talente
+export function monsterData(save, id) {
+  save.monsters = save.monsters || {};
+  return save.monsters[id] || (save.monsters[id] = { xp: 0, lvl: 1, pts: {} });
+}
+export function talentRank(save, charId, tid) { const m = save.monsters && save.monsters[charId]; return m && m.pts ? (m.pts[tid] || 0) : 0; }
+export function talentFree(save, charId) { const m = monsterData(save, charId); return (m.lvl - 1) - Object.values(m.pts).reduce((a, b) => a + b, 0); }
+export function canRaiseTalent(save, charId, tid) {
+  const T = C.TALENTS.find(t => t.id === tid), m = monsterData(save, charId);
+  if (!T || (T.sig && !C.SIGNATURES[charId])) return false;
+  return m.lvl >= T.lvl && (m.pts[tid] || 0) < T.max && talentFree(save, charId) > 0;
+}
+export function raiseTalent(save, charId, tid) {
+  if (!canRaiseTalent(save, charId, tid)) return false;
+  const m = monsterData(save, charId); m.pts[tid] = (m.pts[tid] || 0) + 1; return true;
+}
+// EP vergeben, gibt die Anzahl gewonnener Level zurück
+export function addMonsterXp(save, charId, xp) {
+  const m = monsterData(save, charId), L = C.MONSTER_LEVEL; let ups = 0;
+  if (m.lvl >= L.max) return 0;
+  m.xp += xp;
+  while (m.lvl < L.max && m.xp >= L.xpFor(m.lvl)) { m.xp -= L.xpFor(m.lvl); m.lvl++; ups++; }
+  if (m.lvl >= L.max) m.xp = 0;
+  return ups;
+}
+export function runXp(kills, world, quests) {
+  const X = C.MONSTER_LEVEL.xpRun;
+  return Math.round(X.base + Math.min(kills, X.killCap) * X.perKill + (world + 1) * X.perWorld + quests * X.perQuest);
+}
+
 export function charDef(id) { return C.CHARACTERS.find(c => c.id === id) || C.CHARACTERS[0]; }
 export function mapDef(id) { return C.MAPS.find(m => m.id === id) || C.MAPS[0]; }
 
@@ -65,33 +95,37 @@ export function computeStats(save, muts = [], charId = save.selectedChar) {
   const pk = (name, def = 1) => (k[name] ?? def);
   // Böser Masterplan: liefert den Zusatz (Faktor − 1)
   const dm = id => { const d = dmDef(id), l = dmLevel(save, id); return d.mult ? Math.pow(1 + d.per, l) - 1 : l * d.per; };
+  // Monster-Talente (Level 1–99)
+  const tr = id => talentRank(save, charId, id), sig = C.SIGNATURES[charId];
+  const sg = st => (sig && sig.stat === st ? tr('sig') * sig.per : 0);
   return {
     startRadius: P.startRadius * U('size') * pk('size') * (1 + dm('dm_start')),
-    rageMax: P.rageMax * U('rage') * pk('rage') * (1 + dm('dm_rage')) * Math.pow(1.1, cnt('b_rage')),
+    rageMax: P.rageMax * U('rage') * pk('rage') * (1 + dm('dm_rage')) * Math.pow(1.05, cnt('b_rage')) * (1 + sg('rage')),
     rageDrain: P.rageDrain * Math.pow(1 - per('calm'), L('calm')) * (has('zen') ? 0.7 : 1),
-    damage: P.damage * U('dmg') * (has('spikes') ? 1.6 : 1) * pk('damage') * (1 + dm('dm_power')) * Math.pow(1.1, cnt('b_dmg')),
+    damage: P.damage * U('dmg') * (has('spikes') ? 1.6 : 1) * pk('damage') * (1 + dm('dm_power')) * Math.pow(1.04, cnt('b_dmg')) * (1 + tr('power') * C.TALENTS[0].per + sg('damage')),
     breakRatio: P.breakRatio + per('hard') * L('hard') + (has('hardhead') ? 0.2 : 0),
-    speed: P.speed * (1 + per('speed') * L('speed')) * (has('turbo') ? 1.3 : 1) * pk('speed'),
-    absorb: P.absorb * U('absorb') * (has('glutton') ? 1.4 : 1) * pk('absorb') * (1 + dm('dm_growth')) * Math.pow(1.08, cnt('b_grow')),
-    scrapMult: U('scrap') * (has('greed') ? 1.6 : 1) * C.SCRAP_SCALE * pk('scrap') * (1 + dm('dm_scrap')) * Math.pow(1.15, cnt('b_scrap')),
+    speed: P.speed * (1 + per('speed') * L('speed')) * (has('turbo') ? 1.3 : 1) * pk('speed') * (1 + sg('speed')),
+    absorb: P.absorb * U('absorb') * (has('glutton') ? 1.4 : 1) * pk('absorb') * (1 + dm('dm_growth')) * Math.pow(1.03, cnt('b_grow')) * (1 + tr('hunger') * C.TALENTS[1].per),
+    scrapMult: U('scrap') * (has('greed') ? 1.6 : 1) * C.SCRAP_SCALE * pk('scrap') * (1 + dm('dm_scrap')) * Math.pow(1.06, cnt('b_scrap')) * (1 + sg('scrap')),
     chaosMult: U('chaosup') * (1 + dm('dm_chaos')),
     crateMult: 1 + per('crates') * L('crates'),
     questMult: 1 + per('quest') * L('quest'),
     comboMax: C.COMBO.max + per('combo') * L('combo') * 2.5,
     startMuts: dmLevel(save, 'dm_mut'),
-    magnet: P.magnet + per('magnet') * L('magnet') + pk('magnet', 0) + (has('hole') ? 3 : 0),
+    magnet: P.magnet + per('magnet') * L('magnet') + pk('magnet', 0) + (has('hole') ? 3 : 0) + sg('magnet'),
     hole: has('hole'),
-    dashCooldown: P.dashCooldown * Math.pow(1 - per('dash'), L('dash')) * (has('dashmore') ? 0.5 : 1) * pk('dash'),
+    dashCooldown: P.dashCooldown * Math.pow(1 - per('dash'), L('dash')) * (has('dashmore') ? 0.5 : 1) * pk('dash') * (1 - sg('dash')),
+    skillCdMult: 1 - tr('mastery') * 0.01,
     dashDamage: has('dashmore') ? 2 : 1,
     slamCooldown: A.slam.cooldown * Math.pow(1 - per('slam'), L('slam')),
     slamRadius: A.slam.radius * (1 + per('slam') * L('slam')),
     slamDamage: A.slam.damage * pk('slam'),
-    boomMult: pk('boom'),
+    boomMult: pk('boom') * (1 + sg('boom')),
     comboWindow: C.COMBO.window * (has('frenzy') ? 2 : 1) * (1 + per('combo') * L('combo')),
-    goldenChance: C.GOLDEN_CHANCE * (has('golden') ? 4 : 1) * pk('golden') * (1 + per('luck') * L('luck')),
-    berserkGain: (1 + per('berserk') * L('berserk')) * (has('rager') ? 2 : 1) * pk('berserk'),
-    berserkTime: C.BERSERK.duration + pk('berserkTime', 0),
-    hazardMult: (has('armor') ? 0.5 : 1) * pk('hazard'),
+    goldenChance: C.GOLDEN_CHANCE * (has('golden') ? 4 : 1) * pk('golden') * (1 + per('luck') * L('luck')) * (1 + sg('golden')),
+    berserkGain: (1 + per('berserk') * L('berserk')) * (has('rager') ? 2 : 1) * pk('berserk') * (1 + sg('berserk')),
+    berserkTime: C.BERSERK.duration + pk('berserkTime', 0) + sg('berserkTime'),
+    hazardMult: (has('armor') ? 0.5 : 1) * pk('hazard') * (1 - sg('hazard')),
   };
 }
 
@@ -765,7 +799,7 @@ export class Game {
 
   useSkill() {
     const p = this.p, S = this.stats, sk = this.char.skill, lim = this.breakLimit(), hit = this.oneHit();
-    p.skillCd = sk.cd; p.squash = 1; this.rs.skills++;
+    p.skillCd = sk.cd * (S.skillCdMult || 1); p.squash = 1; this.rs.skills++;
     this.sfx('berserk', 0.5);
     this.hook('onCallout', sk.name.toUpperCase() + '!', 2);
     switch (sk.id) {
@@ -1208,7 +1242,12 @@ export class Game {
     s.mapBest[this.map.id] = Math.max(s.mapBest[this.map.id] || 0, this.world);
     s.bestWorld = Math.max(s.bestWorld || 0, this.world);
     s.bestRadius = Math.max(s.bestRadius || 0, this.maxRadius);
+    // Monster-EP
+    const md = monsterData(s, this.char.id), lvlBefore = md.lvl;
+    const xp = md.lvl >= C.MONSTER_LEVEL.max ? 0 : runXp(this.kills, this.world, this.questsDone);
+    const lvlUps = addMonsterXp(s, this.char.id, xp);
     this.hook('onEnd', {
+      xp, lvlBefore, lvlAfter: md.lvl, lvlUps, charId: this.char.id,
       earned, chaos, kills: this.kills, map: this.map.id, time: this.time, world: this.world, maxRadius: this.maxRadius,
       bestCombo: this.bestCombo, muts: this.muts.slice(), quests: this.questsDone, bossKilled: !!this.bossKilled, ...rec,
     });

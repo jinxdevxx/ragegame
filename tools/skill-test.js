@@ -2,7 +2,7 @@
 // jedes Monster im Spiel wirklich etwas bewirkt.
 // Aufruf: node tools/skill-test.js   (Exit-Code 1, wenn etwas nicht wirkt)
 import * as C from '../js/config.js';
-import { Game, prestigeGain, doPrestige } from '../js/game.js';
+import { Game, prestigeGain, doPrestige, monsterData, addMonsterXp, raiseTalent, canRaiseTalent, talentFree, computeStats, runXp } from '../js/game.js';
 import { defaultSave } from '../js/save.js';
 
 const DT = 1 / 60;
@@ -338,6 +338,34 @@ console.log('\nAlle Mutationen vergeben:');
   const h = makeGame({}, C.MUTATIONS.map(m => m.id)); let offered = null; h.hooks = { onWorld: (w, c) => { offered = c; } };
   h.p.mass = Math.pow(C.WORLDS[1].minRadius * 1.1, 2); h.p.r = Math.sqrt(h.p.mass); run(h, 0.05);
   check('Welt-Aufstieg mit allen Mutationen bietet Auswahl an', h.state === 'mutation' && offered && offered.length === 3);
+}
+
+// ---------------------------------------------------------------- Monster-Level & Talente
+console.log('\nMonster-Level & Talente:');
+{
+  const s = defaultSave();
+  let total = 0; for (let L = 1; L < C.MONSTER_LEVEL.max; L++) total += C.MONSTER_LEVEL.xpFor(L);
+  const mid = runXp(1500, 6, 6), runs = Math.round(total / mid);
+  check('Level 99 braucht viele Runs (Grind)', runs > 150 && runs < 600, `${total} EP gesamt, ~${runs} Runs à ${mid} EP`);
+  addMonsterXp(s, 'grumpf', 500);
+  const m = monsterData(s, 'grumpf');
+  check('EP geben Level + Talentpunkte', m.lvl > 1 && talentFree(s, 'grumpf') === m.lvl - 1, `Lvl ${m.lvl}, ${talentFree(s, 'grumpf')} Punkte`);
+  check('Skill-Meister erst ab Level 15 gesperrt', !canRaiseTalent(s, 'grumpf', 'mastery'));
+  const b0 = computeStats(s, [], 'grumpf'); raiseTalent(s, 'grumpf', 'power'); raiseTalent(s, 'grumpf', 'hunger');
+  const b1 = computeStats(s, [], 'grumpf');
+  check('Kraft + Hunger wirken', b1.damage > b0.damage && b1.absorb > b0.absorb, `Schaden ×${(b1.damage / b0.damage).toFixed(3)}`);
+  addMonsterXp(s, 'goldzahn', 1e9);
+  const g = monsterData(s, 'goldzahn'); check('Level-Obergrenze 99', g.lvl === 99, `Lvl ${g.lvl}`);
+  const z0 = computeStats(s, [], 'goldzahn'); for (let i = 0; i < 25; i++) raiseTalent(s, 'goldzahn', 'sig');
+  for (let i = 0; i < 25; i++) raiseTalent(s, 'goldzahn', 'mastery');
+  const z1 = computeStats(s, [], 'goldzahn');
+  check('Signatur (Goldgier) + Skill-Meister wirken', z1.scrapMult > z0.scrapMult * 1.4 && z1.skillCdMult < 0.8, `Schrott ×${(z1.scrapMult / z0.scrapMult).toFixed(2)}, Abklingzeit ×${z1.skillCdMult.toFixed(2)}`);
+  let maxed = 0; for (const T of C.TALENTS) for (let i = 0; i < 30; i++) if (raiseTalent(s, 'goldzahn', T.id)) maxed++;
+  check('Talente gedeckelt (max. 25 Ränge, nur verfügbare Punkte)', talentFree(s, 'goldzahn') >= 0 && C.TALENTS.every(T => (monsterData(s, 'goldzahn').pts[T.id] || 0) <= T.max));
+  check('Jedes Monster hat ein Signatur-Talent', C.CHARACTERS.every(c => C.SIGNATURES[c.id]));
+  // Run gibt EP an das gespielte Monster
+  const gg = makeGame(); gg.kills = 300; gg.questsDone = 2; gg.world = 2; const lv0 = monsterData(gg.save, 'grumpf').xp + monsterData(gg.save, 'grumpf').lvl * 1e6; let endS = null; gg.hooks = { onEnd: x => { endS = x; } }; gg.finish();
+  check('Run-Ende vergibt EP', endS && endS.xp > 0 && monsterData(gg.save, 'grumpf').xp + monsterData(gg.save, 'grumpf').lvl * 1e6 > lv0, `+${endS && endS.xp} EP`);
 }
 
 // ---------------------------------------------------------------- Skill-Evolutionen

@@ -1,12 +1,12 @@
 // =====================================================================
 //  RAGEVERSE – Einstieg: Game-Loop, Steuerung, Menüs, Shop, Updates
 // =====================================================================
-import * as C from './config.js?v=0.5.2';
-import { Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.5.2';
-import { render, drawMonsterPreview } from './render.js?v=0.5.2';
-import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.5.2';
-import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.5.2';
-import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.5.2';
+import * as C from './config.js?v=0.6.0';
+import { monsterData, talentRank, talentFree, canRaiseTalent, raiseTalent, Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.6.0';
+import { render, drawMonsterPreview } from './render.js?v=0.6.0';
+import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.6.0';
+import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.6.0';
+import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.6.0';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -106,6 +106,7 @@ function onEscape() {
   if (inRun && game.state === 'play') { pause(); openSettings('screen-pause'); return; }
   if (inRun && current === 'screen-pause') { resume(); return; }
   if (current === 'screen-help') { back(); return; }
+  if (current === 'screen-talents') { openChars(); return; }
   if (current === 'screen-menu') { openSettings('screen-menu'); return; }
   if (current === 'screen-slots') { if (getSlot() >= 0) openMenu(); return; }
   if (!inRun) openMenu();
@@ -196,7 +197,7 @@ function frame(t) {
 // ------------------------------------------------------------------
 // Screens
 // ------------------------------------------------------------------
-const SCREENS = ['screen-achievements', 'screen-menu', 'screen-shop', 'screen-chars', 'screen-maps', 'screen-help', 'screen-results', 'screen-mutation', 'screen-pause', 'screen-settings', 'screen-slots'];
+const SCREENS = ['screen-talents', 'screen-achievements', 'screen-menu', 'screen-shop', 'screen-chars', 'screen-maps', 'screen-help', 'screen-results', 'screen-mutation', 'screen-pause', 'screen-settings', 'screen-slots'];
 let current = 'screen-menu', helpFrom = 'screen-menu';
 function show(id) {
   current = id;
@@ -676,6 +677,7 @@ function openChars() {
       <div class="char-name">${esc(ch.name)} <small>${esc(ch.title)}</small></div>
       <div class="char-desc">${esc(ch.desc)}</div>
       <div class="char-skill">${ch.skill.icon} <b>${esc(ch.skill.name)}</b> (F · ${ch.skill.cd} s): ${esc(ch.skill.desc)}</div>
+      ${owned ? xpBar(ch.id) + `<button class="btn talent-btn ${talentFree(save, ch.id) > 0 ? 'primary' : ''}" data-talents="${ch.id}">🌳 Talente${talentFree(save, ch.id) > 0 ? ` <span class="free">${talentFree(save, ch.id)} frei</span>` : ''}</button>` : ''}
       ${owned ? skinRow(ch) : ''}
       ${!owned && ch.req ? `<div class="char-req ${met ? 'ok' : ''}">${met ? '✔' : '🔒'} ${esc(ch.req.label)} <span>${reqProgress(ch.req)}</span></div>` : ''}
       ${btn}
@@ -698,7 +700,33 @@ function skinRow(ch) {
   });
   return `<div class="skin-row">${chips.join('')}</div>`;
 }
+// ---------------- Talente (Skill-Tree je Monster)
+let talentChar = null;
+function openTalents(id) { talentChar = id; sfx('click'); renderTalents(); show('screen-talents'); }
+function renderTalents() {
+  const id = talentChar, ch = charDef(id), m = monsterData(save, id), free = talentFree(save, id), sig = C.SIGNATURES[id];
+  $('tal-title').textContent = `🌳 ${ch.name} · Talente`;
+  $('tal-head').innerHTML = `${xpBar(id)}<div class="tal-free">${free > 0 ? `<b>${free}</b> Talentpunkt${free > 1 ? 'e' : ''} frei` : 'Keine freien Punkte – spiel mit diesem Monster, um Level und Punkte zu bekommen (1 Punkt pro Level).'}</div>`;
+  $('tal-list').innerHTML = C.TALENTS.map(T => {
+    const t = T.sig ? { ...T, ...sig } : T, r = talentRank(save, id, T.id), locked = m.lvl < T.lvl, can = canRaiseTalent(save, id, T.id);
+    const desc = r > 0 ? t.desc(r) : t.desc(1).replace(/^([+−])/, '$1') + ' pro Rang';
+    return `<div class="tal ${locked ? 'locked' : ''} ${r >= T.max ? 'maxed' : ''}">
+      <div class="tal-ic">${t.icon}</div>
+      <div class="tal-txt"><b>${esc(t.name)}${T.sig ? ' <small>Signatur</small>' : ''}</b><span>${locked ? `🔒 ab Level ${T.lvl}` : esc(desc)}</span>
+        <div class="bar tiny"><div style="transform:scaleX(${(r / T.max).toFixed(3)})"></div></div></div>
+      <div class="tal-rank">${r}/${T.max}</div>
+      <button class="btn ${can ? 'primary' : ''}" data-tal="${T.id}" ${can ? '' : 'disabled'}>+</button>
+    </div>`;
+  }).join('');
+}
+$('tal-list').addEventListener('click', e => {
+  const b = e.target.closest('[data-tal]'); if (!b) return;
+  if (raiseTalent(save, talentChar, b.dataset.tal)) { writeSave(save); sfx('buy'); renderTalents(); } else sfx('deny');
+});
+$('btn-tal-back').onclick = () => openChars();
 $('char-grid').addEventListener('click', e => {
+  const tb = e.target.closest('[data-talents]');
+  if (tb) { openTalents(tb.dataset.talents); return; }
   const sk = e.target.closest('[data-skinchar]');
   if (sk) {
     const cid = sk.dataset.skinchar, id = sk.dataset.skin, owned = save.skins[cid] || (save.skins[cid] = []);
@@ -798,6 +826,18 @@ function openHelp(from) {
 // ------------------------------------------------------------------
 // Ergebnis
 // ------------------------------------------------------------------
+// Monster-Level-Anzeige (Ergebnis + Monster-Karte)
+function xpBar(id) {
+  const m = monsterData(save, id), max = m.lvl >= C.MONSTER_LEVEL.max;
+  const f = max ? 1 : Math.min(1, m.xp / C.MONSTER_LEVEL.xpFor(m.lvl));
+  return `<div class="lvl-row"><b class="lvl">Lvl ${m.lvl}</b><div class="bar tiny xp"><div style="transform:scaleX(${f.toFixed(3)})"></div></div><small>${max ? 'MAX' : fmt(m.xp) + ' / ' + fmt(C.MONSTER_LEVEL.xpFor(m.lvl)) + ' EP'}</small></div>`;
+}
+function lvlBlock(s) {
+  if (!s.charId) return '';
+  const ch = charDef(s.charId);
+  return `<div class="res-lvl ${s.lvlUps ? 'up' : ''}">${s.lvlUps ? `<div class="lvl-up">⬆ LEVEL UP! ${esc(ch.name)} Lvl ${s.lvlBefore} → <b>${s.lvlAfter}</b> · +${s.lvlUps} Talentpunkt${s.lvlUps > 1 ? 'e' : ''} → Monster › 🌳 Talente</div>` : ''}
+    <div class="lvl-head">${esc(ch.name)} <span>+${fmt(s.xp)} EP</span></div>${xpBar(s.charId)}</div>`;
+}
 function showResults(s) {
   writeSave(save);
   setIntensity(0);
@@ -818,6 +858,7 @@ function showResults(s) {
       <div class="stat"><b>${mins}:${String(secs).padStart(2, '0')}</b><small>Wutdauer</small></div>
       <div class="stat"><b>${s.bestCombo}×</b><small>Beste Kombo</small></div>
     </div>
+    ${lvlBlock(s)}
     ${s.quests ? `<div class="res-muts">✅ ${s.quests} Auftr${s.quests === 1 ? 'ag' : 'äge'} erfüllt</div>` : ''}
     ${mutNames.length ? `<div class="res-muts">Mutationen: ${mutNames.join(' · ')}</div>` : ''}
     ${unlockables.length ? `<div class="res-unlock">🎉 Du kannst jetzt <b>${unlockables.map(c => esc(c.name)).join(', ')}</b> freischalten! → Monster</div>` : ''}
@@ -970,7 +1011,7 @@ function updateHud() {
   if (game.boss) setBar('boss-hp', game.boss.hp);
   if (game.quest) { setBar('q-bar', game.quest.progress / game.quest.count); setText('q-label', `${game.quest.label} (${Math.min(game.quest.progress, game.quest.count)}/${game.quest.count})`); }
   // Fähigkeiten
-  setAb('ab-skill', p.skillCd / game.char.skill.cd, p.skillCd > 0 ? p.skillCd.toFixed(1) : '', p.skillCd <= 0);
+  setAb('ab-skill', p.skillCd / (game.char.skill.cd * (S.skillCdMult || 1)), p.skillCd > 0 ? p.skillCd.toFixed(1) : '', p.skillCd <= 0);
   setAb('ab-dash', p.dashCd / S.dashCooldown, p.dashCd > 0 ? p.dashCd.toFixed(1) : '', p.dashCd <= 0);
   setAb('ab-slam', p.slamCd / S.slamCooldown, p.slamCd > 0 ? p.slamCd.toFixed(1) : '', p.slamCd <= 0);
   if (p.berserkT > 0) setAb('ab-berserk', Math.max(0, 1 - p.berserkT / S.berserkTime), p.berserkT.toFixed(1), false, 'active');

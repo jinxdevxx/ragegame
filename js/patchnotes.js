@@ -6,6 +6,19 @@
 
 export const PATCH_NOTES = [
   {
+    version: '0.6.0',
+    date: '2026-11-26',
+    title: 'Monster-Level',
+    summary: 'Jedes Monster levelt jetzt bis Level 99 und hat einen eigenen Talentbaum.',
+    changes: [
+      'Monster-Level 1–99: Das gespielte Monster bekommt nach jedem Run EP (für Kills, erreichte Welt und Aufträge). Level 99 ist ein echtes Langzeit-Ziel.',
+      '🌳 Talente (Monster-Bildschirm → Talente): 1 Punkt pro Level, 4 Talente je Monster mit je 25 Rängen – Kraft und Hunger ab Lvl 1, Skill-Meister (kürzere F-Abklingzeit) ab Lvl 15 und ein eigenes Signatur-Talent ab Lvl 40 (z. B. Goldgier für Goldzahn, Windläufer für Flitzer, Glutkern für den Golem).',
+      'Ergebnis-Bildschirm zeigt die gewonnenen EP und Level-Ups.',
+      'Balancing: Die Verstärkungen nach allen Mutationen (v0.5.1) waren in langen Runs zu stark und wurden abgeschwächt. Talente sind bewusst klein gehalten – das Tempo bleibt wie bisher.',
+      'Fix: Auftrags-Balken war seit v0.5.2 leer, Erfolgs- und Upgrade-Balken zeigten nur die Hälfte.',
+    ],
+  },
+  {
     version: '0.5.2',
     date: '2026-11-26',
     title: 'Flüssiger durchs All',
