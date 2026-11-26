@@ -1,12 +1,12 @@
 // =====================================================================
 //  RAGEVERSE – Einstieg: Game-Loop, Steuerung, Menüs, Shop, Updates
 // =====================================================================
-import * as C from './config.js?v=0.6.0';
-import { monsterData, talentRank, talentFree, canRaiseTalent, raiseTalent, Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.6.0';
-import { render, drawMonsterPreview } from './render.js?v=0.6.0';
-import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.6.0';
-import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.6.0';
-import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.6.0';
+import * as C from './config.js?v=0.6.1';
+import { monsterData, talentRank, talentFree, canRaiseTalent, raiseTalent, Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.6.1';
+import { render, drawMonsterPreview } from './render.js?v=0.6.1';
+import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.6.1';
+import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.6.1';
+import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.6.1';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1054,14 +1054,27 @@ $('notes-modal').addEventListener('click', e => { if (e.target.id === 'notes-mod
 function markSeen() { save.seenVersion = VERSION; writeSave(save); $('notes-dot').hidden = true; }
 
 let pendingToast = null;
-function toast(html, buttons) {
-  if (inRun && game.state === 'play') { pendingToast = [html, buttons]; $('notes-dot').hidden = false; return; }
+// Hinweis unten links. autoMs: verschwindet von allein (Maus darüber pausiert), onAuto läuft dann
+let toastTimer = null;
+function toast(html, buttons, autoMs = 0, onAuto = null) {
+  if (inRun && game.state === 'play') { pendingToast = [html, buttons, autoMs, onAuto]; $('notes-dot').hidden = false; return; }
   const el = $('toast');
-  el.innerHTML = html + `<div class="t-row">${buttons.map((b, i) => `<button data-i="${i}" class="${b.go ? 'go' : ''}">${b.label}</button>`).join('')}</div>`;
+  el.innerHTML = html + `<div class="t-row">${buttons.map((b, i) => `<button data-i="${i}" class="${b.go ? 'go' : ''}">${b.label}</button>`).join('')}</div>` + (autoMs ? '<i class="t-time"></i>' : '');
   el.hidden = false;
   el.onclick = e => { const b = e.target.closest('[data-i]'); if (!b) return; buttons[b.dataset.i].fn(); };
+  clearInterval(toastTimer); el.onmouseenter = el.onmouseleave = null;
+  if (autoMs) {
+    let left = autoMs, paused = false; const bar = el.querySelector('.t-time');
+    el.onmouseenter = () => { paused = true; }; el.onmouseleave = () => { paused = false; };
+    toastTimer = setInterval(() => {
+      if (el.hidden) { clearInterval(toastTimer); return; }
+      if (!paused) left -= 100;
+      bar.style.transform = `scaleX(${Math.max(0, left / autoMs)})`;
+      if (left <= 0) { clearInterval(toastTimer); hideToast(); if (onAuto) onAuto(); }
+    }, 100);
+  }
 }
-function hideToast() { $('toast').hidden = true; }
+function hideToast() { clearInterval(toastTimer); $('toast').hidden = true; }
 function flushPendingToast() { if (pendingToast) { const t = pendingToast; pendingToast = null; toast(...t); } }
 
 if (save.seenVersion === null) { save.seenVersion = VERSION; writeSave(save); }
@@ -1070,7 +1083,7 @@ else if (save.seenVersion !== VERSION) {
   toast(`<b>Neu in v${esc(VERSION)}:</b><p>${esc(PATCH_NOTES[0].title)}</p>`, [
     { label: 'Patch Notes', go: true, fn: openNotes },
     { label: 'Später', fn: () => { markSeen(); hideToast(); } },
-  ]);
+  ], 10000, () => { save.seenVersion = VERSION; writeSave(save); }); // nach 10 s weg, der Punkt am Patch-Notes-Knopf bleibt bis zum Neustart
 }
 
 let updateOffered = false;
@@ -1086,7 +1099,7 @@ async function checkForUpdate() {
       toast(`<b>Update v${esc(version)} verfügbar</b><p>Lade neu, wann es dir passt. Dein Fortschritt bleibt gespeichert.</p>`, [
         { label: 'Jetzt aktualisieren', go: true, fn: () => { writeSave(save); location.reload(); } },
         { label: 'Später', fn: hideToast },
-      ]);
+      ], 10000); // nach 10 s weg, der Punkt am Patch-Notes-Knopf bleibt
     }
   } catch { /* offline */ }
 }

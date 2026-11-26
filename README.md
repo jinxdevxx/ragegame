@@ -7,7 +7,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.6.0 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.6.1 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -181,6 +181,9 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.6.1 Hinweis geht von selbst
+- Nutzer-Wunsch: Der „Neu in vX“-Hinweis soll nicht erst „Später“ brauchen. `toast()` hat jetzt eine Auto-Ausblendung (10 s, Ablaufbalken, pausiert bei Maus darüber), gilt auch für „Update verfügbar“. Neuer Browser-Test.
+
 ### 2026-11-26: v0.6.0 Monster-Level
 - **Monster-Level & Talente** (Wunsch: bis Level 99, Skill-Tree je Monster, Balance soll bleiben).
 - **Balance-Prüfung (Bot, 160 Runs, Urknall nach 6 Runs ohne Fortschritt; Referenz v0.5.0: Welt 42):** Erste Fassung viel zu stark (mit Talenten Welt 50 nach ~115 Runs). Ursachen: Talente (Kraft +1 %, Hunger +0,6 %/Rang) und die Mutations-Verstärkungen aus v0.5.1 (in langen Runs bis zu 20× gestapelt). Fix: Verstärkungen +4 % Schaden / +3 % Wachstum / +6 % Schrott / +5 % Wut, Kraft +0,6 %, Hunger +0,3 %. Ergebnis: ohne Talente Welt 44, mit Talenten Welt 45–47 (Bot spielt nur ein Monster = Maximalfall).
@@ -278,6 +281,9 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.6.1: Hinweis geht von selbst (2026-11-26)
+- Update-Hinweis verschwindet nach 10 s von allein
 
 ### v0.6.0: Monster-Level (2026-11-26)
 - Monster-Level 1–99 mit Talentbaum (4 Talente je Monster, eigenes Signatur-Talent)

@@ -8,8 +8,8 @@
 //  Sternenstaub und Aura dazu. Premium-Skins (Silber, Gold, Platin, Gott)
 //  färben das Monster metallisch und legen Glanz, Funkeln und Aura darüber.
 // =====================================================================
-import * as C from './config.js?v=0.6.0';
-import { shadeHex as sh } from './game.js?v=0.6.0';
+import * as C from './config.js?v=0.6.1';
+import { shadeHex as sh } from './game.js?v=0.6.1';
 
 const TAU = Math.PI * 2;
 const OUT = '#1f1212';

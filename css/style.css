@@ -417,3 +417,5 @@ body.touch .ab-key { display: none; }
 .tal-txt span { font-size: 13px; opacity: .85; display: block; margin-bottom: 4px; }
 .tal-rank { font-family: var(--display); font-size: 18px; }
 .tal .btn { padding: 6px 0; font-size: 20px; }
+.toast { position: relative; overflow: hidden; }
+.toast .t-time { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: var(--rage2); transform-origin: left center; transition: transform .1s linear; }

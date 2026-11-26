@@ -81,6 +81,16 @@ const OUT = process.argv[2] || '/tmp';
   log('Erfolgs-Balken zeigt echten Fortschritt (50/100)', Math.abs(bw - 0.5) < 0.05, (bw * 100).toFixed(0) + ' %');
   await p.close();
 
+  // Update-Hinweis „Neu in vX“ verschwindet nach 10 s von selbst, Punkt am Patch-Notes-Knopf bleibt
+  p = await page('?slot=1');
+  await p.evaluate(() => { const m = JSON.parse(localStorage.getItem('rageverse_meta') || '{}'); m.seenVersion = '0.1.0'; localStorage.setItem('rageverse_meta', JSON.stringify(m)); });
+  await p.reload(); await p.waitForTimeout(800);
+  const tv = await p.evaluate(() => !document.getElementById('toast').hidden);
+  await p.waitForTimeout(10500);
+  const th = await p.evaluate(() => document.getElementById('toast').hidden && !document.getElementById('notes-dot').hidden);
+  log('Neu-Hinweis verschwindet nach 10 s von selbst', tv && th);
+  await p.close();
+
   // Erfolge + Statistik
   p = await page('?slot=1');
   await p.evaluate(() => { const s = window.__rv.save; s.totalKills = 1500; s.runs = 12; s.stats = { bestCombo: 25, playTime: 3700 }; });

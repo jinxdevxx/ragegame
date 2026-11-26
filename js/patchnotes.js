@@ -6,6 +6,16 @@
 
 export const PATCH_NOTES = [
   {
+    version: '0.6.1',
+    date: '2026-11-26',
+    title: 'Hinweis geht von selbst',
+    summary: 'Der Update-Hinweis unten links verschwindet jetzt nach 10 Sekunden von allein.',
+    changes: [
+      'Der Hinweis „Neu in vX“ (und „Update verfügbar“) verschwindet nach 10 Sekunden von selbst – kein Klick auf „Später“ mehr nötig. Ein kleiner Balken zeigt die Zeit, mit der Maus darüber bleibt er stehen.',
+      'Der Punkt am Patch-Notes-Knopf bleibt, damit du die Neuerungen später noch nachlesen kannst.',
+    ],
+  },
+  {
     version: '0.6.0',
     date: '2026-11-26',
     title: 'Monster-Level',
