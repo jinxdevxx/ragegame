@@ -8,7 +8,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Cheat-/Testversion:** https://jinxdevxx.github.io/ragegame-cheat/ (getrennter Speicher, Cheat-Menü per 🛠 oder Taste ^)
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.8.7 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.8.8 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -186,6 +186,13 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.8.8 Flüssig durch alle Welten
+- **Nutzer:** Performance im normalen Spiel verbessern (Hänger beim Wachsen/Welt-Wechsel).
+- **Messwerkzeug korrigiert:** `tools/perf420.cjs` wählte Mutationen direkt im Code – dabei blieb das Mutationsfenster (Unschärfe-Hintergrund) über dem Spiel stehen und verfälschte alle Hauptkarten-Messungen (scheinbar 22–35 FPS). Jetzt mit 🎲 Auto-Mutation; zeigt zusätzlich sichtbare Fenster, Auflösungsstufe und jedes lange Bild mit Welt.
+- **Boden-Neuaufbau im Hintergrund:** `cached()` baut neue Zwischenspeicher als Auftrag in 6 Streifen (Budget 5 ms/Bild, Clip pro Streifen, Sichtbereich + 12 % Rand), zeigt so lange das alte Bild; nur ohne brauchbares altes Bild wird sofort gemalt. Raster-Dichte (`cells`, `terrain`) richtet sich nach dem ganzen Bild (`v.full`) → keine Nähte. `tools/ground-seams.cjs`: Streifen vs. Komplett-Aufbau in 17 Welten **0,00 % Pixel-Abweichung**.
+- **Hauptursache der Hänger:** CPU-Profil zeigte >50 % Browser-intern (kein JS); Ausblend-Test fand das Welt-Banner: riesiger Text mit 30-px-Weichzeichner-Schatten, animiert von 2,2× Größe → jedes Bild neu gerastert, ~70–180 ms Hänger pro Welt-Wechsel. Fix: `will-change`, harter Schatten, Start bei 1,6×; dasselbe für Kombo-Rufe.
+- **Ergebnis** (Hauptkarte, alles max., 1280×720): Ø 51 → 57 FPS, ruckelnde Bilder 3–5,6 % → 0,3–0,8 %, schlimmstes Bild 138–179 → 48–65 ms. Halb ausgebaut: 58 FPS, 0,5 %. Karte 420 unverändert gut.
+
 ### 2026-11-26: v0.8.7 420 ohne Ruckeln
 - **Nutzer:** Auf Karte 420 laggt alles (MacBook, Dev-Build ausgemaxt), auch für normale Spieler inakzeptabel.
 - **Analyse:** Frühere Messungen liefen mit Pixeldichte 1. Neu: echte Rasterkosten pro Bild inkl. Flush bei Retina (3024×1720) gemessen (Bild 30× rendern + `getImageData`): Karte 420 **92 ms**, davon ~80 ms Boden – das skalierte Kachelmuster wurde in jedem Bild über alle 5 Mio. Pixel gefiltert (+ Verlauf + 6 große Rauchbilder); Straße zum Vergleich 25 ms. Auf GPU kommt dazu, dass `createPattern` aus einer Canvas pro Bild die 4-MB-Kachel neu hochladen kann.
@@ -337,6 +344,9 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.8.8: Flüssig durch alle Welten (2026-11-26)
+- Hänger beim Welt-Wechsel (Banner) und beim Wachsen (Boden) beseitigt
 
 ### v0.8.7: 420 ohne Ruckeln (2026-11-26)
 - Karte 420 auf hochauflösenden Bildschirmen ~4× weniger Grafik-Arbeit pro Bild
