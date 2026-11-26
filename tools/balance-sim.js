@@ -3,7 +3,7 @@
 // Zeigt pro Upgrade-Stufe: Run-Dauer, erreichte Welt, Schrott, Chaos
 // und eine Progression über viele Runs (Bot kauft nach jedem Run Upgrades).
 import * as C from '../js/config.js';
-import { Game, upgradeCost, fmt } from '../js/game.js';
+import { Game, upgradeCost, fmt, prestigeGain, doPrestige, dmCost } from '../js/game.js';
 import { defaultSave } from '../js/save.js';
 
 const RUNS = Number(process.argv[2]) || 6;
@@ -73,24 +73,37 @@ if (isMain) {
     console.log(`${String(L).padStart(5)} | ${(t / RUNS).toFixed(0).padStart(4)} s | ${(w / RUNS).toFixed(1).padStart(4)} / ${worlds[wmax].name.padEnd(16)} | ${fmt(s / RUNS).padStart(9)} | ${fmt(ch / RUNS).padStart(7)} | ${(e / t * 100).toFixed(1)} %`);
   }
 
-  console.log('\n=== Progression: Bot kauft nach jedem Run die günstigsten Upgrades ===');
+  console.log('\n=== Progression mit Urknall: Bot kauft günstigste Upgrades, sprengt, wenn er 6 Runs nicht weiterkommt ===');
   const save = freshSave();
-  let bestWorld = -1;
-  for (let run = 1; run <= 60; run++) {
-    const r = playRun(save);
+  let bestWorld = -1, stuck = 0, cycleStart = 1;
+  const RUNS_TOTAL = Number(process.env.RUNS_TOTAL || 120);
+  const buy = () => {
     for (;;) {
       let cheapest = null, cc = Infinity;
-      for (const u of C.UPGRADES) {
-        const l = save.upgrades[u.id] || 0; if (l >= u.max) continue;
-        const c = upgradeCost(u, l); if (c < cc) { cc = c; cheapest = u; }
-      }
+      for (const u of C.UPGRADES) { const l = save.upgrades[u.id] || 0; if (l >= u.max) continue; const c = upgradeCost(u, l); if (c < cc) { cc = c; cheapest = u; } }
       if (!cheapest || save.scrap < cc) break;
       save.scrap -= cc; save.upgrades[cheapest.id] = (save.upgrades[cheapest.id] || 0) + 1;
     }
-    if (run <= 3 || r.world > bestWorld || run % 10 === 0) {
-      const lv = Object.values(save.upgrades).reduce((a, b) => a + b, 0);
-      console.log(`Run ${String(run).padStart(2)}: ${r.time.toFixed(0).padStart(3)} s, ${worlds[r.world].name.padEnd(13)} +${fmt(r.earned).padStart(7)} ⚙ +${fmt(r.chaos).padStart(6)} ☠ (Σ ☠ ${fmt(save.totalChaos)}, Σ Kills ${fmt(save.totalKills)}), Upgrade-Stufen ${lv}`);
+    for (;;) {
+      let cheapest = null, cc = Infinity;
+      for (const d of C.DM_PERKS) { const l = save.dmPerks[d.id] || 0; if (l >= d.max) continue; const c = dmCost(d, l); if (c < cc) { cc = c; cheapest = d; } }
+      if (!cheapest || save.darkMatter < cc) break;
+      save.darkMatter -= cc; save.dmPerks[cheapest.id] = (save.dmPerks[cheapest.id] || 0) + 1;
     }
-    bestWorld = Math.max(bestWorld, r.world);
+  };
+  for (let run = 1; run <= RUNS_TOTAL; run++) {
+    const r = playRun(save);
+    buy();
+    const newBest = r.world > bestWorld;
+    if (newBest) { bestWorld = r.world; stuck = 0; } else stuck++;
+    if (run <= 2 || newBest || run % 20 === 0) {
+      const lv = Object.values(save.upgrades).reduce((a, b) => a + b, 0);
+      console.log(`Run ${String(run).padStart(3)}: ${r.time.toFixed(0).padStart(3)} s, ${worlds[r.world].name.padEnd(14)} +${fmt(r.earned).padStart(7)} ⚙ +${fmt(r.chaos).padStart(6)} ☠ · Upgrades ${lv} · ◆ ${fmt(save.totalDarkMatter || 0)}`);
+    }
+    if (stuck >= 6 && prestigeGain(save) > 0) {
+      const g = doPrestige(save); buy();
+      console.log(`   💥 URKNALL nach Run ${run} (Durchgang ${save.prestiges} dauerte ${run - cycleStart + 1} Runs): +${g} ◆, Masterplan-Stufen ${Object.values(save.dmPerks).reduce((a, b) => a + b, 0)}`);
+      cycleStart = run + 1; bestWorld = -1; stuck = 0;
+    }
   }
 }

@@ -1,7 +1,7 @@
 // =====================================================================
 //  RAGEVERSE – Spiel-Logik (Simulation, keine Grafik)
 // =====================================================================
-import * as C from './config.js?v=0.2.2';
+import * as C from './config.js?v=0.3.0';
 
 const TAU = Math.PI * 2;
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -19,6 +19,31 @@ export function worldIndexFor(r) {
 }
 
 // Alle Spielerwerte aus Basiswerten + Upgrades + Mutationen
+export function dmLevel(save, id) { return (save.dmPerks && save.dmPerks[id]) || 0; }
+export function dmDef(id) { return C.DM_PERKS.find(d => d.id === id); }
+export function dmCost(d, level) { return Math.ceil(d.base * Math.pow(d.growth, level)); }
+
+// ---------------------------------------------------------------------
+// URKNALL (Prestige)
+// ---------------------------------------------------------------------
+export function prestigeGain(save) {
+  const P = C.PRESTIGE, w = save.cycleBest || 0;
+  if (w < P.minWorld) return 0;
+  const lg = Math.max(0, Math.log10(Math.max(1, save.cycleScrap || 0)) - P.logBase);
+  return 2 + Math.floor(lg * lg * (1 + (w - P.minWorld) * P.worldBonus)); // +2 Grundbonus
+}
+export function doPrestige(save) {
+  const gain = prestigeGain(save);
+  if (gain <= 0) return 0;
+  const keep = dmLevel(save, 'dm_keep') * dmDef('dm_keep').per;
+  save.darkMatter = (save.darkMatter || 0) + gain;
+  save.totalDarkMatter = (save.totalDarkMatter || 0) + gain;
+  save.prestiges = (save.prestiges || 0) + 1;
+  for (const id of Object.keys(save.upgrades)) save.upgrades[id] = Math.floor(save.upgrades[id] * keep);
+  save.scrap = 0; save.cycleScrap = 0; save.cycleBest = 0;
+  return gain;
+}
+
 export function charDef(id) { return C.CHARACTERS.find(c => c.id === id) || C.CHARACTERS[0]; }
 export function mapDef(id) { return C.MAPS.find(m => m.id === id) || C.MAPS[0]; }
 
@@ -29,15 +54,21 @@ export function computeStats(save, muts = [], charId = save.selectedChar) {
   const has = id => muts.includes(id);
   const k = charDef(charId).perks || {};
   const pk = (name, def = 1) => (k[name] ?? def);
+  const dm = id => dmLevel(save, id) * dmDef(id).per; // Böser Masterplan
   return {
-    startRadius: P.startRadius * (1 + per('size') * L('size')) * pk('size'),
-    rageMax: P.rageMax * (1 + per('rage') * L('rage')) * pk('rage'),
+    startRadius: P.startRadius * (1 + per('size') * L('size')) * pk('size') * (1 + dm('dm_start')),
+    rageMax: P.rageMax * (1 + per('rage') * L('rage')) * pk('rage') * (1 + dm('dm_rage')),
     rageDrain: P.rageDrain * Math.pow(1 - per('calm'), L('calm')) * (has('zen') ? 0.7 : 1),
-    damage: P.damage * (1 + per('dmg') * L('dmg')) * (has('spikes') ? 1.6 : 1) * pk('damage'),
+    damage: P.damage * (1 + per('dmg') * L('dmg')) * (has('spikes') ? 1.6 : 1) * pk('damage') * (1 + dm('dm_power')),
     breakRatio: P.breakRatio + per('hard') * L('hard') + (has('hardhead') ? 0.2 : 0),
     speed: P.speed * (1 + per('speed') * L('speed')) * (has('turbo') ? 1.3 : 1) * pk('speed'),
-    absorb: P.absorb * (1 + per('absorb') * L('absorb')) * (has('glutton') ? 1.4 : 1) * pk('absorb'),
-    scrapMult: (1 + per('scrap') * L('scrap')) * (has('greed') ? 1.6 : 1) * C.SCRAP_SCALE * pk('scrap'),
+    absorb: P.absorb * (1 + per('absorb') * L('absorb')) * (has('glutton') ? 1.4 : 1) * pk('absorb') * (1 + dm('dm_growth')),
+    scrapMult: (1 + per('scrap') * L('scrap')) * (has('greed') ? 1.6 : 1) * C.SCRAP_SCALE * pk('scrap') * (1 + dm('dm_scrap')),
+    chaosMult: (1 + per('chaosup') * L('chaosup')) * (1 + dm('dm_chaos')),
+    crateMult: 1 + per('crates') * L('crates'),
+    questMult: 1 + per('quest') * L('quest'),
+    comboMax: C.COMBO.max + per('combo') * L('combo') * 2.5,
+    startMuts: dmLevel(save, 'dm_mut'),
     magnet: P.magnet + per('magnet') * L('magnet') + pk('magnet', 0),
     dashCooldown: P.dashCooldown * Math.pow(1 - per('dash'), L('dash')) * (has('dashmore') ? 0.5 : 1) * pk('dash'),
     dashDamage: has('dashmore') ? 2 : 1,
@@ -45,8 +76,8 @@ export function computeStats(save, muts = [], charId = save.selectedChar) {
     slamRadius: A.slam.radius * (1 + per('slam') * L('slam')),
     slamDamage: A.slam.damage * pk('slam'),
     boomMult: pk('boom'),
-    comboWindow: C.COMBO.window * (has('frenzy') ? 2 : 1),
-    goldenChance: C.GOLDEN_CHANCE * (has('golden') ? 4 : 1) * pk('golden'),
+    comboWindow: C.COMBO.window * (has('frenzy') ? 2 : 1) * (1 + per('combo') * L('combo')),
+    goldenChance: C.GOLDEN_CHANCE * (has('golden') ? 4 : 1) * pk('golden') * (1 + per('luck') * L('luck')),
     berserkGain: (1 + per('berserk') * L('berserk')) * (has('rager') ? 2 : 1) * pk('berserk'),
     berserkTime: C.BERSERK.duration + pk('berserkTime', 0),
     hazardMult: (has('armor') ? 0.5 : 1) * pk('hazard'),
@@ -95,6 +126,9 @@ export class Game {
     this.quest = null; this.questT = C.QUESTS.firstAfter; this.questsDone = 0;
     this.pendingWorlds = 0;
     this.cam.x = 0; this.cam.y = 0; this.cam.zoom = this.targetZoom();
+    // Genlabor: mit zufälligen Mutationen starten
+    for (let i = 0; i < this.stats.startMuts; i++) { const ch = this.mutationChoices(); if (ch.length) this.muts.push(ch[0].id); }
+    if (this.muts.length) this.stats = computeStats(this.save, this.muts, this.char.id);
     this.spawnTick(true);
     this.state = 'play';
   }
@@ -208,7 +242,7 @@ export class Game {
       for (const o of this.objects) {
         if (o.size > p.r * 0.6) continue;
         const dx = p.x - o.x, dy = p.y - o.y, d = Math.hypot(dx, dy);
-        if (d < p.r * 7 && d > 1e-6) { const v = p.r * 3 * dt; o.x += dx / d * v; o.y += dy / d * v; }
+        if (d < p.r * 7 && d > 1e-6) { const v = p.r * 3 * dt; o.x += dx / d * v; o.y += dy / d * v; o.pulled = 0.3; }
       }
     }
 
@@ -308,8 +342,8 @@ export class Game {
     this.quest = null; this.questT = C.QUESTS.pause; this.questsDone++;
     p.rage = Math.min(S.rageMax, p.rage + S.rageMax * C.QUESTS.rageReward);
     this.addBerserk(C.QUESTS.berserkReward);
-    const value = C.QUESTS.scrapReward * this.worlds[this.world].scrapMult * this.map.scrapMult * S.scrapMult * (1 + this.questsDone * 0.2);
-    this.runChaos += C.CHAOS.questBonus * this.map.chaosMult;
+    const value = C.QUESTS.scrapReward * this.worlds[this.world].scrapMult * this.map.scrapMult * S.scrapMult * S.questMult * (1 + this.questsDone * 0.2);
+    this.runChaos += C.CHAOS.questBonus * this.map.chaosMult * S.chaosMult * S.questMult;
     this.coinBurst(p.x, p.y, value, 12, true);
     this.flash = Math.max(this.flash, 0.35);
     this.sfx('quest');
@@ -369,7 +403,7 @@ export class Game {
       const d = Math.hypot(dx, dy);
       const minD = R + o.size * 0.8;
       if (d >= minD) continue;
-      if (o.size < p.r * C.PLAYER.crumbRatio) { this.kill(o, 'touch'); continue; }
+      if (o.size < p.r * C.PLAYER.crumbRatio || (o.pulled > 0 && o.size <= limit * 0.65)) { this.kill(o, 'touch'); continue; }
       const nx = d > 1e-6 ? dx / d : 1, ny = d > 1e-6 ? dy / d : 0;
       const breakable = o.size <= limit;
       if (breakable && o.hitCd <= 0) {
@@ -406,7 +440,8 @@ export class Game {
       const overlap = minD - d;
       p.x -= nx * overlap; p.y -= ny * overlap;
       const vn = p.vx * nx + p.vy * ny;
-      if (vn > 0) { p.vx -= vn * nx * 1.5; p.vy -= vn * ny * 1.5; }
+      const bounce = breakable ? 1.0 : 1.25; // zerstörbar: nur abbremsen, nicht wegprallen
+      if (vn > 0) { p.vx -= vn * nx * bounce; p.vy -= vn * ny * bounce; }
       if (p.dashT > 0 && !breakable) p.dashT = 0;
     }
     if (this.objects.some(o => o.dead)) this.objects = this.objects.filter(o => !o.dead);
@@ -435,12 +470,12 @@ export class Game {
       this.sfx('callout', this.calloutIdx);
       this.calloutIdx++;
     }
-    const comboMult = Math.min(C.COMBO.max, 1 + this.combo * C.COMBO.perStep);
+    const comboMult = Math.min(S.comboMax, 1 + this.combo * C.COMBO.perStep);
     // Auftrag
     if (this.quest && this.quest.type === 'kill' && o.name === this.quest.target) this.quest.progress++;
     // Schrott
     const w = this.worlds[o.world];
-    this.runChaos += (C.CHAOS.perKill + (rel > 1 ? C.CHAOS.bigBonus * rel : 0)) * this.map.chaosMult;
+    this.runChaos += (C.CHAOS.perKill + (rel > 1 ? C.CHAOS.bigBonus * rel : 0)) * this.map.chaosMult * S.chaosMult;
     const value = o.value * w.scrapMult * this.map.scrapMult * comboMult * S.scrapMult * (o.golden ? C.GOLDEN_MULT : 1) * (o.bonusMult || 1) * (o.crate ? C.CRATE_MULT : 1);
     const n = o.crate ? 14 : clamp(Math.ceil(Math.sqrt(o.value) * (o.golden ? 2 : 1)), 1, 8);
     this.coinBurst(o.x, o.y, value, n, o.golden);
@@ -548,7 +583,7 @@ export class Game {
   magnetCrumbs(dt) {
     const S = this.stats;
     if (S.magnet <= 0) return;
-    const p = this.p, R = this.magnetRange(), lim = p.r * C.PLAYER.crumbRatio * 1.6;
+    const p = this.p, R = this.magnetRange(), lim = p.r * C.PLAYER.crumbRatio * 0.98; // nur echte Krümel (zerbröseln bei Berührung)
     for (const o of this.objects) {
       if (o.size > lim) continue;
       const dx = p.x - o.x, dy = p.y - o.y, d = Math.hypot(dx, dy);
@@ -619,7 +654,7 @@ export class Game {
 
   spawnOne(minD, maxD, popIn = false) {
     const p = this.p;
-    const crateChance = this.event && this.event.id === 'crates' ? 0.25 : C.CRATE_CHANCE;
+    const crateChance = this.event && this.event.id === 'crates' ? 0.25 : C.CRATE_CHANCE * this.stats.crateMult;
     let t;
     if (Math.random() < crateChance) {
       const W = this.worlds[this.world];
@@ -735,6 +770,7 @@ export class Game {
       if (o.hitAnim > 0) o.hitAnim = Math.max(0, o.hitAnim - dt * 6);
       if (o.flash > 0) o.flash = Math.max(0, o.flash - dt * 10);
       if (o.pop > 0) o.pop = Math.max(0, o.pop - dt * 3);
+      if (o.pulled > 0) o.pulled -= dt;
       if (!o.move) o.anim += dt;
     }
     this.shake = Math.max(0, this.shake - dt * 2.5);
@@ -773,6 +809,8 @@ export class Game {
     s.scrap += earned; s.totalScrap += earned; s.runs++;
     s.chaos = (s.chaos || 0) + chaos; s.totalChaos = (s.totalChaos || 0) + chaos;
     s.totalKills = (s.totalKills || 0) + this.kills;
+    s.cycleScrap = (s.cycleScrap || 0) + earned;
+    s.cycleBest = Math.max(s.cycleBest || 0, this.world);
     s.mapBest = s.mapBest || {};
     s.mapBest[this.map.id] = Math.max(s.mapBest[this.map.id] || 0, this.world);
     s.bestWorld = Math.max(s.bestWorld || 0, this.world);

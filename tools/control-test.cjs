@@ -7,7 +7,7 @@ const OUT = process.argv[2] || '/tmp';
   const ctx = await b.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
   const p = await ctx.newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
-  await p.goto('http://localhost:8080/'); await p.waitForTimeout(700);
+  await p.goto('http://localhost:8080/?slot=1'); await p.waitForTimeout(700);
   const pos = () => p.evaluate(() => { const g = window.__rv.game; return [g.p.x, g.p.y]; });
   const dist = (a, c) => Math.hypot(c[0] - a[0], c[1] - a[1]).toFixed(1);
   const st = () => p.evaluate(() => ({ screen: [...document.querySelectorAll('.screen')].filter(s => !s.hidden).map(s => s.id).join(','), state: window.__rv.game.state, control: window.__rv.save.settings.control }));

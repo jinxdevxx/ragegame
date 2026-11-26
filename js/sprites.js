@@ -4,7 +4,7 @@
 //  x von -1 bis 1, y von -1 (oben) bis 1 (Boden). Outline wird vom
 //  Aufrufer gesetzt (lineWidth/strokeStyle), Farbe kommt aus o.color.
 // =====================================================================
-import { shadeHex as sh } from './game.js?v=0.2.2';
+import { shadeHex as sh } from './game.js?v=0.3.0';
 
 const TAU = Math.PI * 2;
 
@@ -372,10 +372,56 @@ export const SPRITES = {
     ell(c, 0.1, -0.52, Math.abs(Math.cos(t)) * 1 + 0.1, 0.06, 'rgba(60,60,60,0.7)', 0, true);
   },
   dam(c, o) {
-    poly(c, [-1, -0.6, 1, -0.6, 0.9, 0.95, -0.9, 0.95], o.color);
-    for (let i = 0; i < 4; i++) rr(c, -0.7 + i * 0.4, -0.45, 0.22, 1.3, 0.04, sh(o.color, -0.12));
-    rr(c, -1, -0.95, 2, 0.38, 0.06, '#3f8fd0');
-    for (let i = 0; i < 3; i++) rr(c, -0.5 + i * 0.4, 0.3, 0.14, 0.65, 0.04, 'rgba(160,215,255,0.9)', true);
+    // Staudamm von schräg oben: Stausee hinten, gebogene Mauer, Wasserfälle vorne
+    ell(c, 0, -0.45, 1, 0.45, '#3f8fd0');
+    ell(c, -0.25, -0.55, 0.4, 0.1, 'rgba(255,255,255,0.35)', 0, true);
+    c.beginPath(); c.moveTo(-1, -0.2); c.quadraticCurveTo(0, 0.15, 1, -0.2); c.lineTo(0.9, 0.9); c.quadraticCurveTo(0, 1.1, -0.9, 0.9); c.closePath(); fs(c, o.color);
+    for (let i = -2; i <= 2; i++) line(c, i * 0.35, 0.02 + Math.abs(i) * -0.05, i * 0.33, 0.92, 0.04, sh(o.color, -0.18));
+    for (const x of [-0.45, 0, 0.45]) { rr(c, x - 0.08, 0.05, 0.16, 0.85, 0.05, 'rgba(170,220,255,0.95)', true); }
+    ell(c, 0, 0.95, 0.7, 0.12, 'rgba(255,255,255,0.7)', 0, true);
+  },
+  tanker(c, o) {
+    // Tanklaster
+    for (const x of [-0.7, -0.3, 0.65]) { circ(c, x, 0.75, 0.2, '#26262b'); circ(c, x, 0.75, 0.08, '#9aa0aa', true); }
+    rr(c, 0.4, -0.25, 0.6, 0.85, 0.12, '#f2f2f2');
+    rr(c, 0.55, -0.15, 0.35, 0.3, 0.06, '#bfe9ff');
+    rr(c, -1, -0.35, 1.38, 0.95, 0.45, o.color);
+    rr(c, -0.85, -0.25, 1.1, 0.12, 0.05, sh(o.color, 0.3), true);
+    poly(c, [-0.32, -0.05, -0.12, 0.32, -0.52, 0.32], '#ffd23f');
+    c.fillStyle = '#111'; c.fillRect(-0.34, 0.03, 0.04, 0.17); c.fillRect(-0.34, 0.23, 0.04, 0.04);
+  },
+  gasstation(c, o) {
+    // Tankstelle: Dach auf Säulen, Zapfsäulen, Schild
+    rr(c, -0.95, 0.75, 1.9, 0.22, 0.04, '#8a8d96');
+    rr(c, -0.75, -0.35, 0.12, 1.1, 0.03, '#e8e8e8'); rr(c, 0.63, -0.35, 0.12, 1.1, 0.03, '#e8e8e8');
+    rr(c, -1, -0.65, 2, 0.35, 0.06, o.color);
+    rr(c, -1, -0.38, 2, 0.08, 0.02, '#ffffff', true);
+    for (const x of [-0.35, 0.2]) { rr(c, x, 0.25, 0.22, 0.52, 0.05, '#f2f2f2'); rr(c, x + 0.04, 0.32, 0.14, 0.12, 0.02, '#333'); }
+    rr(c, 0.75, -1.05, 0.22, 0.45, 0.04, '#ffd23f');
+    c.fillStyle = '#2a1b1b'; c.font = 'bold 0.16px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('⛽', 0.86, -0.83);
+    poly(c, [-0.15, -0.6, 0.05, -0.38, -0.35, -0.38], '#ffd23f');
+  },
+  gastank(c, o) {
+    // Kugeltank auf Stelzen
+    for (const x of [-0.6, -0.2, 0.2, 0.6]) line(c, x, 0.2, x * 1.15, 0.95, 0.08, '#6a6d76');
+    line(c, -0.65, 0.6, 0.65, 0.6, 0.05, '#6a6d76');
+    const g = c.createRadialGradient(-0.3, -0.45, 0.05, 0, -0.15, 0.85);
+    g.addColorStop(0, sh(o.color, 0.45)); g.addColorStop(0.7, o.color); g.addColorStop(1, sh(o.color, -0.35));
+    c.beginPath(); c.arc(0, -0.15, 0.8, 0, TAU); c.fillStyle = g; c.fill(); c.stroke();
+    rr(c, -0.8, -0.2, 1.6, 0.1, 0.03, sh(o.color, -0.25), true);
+    poly(c, [0, -0.62, 0.3, -0.12, -0.3, -0.12], '#ffd23f');
+    c.fillStyle = '#111'; c.fillRect(-0.025, -0.5, 0.05, 0.22); c.fillRect(-0.025, -0.24, 0.05, 0.05);
+  },
+  rig(c, o) {
+    // Ölbohrinsel im Meer
+    ell(c, 0, 0.85, 1, 0.18, 'rgba(255,255,255,0.4)', 0, true);
+    for (const x of [-0.6, 0.6]) { rr(c, x - 0.08, -0.05, 0.16, 1, 0.04, '#5a5d66'); }
+    rr(c, -0.9, -0.2, 1.8, 0.3, 0.05, '#8a8d96');
+    rr(c, -0.8, -0.5, 0.7, 0.32, 0.04, '#f2f2f2');
+    rr(c, 0.05, -0.55, 0.3, 0.38, 0.04, o.color);
+    for (let i = 0; i < 5; i++) line(c, 0.55 + (i % 2) * 0.1, -0.2 - i * 0.16, 0.65 - (i % 2) * 0.1, -0.36 - i * 0.16, 0.04, '#e8e8e8');
+    line(c, 0.6, -0.2, 0.6, -1.0, 0.05, '#e8e8e8');
+    circ(c, 0.85, -0.9, 0.12 + Math.sin((o.anim || 0) * 8) * 0.03, '#ff8a1f');
   },
   mountain(c, o) {
     poly(c, [-1, 0.95, -0.15, -0.95, 1, 0.95], sh(o.color, -0.2));

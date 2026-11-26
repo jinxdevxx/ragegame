@@ -1,12 +1,12 @@
 // =====================================================================
 //  RAGEVERSE – Einstieg: Game-Loop, Steuerung, Menüs, Shop, Updates
 // =====================================================================
-import * as C from './config.js?v=0.2.2';
-import { Game, computeStats, upgradeLevel, upgradeCost, fmt, charDef, mapDef } from './game.js?v=0.2.2';
-import { render, drawMonsterPreview } from './render.js?v=0.2.2';
-import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.2.2';
-import { loadSave, writeSave, resetSave } from './save.js?v=0.2.2';
-import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.2.2';
+import * as C from './config.js?v=0.3.0';
+import { Game, computeStats, upgradeLevel, upgradeCost, fmt, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.3.0';
+import { render, drawMonsterPreview } from './render.js?v=0.3.0';
+import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.3.0';
+import { loadSave, writeSave, resetSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.3.0';
+import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.3.0';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -14,6 +14,14 @@ const canvas = $('game');
 const ctx = canvas.getContext('2d');
 const save = loadSave();
 const params = new URLSearchParams(location.search);
+// Test-Modus: URL-Parameter laden direkt einen Spielstand (Standard: Platz 1)
+const TEST_KEYS = ['scrap', 'chaos', 'upgrades', 'unlock', 'char', 'map', 'world', 'slot'];
+const testMode = TEST_KEYS.some(k => params.has(k));
+if (testMode) {
+  const i = Math.max(0, Math.min(2, (Number(params.get('slot')) || 1) - 1));
+  if (!listSlots()[i]) createSlot(i, 'Test');
+  loadSlotInto(save, i);
+}
 
 // Test-Parameter: ?scrap=100000 ?chaos=5000 ?world=3 ?upgrades=10 ?char=golem ?map=west ?unlock=1
 if (params.has('scrap')) save.scrap = Number(params.get('scrap')) || 0;
@@ -79,6 +87,7 @@ function onEscape() {
   if (inRun && current === 'screen-pause') { resume(); return; }
   if (current === 'screen-help') { back(); return; }
   if (current === 'screen-menu') { openSettings('screen-menu'); return; }
+  if (current === 'screen-slots') { if (getSlot() >= 0) openMenu(); return; }
   if (!inRun) openMenu();
 }
 window.addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
@@ -166,7 +175,7 @@ function frame(t) {
 // ------------------------------------------------------------------
 // Screens
 // ------------------------------------------------------------------
-const SCREENS = ['screen-menu', 'screen-shop', 'screen-chars', 'screen-maps', 'screen-help', 'screen-results', 'screen-mutation', 'screen-pause', 'screen-settings'];
+const SCREENS = ['screen-menu', 'screen-shop', 'screen-chars', 'screen-maps', 'screen-help', 'screen-results', 'screen-mutation', 'screen-pause', 'screen-settings', 'screen-slots'];
 let current = 'screen-menu', helpFrom = 'screen-menu';
 function show(id) {
   current = id;
@@ -206,6 +215,75 @@ $('btn-help').onclick = () => openHelp('screen-menu');
 $('btn-pause-help').onclick = () => openHelp('screen-pause');
 $('btn-pause-settings').onclick = () => openSettings('screen-pause');
 $('btn-settings').onclick = () => openSettings('screen-menu');
+$('menu-slot').onclick = () => openSlots();
+
+// ------------------------------------------------------------------
+// Spielstände
+// ------------------------------------------------------------------
+const slotPreviews = [];
+let slotDelArmed = -1, slotNaming = -1;
+function fmtDate(t) {
+  if (!t) return '–';
+  const d = new Date(t), now = new Date();
+  const same = d.toDateString() === now.toDateString();
+  return same ? 'heute, ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('de-DE');
+}
+function openSlots() {
+  inRun = false; setIntensity(0);
+  const slots = listSlots(), last = loadMeta().lastSlot;
+  slotPreviews.length = 0;
+  $('slot-grid').innerHTML = slots.map((d, i) => {
+    if (!d) {
+      if (slotNaming === i) return `<div class="slot empty">
+        <div class="slot-num">Platz ${i + 1}</div>
+        <input type="text" id="slot-name-input" maxlength="24" placeholder="Name, z. B. ${['Grumpfs Rache', 'Chaos-Lauf', 'Kollege'][i]}" autocomplete="off">
+        <div class="slot-actions"><button class="btn" data-cancel>Abbrechen</button><button class="btn primary" data-create="${i}">Erstellen</button></div>
+      </div>`;
+      return `<button class="slot empty" data-new="${i}"><div class="slot-new">＋</div><div class="slot-name" style="text-align:center">Neuer Spielstand</div><div class="slot-num" style="text-align:center">Platz ${i + 1}</div></button>`;
+    }
+    const ch = charDef(d.selectedChar), mp = mapDef(d.selectedMap);
+    const best = Math.max(d.bestWorld || 0, ...Object.values(d.mapBest || {}), 0);
+    return `<div class="slot ${i === last ? 'last' : ''}">
+      <canvas width="240" height="160" data-slotprev="${i}"></canvas>
+      <div><div class="slot-num">Platz ${i + 1}${i === last ? ' · zuletzt gespielt' : ''}</div><div class="slot-name">${esc(d.name || 'Spielstand ' + (i + 1))}</div></div>
+      <div class="slot-stats">
+        <span>Monster: <b>${esc(ch.name)}</b></span><span>Karte: <b>${esc(mp.name)}</b></span>
+        <span>Weiteste Welt: <b>${esc(C.WORLDS[best].name)}</b></span><span>Runs: <b>${d.runs || 0}</b></span>
+        <span>⚙ <b>${fmt(d.scrap || 0)}</b></span><span>☠ <b>${fmt(d.chaos || 0)}</b></span>
+        <span style="grid-column:1/-1">Zuletzt: <b>${fmtDate(d.lastPlayed)}</b></span>
+      </div>
+      <div class="slot-actions">
+        <button class="btn del ${slotDelArmed === i ? 'primary' : ''}" data-del="${i}" title="Spielstand löschen">${slotDelArmed === i ? 'Wirklich löschen?' : '🗑'}</button>
+        <button class="btn primary" data-load="${i}">Spielen</button>
+      </div>
+    </div>`;
+  }).join('');
+  $('slot-grid').querySelectorAll('canvas[data-slotprev]').forEach(cv => { const d = slots[Number(cv.dataset.slotprev)]; slotPreviews.push({ cv, char: charDef(d.selectedChar), stage: Math.max(d.bestWorld || 0, ...Object.values(d.mapBest || {}), 0) }); });
+  $('slots-back-row').hidden = getSlot() < 0;
+  show('screen-slots');
+  const inp = $('slot-name-input');
+  if (inp) { inp.focus(); inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') $('slot-grid').querySelector('[data-create]').click(); if (e.key === 'Escape') { slotNaming = -1; openSlots(); } }; }
+}
+$('slot-grid').addEventListener('click', e => {
+  initAudio();
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.new !== undefined) { slotNaming = Number(t.dataset.new); slotDelArmed = -1; sfx('click'); openSlots(); return; }
+  if (t.dataset.cancel !== undefined) { slotNaming = -1; openSlots(); return; }
+  if (t.dataset.create !== undefined) {
+    const i = Number(t.dataset.create);
+    createSlot(i, $('slot-name-input').value); slotNaming = -1;
+    loadSlotInto(save, i); sfx('unlock'); game.start(); openMenu(); return;
+  }
+  if (t.dataset.load !== undefined) { const i = Number(t.dataset.load); slotDelArmed = -1; loadSlotInto(save, i); sfx('buy'); game.start(); openMenu(); return; }
+  if (t.dataset.del !== undefined) {
+    const i = Number(t.dataset.del);
+    if (slotDelArmed !== i) { slotDelArmed = i; sfx('click'); openSlots(); setTimeout(() => { if (slotDelArmed === i) { slotDelArmed = -1; if (current === 'screen-slots') openSlots(); } }, 4000); return; }
+    deleteSlot(i); slotDelArmed = -1; sfx('deny');
+    if (getSlot() === i) loadSlotInto(save, i), deleteSlot(i), location.reload();
+    else openSlots();
+  }
+});
+$('btn-slots-back').onclick = () => openMenu();
 
 // ------------------------------------------------------------------
 // Einstellungen
@@ -253,7 +331,7 @@ $('set-shake').onclick = () => { save.settings.shake = !save.settings.shake; app
 $('set-hints').onclick = () => { save.settings.hints = !save.settings.hints; applySettings(); renderSettings(); sfx('click'); };
 $('set-reset').onclick = () => {
   if (!resetArmed) { resetArmed = true; renderSettings(); setTimeout(() => { resetArmed = false; if (current === 'screen-settings') renderSettings(); }, 4000); return; }
-  resetSave(); location.reload();
+  resetSave(); location.reload();  // lädt neu und zeigt die Spielstand-Auswahl
 };
 $('btn-settings-close').onclick = closeSettings;
 $('btn-settings-done').onclick = closeSettings;
@@ -276,12 +354,16 @@ function reqProgress(req) {
 }
 
 function openMenu() {
+  if (getSlot() < 0) { openSlots(); return; }
   inRun = false; setIntensity(0);
+  $('menu-slot-name').textContent = save.name || 'Spielstand';
   const ch = charDef(save.selectedChar), mp = mapDef(save.selectedMap);
   $('menu-char').innerHTML = `👹 <b>${esc(ch.name)}</b> <small>${esc(ch.title)}</small>`;
   $('menu-map').innerHTML = `${mp.icon} <b>${esc(mp.name)}</b>${mp.scrapMult > 1 ? ` <small>×${mp.scrapMult} Schrott</small>` : ''}`;
   $('menu-scrap').textContent = fmt(save.scrap);
   $('menu-chaos').textContent = fmt(save.chaos);
+  $('menu-dm').textContent = fmt(save.darkMatter || 0);
+  $('menu-dm-pill').hidden = !(save.darkMatter || save.prestiges);
   const w = C.WORLDS[bestWorldAny()] || C.WORLDS[0];
   $('menu-stats').innerHTML = save.runs ? `
     <div class="stat"><b>${w.name}</b><small>Weiteste Welt</small></div>
@@ -291,13 +373,23 @@ function openMenu() {
 }
 
 // ------------------------------------------------------------------
-// Werkstatt
+// Schurkenhöhle (Upgrades + Urknall)
 // ------------------------------------------------------------------
-function openShop() { inRun = false; setIntensity(0); sfx('click'); renderShop(); show('screen-shop'); }
+let shopTab = 'body', bangArmed = false;
+function openShop() { inRun = false; setIntensity(0); sfx('click'); bangArmed = false; renderShop(); show('screen-shop'); }
 function renderShop() {
   $('shop-scrap').textContent = fmt(save.scrap);
+  $('shop-dm').textContent = fmt(save.darkMatter || 0);
+  $('shop-dm-pill').hidden = !(save.darkMatter || save.prestiges || prestigeGain(save) > 0);
+  const bangReady = prestigeGain(save) > 0;
+  const affordable = cat => C.UPGRADES.filter(u => u.cat === cat && upgradeLevel(save, u.id) < u.max && save.scrap >= upgradeCost(u, upgradeLevel(save, u.id))).length;
+  $('shop-tabs').innerHTML = C.UPGRADE_CATS.map(c => { const n = affordable(c.id); return `<button class="tab ${shopTab === c.id ? 'on' : ''}" data-tab="${c.id}">${c.icon} ${c.name}${n ? `<span class="cnt">${n}</span>` : ''}</button>`; }).join('')
+    + `<button class="tab bang ${shopTab === 'bang' ? 'on' : ''}" data-tab="bang">💥 Urknall${bangReady ? '<span class="cnt">!</span>' : ''}</button>`;
+  if (shopTab === 'bang') { renderBang(); return; }
+  const cat = C.UPGRADE_CATS.find(c => c.id === shopTab);
+  $('shop-tab-desc').textContent = cat.desc + ' Gilt für alle Monster und Karten.';
   const base = computeStats({ upgrades: {} }, [], 'grumpf');
-  const st = computeStats(save, [], 'grumpf');
+  const st = computeStats({ upgrades: save.upgrades, dmPerks: {} }, [], 'grumpf');
   const effect = {
     size: () => `Start ${(st.startRadius / base.startRadius).toFixed(2)}×`,
     rage: () => `${Math.round(st.rageMax)} Wut`,
@@ -311,19 +403,69 @@ function renderShop() {
     dash: () => `${st.dashCooldown.toFixed(1)} s Abklingzeit`,
     slam: () => `${st.slamCooldown.toFixed(1)} s · Radius ${st.slamRadius.toFixed(1)}×`,
     berserk: () => `${st.berserkGain.toFixed(2)}× Aufladung`,
+    combo: () => `Fenster ${st.comboWindow.toFixed(1)} s · bis ×${st.comboMax.toFixed(1)}`,
+    chaosup: () => `${st.chaosMult.toFixed(2)}× Chaos`,
+    luck: () => `${(st.goldenChance * 100).toFixed(1)} % Gold-Chance`,
+    crates: () => `${(C.CRATE_CHANCE * st.crateMult * 100).toFixed(1)} % Kisten-Chance`,
+    quest: () => `${st.questMult.toFixed(2)}× Auftragsbeute`,
   };
-  $('shop-grid').innerHTML = C.UPGRADES.map(u => {
+  $('shop-grid').innerHTML = C.UPGRADES.filter(u => u.cat === shopTab).map(u => {
     const l = upgradeLevel(save, u.id), maxed = l >= u.max, cost = upgradeCost(u, l), can = !maxed && save.scrap >= cost;
-    const pct = Math.round(l / u.max * 100);
     return `<div class="upg ${can ? 'can' : ''}" data-id="${u.id}">
-      <div class="upg-top"><div class="upg-icon">${u.icon}</div><div class="upg-txt"><div class="upg-name">${u.name} <span class="lv">Lv ${l}</span></div><div class="upg-lvl">${effect[u.id] ? effect[u.id]() : ''}</div></div></div>
+      <div class="upg-top"><div class="upg-icon">${u.icon}</div><div class="upg-txt"><div class="upg-name">${u.name} <span class="lv">Lv ${l}/${u.max}</span></div><div class="upg-lvl">${effect[u.id] ? effect[u.id]() : ''}</div></div></div>
       <div class="upg-desc">${u.desc}</div>
-      <div class="bar tiny"><div style="width:${pct}%"></div></div>
+      <div class="bar tiny"><div style="width:${Math.round(l / u.max * 100)}%"></div></div>
       <button class="btn ${can ? 'primary' : ''}" data-buy="${u.id}" ${can ? '' : 'disabled'}>${maxed ? 'MAX' : '⚙ ' + fmt(cost)}</button>
     </div>`;
   }).join('');
 }
+function renderBang() {
+  const gain = prestigeGain(save), P = C.PRESTIGE;
+  const cycleW = C.WORLDS[Math.min(save.cycleBest || 0, C.WORLDS.length - 1)].name;
+  $('shop-tab-desc').textContent = '';
+  const perks = C.DM_PERKS.map(d => {
+    const l = dmLevel(save, d.id), maxed = l >= d.max, cost = dmCost(d, l), can = !maxed && (save.darkMatter || 0) >= cost;
+    const eff = d.id === 'dm_mut' ? `${l} Start-Mutation${l === 1 ? '' : 'en'}` : d.id === 'dm_keep' ? `behält ${Math.round(l * d.per * 100)} % der Stufen` : `+${Math.round(l * d.per * 100)} %`;
+    return `<div class="upg dmp ${can ? 'can' : ''}">
+      <div class="upg-top"><div class="upg-icon">${d.icon}</div><div class="upg-txt"><div class="upg-name">${d.name} <span class="lv">Lv ${l}/${d.max}</span></div><div class="upg-lvl">${eff}</div></div></div>
+      <div class="upg-desc">${d.desc}</div>
+      <button class="btn ${can ? 'primary' : ''}" data-dm="${d.id}" ${can ? '' : 'disabled'}>${maxed ? 'MAX' : '◆ ' + fmt(cost)}</button>
+    </div>`;
+  }).join('');
+  $('shop-grid').innerHTML = `<div class="bang-panel">
+      <h3>💥 Der Urknall</h3>
+      <div>Sprenge deinen Fortschritt in die Luft: <b>Schrott und Upgrades</b> sind danach weg. Dafür bekommst du <b>◆ Dunkle Materie</b> für den <b>Bösen Masterplan</b> – Boni, die für immer bleiben. <b>Chaos, Monster, Karten und Rekorde bleiben erhalten.</b></div>
+      <div class="bang-stats">
+        <div class="stat"><b>${esc(cycleW)}</b><small>Weiteste Welt (dieser Durchgang)</small></div>
+        <div class="stat"><b>${fmt(save.cycleScrap || 0)}</b><small>Schrott seit letztem Urknall</small></div>
+        <div class="stat"><b>${save.prestiges || 0}</b><small>Urknalle bisher</small></div>
+      </div>
+      ${gain > 0
+        ? `<div>Urknall jetzt bringt dir: <span class="bang-gain">+${fmt(gain)} ◆</span></div>
+           <button class="btn bang-btn ${bangArmed ? 'armed' : ''}" id="btn-bang">${bangArmed ? '⚠ Sicher? Nochmal klicken!' : '💥 URKNALL AUSLÖSEN'}</button>`
+        : `<div class="char-req">🔒 Erreiche in diesem Durchgang den <b>${esc(C.WORLDS[P.minWorld].name)}</b>, um den Urknall freizuschalten. Je weiter du kommst und je mehr Schrott du sammelst, desto mehr ◆ gibt es.</div>`}
+    </div>
+    <h3 style="grid-column:1/-1;margin:6px 0 0;color:#7fffe0">🧠 Der Böse Masterplan <small class="muted">(◆ ${fmt(save.darkMatter || 0)})</small></h3>
+    ${perks}`;
+}
+$('shop-tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; shopTab = b.dataset.tab; bangArmed = false; sfx('click'); renderShop(); });
 $('shop-grid').addEventListener('click', e => {
+  const bang = e.target.closest('#btn-bang');
+  if (bang) {
+    if (!bangArmed) { bangArmed = true; sfx('ready'); renderShop(); setTimeout(() => { bangArmed = false; if (current === 'screen-shop' && shopTab === 'bang') renderShop(); }, 4000); return; }
+    const gain = doPrestige(save); writeSave(save); bangArmed = false;
+    const fl = document.createElement('div'); fl.className = 'bang-flash'; document.body.appendChild(fl); setTimeout(() => fl.remove(), 1500);
+    sfx('berserk'); setTimeout(() => sfx('unlock'), 400);
+    game.start(); renderShop();
+    hintMenu(`💥 URKNALL! +${fmt(gain)} ◆ Dunkle Materie`);
+    return;
+  }
+  const dmb = e.target.closest('[data-dm]');
+  if (dmb) {
+    const d = C.DM_PERKS.find(x => x.id === dmb.dataset.dm), l = dmLevel(save, d.id), cost = dmCost(d, l);
+    if (l >= d.max || (save.darkMatter || 0) < cost) { sfx('deny'); return; }
+    save.darkMatter -= cost; save.dmPerks[d.id] = l + 1; writeSave(save); sfx('unlock'); renderShop(); return;
+  }
   const b = e.target.closest('[data-buy]'); if (!b) return;
   const u = C.UPGRADES.find(x => x.id === b.dataset.buy);
   const l = upgradeLevel(save, u.id), cost = upgradeCost(u, l);
@@ -333,6 +475,7 @@ $('shop-grid').addEventListener('click', e => {
   const card = $('shop-grid').querySelector(`[data-id="${u.id}"]`);
   if (card) { card.classList.add('bought'); setTimeout(() => card.classList.remove('bought'), 400); }
 });
+function hintMenu(text) { const el = $('callout'); $('hud').hidden = false; el.hidden = true; void el.offsetWidth; el.textContent = text; el.dataset.tier = 3; el.hidden = false; setTimeout(() => { el.hidden = true; $('hud').hidden = !inRun; }, 1400); }
 
 // ------------------------------------------------------------------
 // Monster
@@ -378,6 +521,7 @@ function animatePreviews(time) {
     stageCycle = Math.floor(time / 2.5) % (bestWorldAny() + 1);
     drawMonsterPreview($('menu-monster'), charDef(save.selectedChar), stageCycle, time, false);
   }
+  if (current === 'screen-slots') for (const p of slotPreviews) drawMonsterPreview(p.cv, p.char, p.stage, time, false);
   if (current === 'screen-chars') for (const p of previews) drawMonsterPreview(p.cv, p.char, p.locked ? 0 : Math.floor(time / 2) % 8, time, p.locked);
 }
 
@@ -424,7 +568,7 @@ function openHelp(from) {
     </div>
     <h3>Fähigkeiten</h3>
     <div class="help-abs">
-      <div class="habs"><span class="ab-ic">⚡</span><div><b>${A.dash.name}</b> <kbd>Leertaste</kbd> · Doppeltipp<br>${A.dash.desc}<br><small>Abklingzeit: <b>${st.dashCooldown.toFixed(1)} s</b> (Upgrade „Ansturm“)</small></div></div>
+      <div class="habs"><span class="ab-ic">⚡</span><div><b>${A.dash.name}</b> <kbd>Leertaste</kbd> · Doppeltipp<br>${A.dash.desc}<br><small>Abklingzeit: <b>${st.dashCooldown.toFixed(1)} s</b> (Upgrade „Ansturm“ in der Schurkenhöhle)</small></div></div>
       <div class="habs"><span class="ab-ic">💥</span><div><b>${A.slam.name}</b> <kbd>E</kbd> · 💥-Button<br>${A.slam.desc}<br><small>Abklingzeit: <b>${st.slamCooldown.toFixed(1)} s</b> · Radius: <b>${st.slamRadius.toFixed(1)}× Körper</b> (Upgrade „Erdbeben“)</small></div></div>
       <div class="habs"><span class="ab-ic">😡</span><div><b>${A.berserk.name}</b> <kbd>R</kbd> · 😡-Button<br>${A.berserk.desc}<br><small>Dauer: <b>${st.berserkTime.toFixed(0)} s</b> (Upgrade „Berserker“ lädt schneller)</small></div></div>
     </div>
@@ -433,12 +577,14 @@ function openHelp(from) {
       <li><b>🔥 Wut</b> ist deine Zeit. Sie sinkt ständig und mit der Zeit immer schneller. Jede Zerstörung füllt sie wieder auf.</li>
       <li><b>Wachsen:</b> Alles Zerstörte macht dich größer. Bist du groß genug, steigst du in die nächste Welt auf, wählst eine <b>Mutation</b> und dein Monster <b>evolviert</b>.</li>
       <li><b>Gestrichelter Kreis</b> = noch zu groß für dich. <b>Rot mit ⚠</b> = Hindernis, das dir Wut abzieht, wenn du reinläufst.</li>
-      <li><b>⚙ Schrott</b> fällt als Münzen heraus – einsammeln! Damit kaufst du Upgrades in der <b>Werkstatt</b>.</li>
+      <li><b>⚙ Schrott</b> fällt als Münzen heraus – einsammeln! Damit kaufst du Upgrades in der <b>🦹 Schurkenhöhle</b>.</li>
       <li><b>☠ Chaos</b> bekommst du für jede Zerstörung, extra für große Brocken und Aufträge. Damit schaltest du neue <b>Monster</b> frei.</li>
       <li><b>Aufträge</b> oben links bringen Wut, Schrott, Chaos und Berserker-Ladung.</li>
       <li><b>Kombo:</b> Schnell hintereinander zerstören = bis zu ×${C.COMBO.max} Schrott.</li>
       <li><b>Goldene Objekte</b> = ×${C.GOLDEN_MULT} Schrott. <b>Schrottkisten</b> platzen wie Piñatas. <b>⚠-Fässer</b> explodieren in Kettenreaktionen.</li>
       <li><b>Neue Karten</b> schaltest du über deine weiteste Welt frei. Sie sind härter, bringen aber deutlich mehr.</li>
+      <li><b>💥 Urknall</b> (in der Schurkenhöhle, ab dem Kontinent): Schrott und Upgrades werden gesprengt, dafür gibt es <b>◆ Dunkle Materie</b> für den <b>Bösen Masterplan</b> – Boni für immer. So kommst du in jedem Durchgang schneller und weiter.</li>
+      <li><b>Welten:</b> Nach der Galaxie warten Galaxienhaufen, Universum und Multiversum – und danach geht es endlos weiter.</li>
     </ul>`;
   show('screen-help');
 }
@@ -469,6 +615,7 @@ function showResults(s) {
     ${s.quests ? `<div class="res-muts">✅ ${s.quests} Auftr${s.quests === 1 ? 'ag' : 'äge'} erfüllt</div>` : ''}
     ${mutNames.length ? `<div class="res-muts">Mutationen: ${mutNames.join(' · ')}</div>` : ''}
     ${unlockables.length ? `<div class="res-unlock">🎉 Du kannst jetzt <b>${unlockables.map(c => esc(c.name)).join(', ')}</b> freischalten! → Monster</div>` : ''}
+    ${prestigeGain(save) > 0 ? `<div class="res-unlock">💥 <b>Urknall möglich:</b> +${fmt(prestigeGain(save))} ◆ Dunkle Materie → Schurkenhöhle › Urknall</div>` : ''}
     ${maps.length ? `<div class="res-unlock">🗺 Neue Karte freigeschaltet: <b>${maps.map(m => esc(m.name)).join(', ')}</b>!</div>` : ''}`;
   if (maps.length) { save.seenMaps = [...(save.seenMaps || []), ...maps.map(m => m.id)]; writeSave(save); }
   inRun = false;
@@ -663,5 +810,5 @@ setInterval(checkForUpdate, 90 * 1000);
 setTimeout(checkForUpdate, 5000);
 
 // ------------------------------------------------------------------
-openMenu();
+if (testMode) openMenu(); else openSlots();
 requestAnimationFrame(frame);

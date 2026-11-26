@@ -6,6 +6,23 @@
 
 export const PATCH_NOTES = [
   {
+    version: '0.3.0',
+    date: '2026-11-26',
+    title: 'Schurkenhöhle & Urknall',
+    summary: 'Spielstände, neue Welten bis zum Multiversum, Prestige-System und komplett neu gezeichnete Landschaften.',
+    changes: [
+      '💾 Spielstände: 3 Speicherplätze mit Namen, Auswahl beim Start, wechselbar im Menü. Dein bisheriger Fortschritt ist automatisch Spielstand 1.',
+      '🦹 Aus der Werkstatt wird die Schurkenhöhle: Upgrades in Kategorien (Körper, Kampf, Beute) und 5 neue Upgrades (Kettenreaktion, Chaos-Rausch, Gold-Riecher, Kistenfinder, Auftragskiller).',
+      '💥 Urknall (Prestige): Ab dem Kontinent kannst du Schrott und Upgrades sprengen und bekommst dafür ◆ Dunkle Materie für den Bösen Masterplan mit 8 permanenten Boni.',
+      '🌌 3 neue Welten nach der Galaxie: Galaxienhaufen, Universum, Multiversum, dazu 3 neue Evolutionen für Grumpf.',
+      '🗺 Neue Landschaften: Vorstadt mit Häuserblöcken, Vorgärten, Pools und Zebrastreifen, Stadt mit Parks, Parkplätzen und Plätzen, Gebirge mit Seen, Wäldern, Felsen und Schnee, Kontinent als Weltkarte mit Wolken. Garten, Prärie, Westernstadt, Canyon, Zuckerland und Weltall sind ebenfalls überarbeitet.',
+      'Neu gezeichnet: Tanklaster, Tankstelle, Kugeltank, Ölbohrinsel, Staudamm.',
+      'Fix: Magnet und Schwarzes Loch haben dich weggeschubst, wenn du nicht genug Schaden hattest. Sie ziehen jetzt nur noch an, was du sofort fressen kannst.',
+      'Fix: Kein Zurückprallen mehr an Objekten, die mehrere Schläge brauchen.',
+      'Alle Welten laufen flüssig mit ca. 60 FPS.',
+    ],
+  },
+  {
     version: '0.2.2',
     date: '2026-11-26',
     title: 'Einstellungen',

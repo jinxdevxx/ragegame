@@ -77,6 +77,9 @@ export const EVOLUTION = [
   { name: 'Weltenfresser',   body: '#6a2bd9', belly: '#ff9ae0', horn: '#ffe9ff', dark: '#2a0f5a' },
   { name: 'Sonnenschlinger', body: '#ff6a1f', belly: '#ffe46a', horn: '#fff8d0', dark: '#8a2a00' },
   { name: 'Galaxienfresser', body: '#22155a', belly: '#8a6bff', horn: '#ffffff', dark: '#0a0520' },
+  { name: 'Haufenbrecher',   body: '#0f3a5a', belly: '#6bf0ff', horn: '#e0ffff', dark: '#041420' },
+  { name: 'Weltenende',      body: '#3a0a2a', belly: '#ff4ab0', horn: '#ffe0f4', dark: '#14020c' },
+  { name: 'Multiversum-Gott', body: '#f2f2ff', belly: '#ffd23f', horn: '#ff3b2f', dark: '#3a2a6a' },
 ];
 
 // ---------------------------------------------------------------------
@@ -130,7 +133,7 @@ export const WORLDS = [
       { name: 'Auto', size: 32, shape: 'car', color: '#e84a5f', value: 8, move: 'drive', speed: 1.8 },
       { name: 'Taxi', size: 32, shape: 'car', color: '#ffd23f', value: 9, move: 'drive', speed: 2.0 },
       { name: 'Polizeiauto', size: 40, shape: 'police', color: '#f4f6ff', value: 14, move: 'drive', speed: 2.2, hazard: 15 },
-      { name: 'Tankwagen', size: 50, shape: 'tank', color: '#e03a3a', value: 14, explosive: true },
+      { name: 'Tankwagen', size: 50, shape: 'tanker', color: '#e03a3a', value: 14, explosive: true },
       { name: 'Bushaltestelle', size: 52, shape: 'shelter', color: '#8fb3d9', value: 12 },
       { name: 'Kiosk', size: 70, shape: 'house', color: '#e8a94a', value: 18 },
       { name: 'Bus', size: 95, shape: 'bus', color: '#f2a03d', value: 26, move: 'drive', speed: 1.0 },
@@ -145,7 +148,7 @@ export const WORLDS = [
       { name: 'Passanten', size: 50, shape: 'person', color: '#d94a8a', value: 2, move: 'flee', speed: 2.5 },
       { name: 'Wohnhaus', size: 80, shape: 'building', color: '#e0b48a', value: 5 },
       { name: 'Laden', size: 95, shape: 'shop', color: '#e07a5f', value: 6 },
-      { name: 'Tankstelle', size: 115, shape: 'tank', color: '#e03a3a', value: 10, explosive: true },
+      { name: 'Tankstelle', size: 115, shape: 'gasstation', color: '#e03a3a', value: 10, explosive: true },
       { name: 'Panzer', size: 120, shape: 'tankmil', color: '#6a8a40', value: 14, move: 'drive', speed: 0.8, hazard: 20 },
       { name: 'Kirche', size: 150, shape: 'church', color: '#e0d6c4', value: 10 },
       { name: 'Bürohaus', size: 190, shape: 'building', color: '#7fa7c9', value: 13 },
@@ -164,7 +167,7 @@ export const WORLDS = [
       { name: 'Berghütte', size: 230, shape: 'house', color: '#8a5a2b', value: 3 },
       { name: 'Hubschrauber', size: 300, shape: 'heli', color: '#d94141', value: 7, move: 'wander', speed: 1.6, hazard: 15 },
       { name: 'Wald', size: 400, shape: 'forest', color: '#2a7a44', value: 5 },
-      { name: 'Gasspeicher', size: 460, shape: 'tank', color: '#e03a3a', value: 9, explosive: true },
+      { name: 'Gasspeicher', size: 460, shape: 'gastank', color: '#e03a3a', value: 9, explosive: true },
       { name: 'Staudamm', size: 800, shape: 'dam', color: '#a5afb6', value: 12 },
       { name: 'Berg', size: 1150, shape: 'mountain', color: '#8a96a3', value: 18 },
       { name: 'Vulkan', size: 1350, shape: 'volcano', color: '#5a3b33', value: 24, explosive: true },
@@ -177,7 +180,7 @@ export const WORLDS = [
       { name: 'Schiff', size: 500, shape: 'ship', color: '#ececec', value: 1, move: 'drive', speed: 1 },
       { name: 'Dorf', size: 600, shape: 'village', color: '#e0b48a', value: 1 },
       { name: 'Insel', size: 850, shape: 'island', color: '#f0d58a', value: 2 },
-      { name: 'Ölbohrinsel', size: 1000, shape: 'tank', color: '#e03a3a', value: 4, explosive: true },
+      { name: 'Ölbohrinsel', size: 1000, shape: 'rig', color: '#e03a3a', value: 4, explosive: true },
       { name: 'Tornado', size: 1300, shape: 'tornado', color: '#cfd8e2', value: 8, move: 'wander', speed: 1.4, hazard: 20 },
       { name: 'Großstadt', size: 1600, shape: 'metropolis', color: '#9aa5c9', value: 5 },
       { name: 'Wüste', size: 2400, shape: 'island', color: '#f0c36a', value: 7 },
@@ -195,7 +198,7 @@ export const WORLDS = [
       { name: 'Raumstation', size: 3500, shape: 'station', color: '#d9dde6', value: 2 },
       { name: 'Asteroid', size: 4500, shape: 'rock', color: '#8a7a6a', value: 2, move: 'drive', speed: 0.8 },
       { name: 'UFO', size: 5000, shape: 'ufo', color: '#7fe07f', value: 7, move: 'wander', speed: 1.6, hazard: 15 },
-      { name: 'Treibstofflager', size: 5000, shape: 'tank', color: '#e03a3a', value: 4, explosive: true },
+      { name: 'Treibstofflager', size: 5000, shape: 'gastank', color: '#e03a3a', value: 4, explosive: true },
       { name: 'Mond', size: 9000, shape: 'planet', color: '#c9c9c9', value: 6 },
       { name: 'Eisplanet', size: 16000, shape: 'planet', color: '#9fe3ff', value: 10 },
       { name: 'Erde 2', size: 21000, shape: 'earth', color: '#3d8bd9', value: 14 },
@@ -229,6 +232,46 @@ export const WORLDS = [
       { name: 'Zwerggalaxie', size: 720000, shape: 'galaxy', color: '#6bd0ff', value: 34 },
     ],
   },
+  {
+    id: 'supercluster', name: 'Galaxienhaufen', minRadius: 655360, scrapMult: 6561, ground: 'space',
+    bg: '#061226', bg2: '#0e3a5a', accent: '#6bf0ff',
+    objects: [
+      { name: 'Zwerggalaxie', size: 150000, shape: 'galaxy', color: '#6bd0ff', value: 1 },
+      { name: 'Sternhaufen', size: 230000, shape: 'cluster', color: '#9fd0ff', value: 2 },
+      { name: 'Spiralgalaxie', size: 380000, shape: 'galaxy', color: '#ffb0f0', value: 4 },
+      { name: 'Quasar', size: 500000, shape: 'star', color: '#7fffff', value: 7, explosive: true },
+      { name: 'Galaktischer Kreuzer', size: 600000, shape: 'ufo', color: '#ff5a5a', value: 10, move: 'wander', speed: 1.4, hazard: 20 },
+      { name: 'Dunkle Wolke', size: 900000, shape: 'nebula', color: '#3a2a8a', value: 9 },
+      { name: 'Riesengalaxie', size: 1600000, shape: 'galaxy', color: '#ffd23f', value: 16 },
+      { name: 'Supermassives Loch', size: 2400000, shape: 'blackhole', color: '#000000', value: 24 },
+    ],
+  },
+  {
+    id: 'universe', name: 'Universum', minRadius: 2621440, scrapMult: 19683, ground: 'space',
+    bg: '#14051a', bg2: '#4a0a3a', accent: '#ff4ab0',
+    objects: [
+      { name: 'Galaxienhaufen', size: 600000, shape: 'cluster', color: '#ffb0f0', value: 1 },
+      { name: 'Kosmischer Nebel', size: 1100000, shape: 'nebula', color: '#ff4ab0', value: 2 },
+      { name: 'Hypernova', size: 1600000, shape: 'star', color: '#ffffff', value: 5, explosive: true },
+      { name: 'Void-Jäger', size: 2400000, shape: 'ufo', color: '#b06bff', value: 9, move: 'wander', speed: 1.5, hazard: 22 },
+      { name: 'Superhaufen', size: 3600000, shape: 'galaxy', color: '#7fd3ff', value: 8 },
+      { name: 'Wurmloch', size: 5000000, shape: 'blackhole', color: '#000000', value: 14 },
+      { name: 'Kosmische Wand', size: 8000000, shape: 'nebula', color: '#ffd23f', value: 22 },
+    ],
+  },
+  {
+    id: 'multiverse', name: 'Multiversum', minRadius: 10485760, scrapMult: 59049, ground: 'space',
+    bg: '#f4f0ff', bg2: '#c9b8ff', accent: '#ff3b2f',
+    objects: [
+      { name: 'Paralleluniversum', size: 2400000, shape: 'planet', color: '#b06bff', value: 1 },
+      { name: 'Weltenblase', size: 4000000, shape: 'ringplanet', color: '#7fd3ff', value: 2 },
+      { name: 'Urknall-Echo', size: 6000000, shape: 'star', color: '#ffd23f', value: 5, explosive: true },
+      { name: 'Wächter des Multiversums', size: 9000000, shape: 'ufo', color: '#ffd23f', value: 12, move: 'wander', speed: 1.5, hazard: 25 },
+      { name: 'Spiegeluniversum', size: 14000000, shape: 'galaxy', color: '#ff4ab0', value: 12 },
+      { name: 'Zeitschleife', size: 22000000, shape: 'blackhole', color: '#000000', value: 20 },
+      { name: 'Ur-Universum', size: 34000000, shape: 'galaxy', color: '#ffffff', value: 34 },
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------
@@ -259,19 +302,29 @@ export const QUESTS = {
 // Permanente Upgrades (Werkstatt zwischen den Runs)
 // cost = base × growth^level
 // ---------------------------------------------------------------------
+export const UPGRADE_CATS = [
+  { id: 'body',   name: 'Körper', icon: '🦖', desc: 'Größer, zäher, hungriger.' },
+  { id: 'combat', name: 'Kampf',  icon: '👊', desc: 'Mehr Schaden und stärkere Fähigkeiten.' },
+  { id: 'loot',   name: 'Beute',  icon: '💰', desc: 'Mehr Schrott, Chaos und Glück.' },
+];
 export const UPGRADES = [
-  { id: 'size',    name: 'Startgröße',  icon: '🦖', desc: 'Du startest größer.',                         base: 75, growth: 2.05, max: 40, per: 0.12 },
-  { id: 'rage',    name: 'Wut-Tank',    icon: '🔥', desc: 'Mehr maximale Wut = längere Runs.',             base: 45, growth: 1.95, max: 40, per: 0.12 },
-  { id: 'calm',    name: 'Dauerwut',    icon: '⏳', desc: 'Wut sinkt langsamer.',                           base: 90, growth: 2.10,  max: 25, per: 0.05 },
-  { id: 'dmg',     name: 'Wucht',       icon: '👊', desc: 'Mehr Schaden pro Schlag.',                       base: 60, growth: 2.00,  max: 40, per: 0.15 },
-  { id: 'hard',    name: 'Härte',       icon: '🪨', desc: 'Zerstöre Objekte, die größer sind als du.',     base: 150, growth: 2.20,  max: 15, per: 0.06 },
-  { id: 'speed',   name: 'Tempo',       icon: '💨', desc: 'Schneller stampfen.',                            base: 45, growth: 1.95, max: 30, per: 0.06 },
-  { id: 'absorb',  name: 'Hunger',      icon: '🍖', desc: 'Wachse schneller durch Zerstörung.',             base: 105, growth: 2.15, max: 30, per: 0.08 },
-  { id: 'scrap',   name: 'Schrottgier', icon: '💰', desc: 'Mehr Schrott pro Objekt.',                       base: 90, growth: 2.05, max: 40, per: 0.15 },
-  { id: 'magnet',  name: 'Magnet',      icon: '🧲', desc: 'Zieht Schrott und kleine Krümel aus der Ferne an.', base: 105, growth: 2.10,  max: 20, per: 0.6 },
-  { id: 'slam',    name: 'Erdbeben',    icon: '💥', desc: 'Stampfer (E): größerer Radius, kürzere Abklingzeit.', base: 120, growth: 2.15, max: 20, per: 0.06 },
-  { id: 'dash',    name: 'Ansturm',     icon: '⚡', desc: 'Stampfer-Ansturm lädt schneller auf.',           base: 90, growth: 2.10,  max: 20, per: 0.06 },
-  { id: 'berserk', name: 'Berserker',   icon: '😡', desc: 'Berserker-Modus füllt sich schneller.',          base: 135, growth: 2.15, max: 20, per: 0.1 },
+  { id: 'size',    cat: 'body',   name: 'Startgröße',     icon: '🦖', desc: 'Du startest größer.',                                   base: 75,  growth: 2.05, max: 40, per: 0.12 },
+  { id: 'rage',    cat: 'body',   name: 'Wut-Tank',       icon: '🔥', desc: 'Mehr maximale Wut = längere Runs.',                       base: 45,  growth: 1.95, max: 40, per: 0.12 },
+  { id: 'calm',    cat: 'body',   name: 'Dauerwut',       icon: '⏳', desc: 'Wut sinkt langsamer.',                                     base: 90,  growth: 2.1,  max: 25, per: 0.05 },
+  { id: 'absorb',  cat: 'body',   name: 'Hunger',         icon: '🍖', desc: 'Wachse schneller durch Zerstörung.',                       base: 105, growth: 2.15, max: 30, per: 0.08 },
+  { id: 'speed',   cat: 'body',   name: 'Tempo',          icon: '💨', desc: 'Schneller stampfen.',                                      base: 45,  growth: 1.95, max: 30, per: 0.06 },
+  { id: 'dmg',     cat: 'combat', name: 'Wucht',          icon: '👊', desc: 'Mehr Schaden pro Schlag.',                                 base: 60,  growth: 2.0,  max: 40, per: 0.15 },
+  { id: 'hard',    cat: 'combat', name: 'Härte',          icon: '🪨', desc: 'Zerstöre Objekte, die größer sind als du.',               base: 150, growth: 2.2,  max: 15, per: 0.06 },
+  { id: 'dash',    cat: 'combat', name: 'Ansturm',        icon: '⚡', desc: 'Ansturm (Leertaste) lädt schneller auf.',                  base: 90,  growth: 2.1,  max: 20, per: 0.06 },
+  { id: 'slam',    cat: 'combat', name: 'Erdbeben',       icon: '💥', desc: 'Stampfer (E): größerer Radius, kürzere Abklingzeit.',      base: 120, growth: 2.15, max: 20, per: 0.06 },
+  { id: 'berserk', cat: 'combat', name: 'Berserker',      icon: '😡', desc: 'Berserker (R) lädt sich schneller auf.',                   base: 135, growth: 2.15, max: 20, per: 0.1 },
+  { id: 'combo',   cat: 'combat', name: 'Kettenreaktion', icon: '⛓', desc: 'Längeres Kombo-Fenster und höherer Kombo-Bonus.',          base: 110, growth: 2.1,  max: 15, per: 0.08 },
+  { id: 'scrap',   cat: 'loot',   name: 'Schrottgier',    icon: '⚙', desc: 'Mehr Schrott pro Objekt.',                                 base: 90,  growth: 2.05, max: 40, per: 0.15 },
+  { id: 'magnet',  cat: 'loot',   name: 'Magnet',         icon: '🧲', desc: 'Zieht Schrott und kleine Krümel aus der Ferne an.',       base: 105, growth: 2.1,  max: 20, per: 0.6 },
+  { id: 'chaosup', cat: 'loot',   name: 'Chaos-Rausch',   icon: '☠', desc: 'Mehr ☠ Chaos pro Zerstörung.',                            base: 120, growth: 2.1,  max: 20, per: 0.1 },
+  { id: 'luck',    cat: 'loot',   name: 'Gold-Riecher',   icon: '✨', desc: 'Goldene Objekte (×6 Schrott) tauchen öfter auf.',         base: 140, growth: 2.15, max: 15, per: 0.15 },
+  { id: 'crates',  cat: 'loot',   name: 'Kistenfinder',   icon: '📦', desc: 'Schrottkisten tauchen öfter auf.',                        base: 140, growth: 2.15, max: 15, per: 0.15 },
+  { id: 'quest',   cat: 'loot',   name: 'Auftragskiller', icon: '📜', desc: 'Aufträge bringen mehr Schrott und Chaos.',                base: 100, growth: 2.1,  max: 10, per: 0.25 },
 ];
 
 // ---------------------------------------------------------------------
@@ -455,7 +508,7 @@ const CANDY = [
       { name: 'Gummibär-Riese', size: 80, shape: 'gummy', color: '#ff4a5a', value: 4, move: 'flee', speed: 2.6 },
       { name: 'Waffelfelsen', size: 100, shape: 'rock', color: '#e8b06a', value: 4 },
       { name: 'Hochzeitstorte', size: 140, shape: 'cake', color: '#fff0f6', value: 8 },
-      { name: 'Karamell-Lager', size: 150, shape: 'tank', color: '#c98a3d', value: 9, explosive: true },
+      { name: 'Karamell-Lager', size: 150, shape: 'gastank', color: '#c98a3d', value: 9, explosive: true },
       { name: 'Schokobrunnen', size: 200, shape: 'fountain', color: '#6a3a1a', value: 12 },
       { name: 'Lebkuchendorf', size: 260, shape: 'village', color: '#c98a4a', value: 14 },
       { name: 'Schokoberg', size: 400, shape: 'mountain', color: '#6a3a1a', value: 22 },
@@ -474,4 +527,26 @@ export const MAPS = [
   { id: 'candy', name: 'Zuckerland', icon: '🍭', worlds: [...CANDY, ...WORLDS.slice(3)],
     desc: 'Gummibärchen, Torten, Schokoberge. Süß aussehend, brutal schwer – und extrem viel Beute.',
     scrapMult: 36, hpMult: 5.5, drainMult: 1.2, chaosMult: 4, req: { world: 5, label: 'Erreiche Planetar' } },
+];
+
+// ---------------------------------------------------------------------
+// URKNALL (Prestige): alles sprengen, dafür ◆ Dunkle Materie bekommen
+// ---------------------------------------------------------------------
+export const PRESTIGE = {
+  minWorld: 4,          // ab welcher Welt (in diesem Durchgang) der Urknall möglich ist (4 = Kontinent)
+  logBase: 5,           // ◆ = floor( (log10(Schrott seit letztem Urknall) − logBase)² × Weltbonus )
+  worldBonus: 0.5,      // +50 % ◆ pro Welt über minWorld
+  // Was bleibt: Chaos, Monster, Karten, Rekorde. Was weg ist: Schrott und Upgrades.
+};
+
+// Der Böse Masterplan – permanente Boni, gekauft mit ◆ Dunkler Materie
+export const DM_PERKS = [
+  { id: 'dm_scrap',  name: 'Schwarzgeld',     icon: '💸', desc: '+50 % Schrott pro Stufe (für immer).',                base: 1, growth: 1.6, max: 25, per: 0.5 },
+  { id: 'dm_power',  name: 'Wutkern',         icon: '❤️‍🔥', desc: '+20 % Schaden pro Stufe.',                         base: 1, growth: 1.6, max: 20, per: 0.2 },
+  { id: 'dm_growth', name: 'Mutagen',         icon: '🧪', desc: '+8 % Wachstum pro Stufe.',                           base: 2, growth: 1.7, max: 15, per: 0.08 },
+  { id: 'dm_rage',   name: 'Ewiger Zorn',     icon: '🌋', desc: '+15 % Wut-Tank pro Stufe.',                          base: 1, growth: 1.6, max: 15, per: 0.15 },
+  { id: 'dm_start',  name: 'Frühstart',       icon: '🚀', desc: '+15 % Startgröße pro Stufe.',                        base: 2, growth: 1.7, max: 15, per: 0.15 },
+  { id: 'dm_chaos',  name: 'Chaostheorie',    icon: '🌀', desc: '+25 % ☠ Chaos pro Stufe.',                           base: 1, growth: 1.6, max: 15, per: 0.25 },
+  { id: 'dm_mut',    name: 'Genlabor',        icon: '🧬', desc: 'Starte jeden Run mit einer zufälligen Mutation (pro Stufe eine mehr).', base: 5, growth: 3, max: 3, per: 1 },
+  { id: 'dm_keep',   name: 'Schurken-Erbe',   icon: '👑', desc: 'Nach dem Urknall behältst du 10 % deiner Upgrade-Stufen pro Stufe.', base: 4, growth: 2.2, max: 5, per: 0.1 },
 ];

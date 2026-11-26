@@ -7,7 +7,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.2.2 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.3.0 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -15,10 +15,13 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 
 1. **Run starten:** stampfen, rammen, zerstören.
 2. **🔥 Wut** ist deine Zeit. Sie sinkt ständig und mit der Zeit immer schneller. Jede Zerstörung füllt sie wieder auf.
-3. **⚙ Schrott** fällt als Münzen heraus. Einsammeln! Damit kaufst du in der **Werkstatt** permanente Upgrades.
+3. **⚙ Schrott** fällt als Münzen heraus. Einsammeln! Damit kaufst du in der **🦹 Schurkenhöhle** (deinem geheimen Hauptquartier) permanente Upgrades.
 4. **☠ Chaos** bekommst du nur durch Zerstörung. Damit schaltest du neue **Monster** frei.
 5. **Wachsen:** Bist du groß genug, steigst du in die nächste Welt auf, wählst eine **Mutation** und evolvierst.
 6. **Neue Karten** schalten sich über deinen Fortschritt frei. Sie sind härter, bringen aber viel mehr.
+7. **💥 Urknall (Prestige):** Ab dem Kontinent kannst du Schrott und Upgrades sprengen. Dafür gibt es **◆ Dunkle Materie** für den **Bösen Masterplan**, also Boni, die für immer bleiben. Chaos, Monster, Karten und Rekorde bleiben erhalten.
+
+**💾 Spielstände:** 3 Speicherplätze. Beim Start wählst du einen aus (mit Namen, Monster, weitester Welt, Währungen, letztem Spielzeitpunkt), im Menü kannst du jederzeit wechseln. Einstellungen gelten für alle Spielstände.
 
 ### Fähigkeiten
 
@@ -145,6 +148,17 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 ---
 
 ## Dev-Log
+
+### 2026-11-26: v0.3.0 Schurkenhöhle & Urknall
+- **Spielstände:** 3 Plätze (`rageverse_slot_0..2`), globale Einstellungen in `rageverse_meta`. Der alte Einzel-Spielstand wird automatisch zu Platz 1 (getestet). Löschen mit Bestätigung.
+- **Schurkenhöhle** statt Werkstatt (Bösewicht-Thema): Reiter Körper/Kampf/Beute/Urknall, 17 Upgrades (5 neu).
+- **Urknall/Prestige:** ◆ = 2 + (log10(Schrott seit letztem Urknall) − 5)² × (1 + 0,5 × Welten über dem Kontinent). 8 Masterplan-Boni, u. a. Genlabor (Start-Mutationen) und Schurken-Erbe (Upgrade-Stufen teilweise behalten).
+  - Simuliert über 160 Runs: Jeder Durchgang kommt weiter (Kontinent → Planetar → Sonnensystem → Galaxie → Galaxienhaufen). Der Masterplan ist nach 150 Runs erst zu ~40 % ausgebaut.
+  - Erster Entwurf mit √-Formel war zu großzügig: Nach 6 Urknallen war alles gekauft, das wurde verworfen.
+- **3 neue Welten:** Galaxienhaufen, Universum, Multiversum (+3 Evolutionen).
+- **Landschaften neu:** feste Karten je Welt (Maßstab = Startgröße der Welt), Gelände per Rauschen + Marching Squares mit glatten Höhenlinien und 3D-Kante, Straßennetze mit Blöcken. Teures Gelände wird vorgezeichnet und nur bei Bewegung/Wachstum neu berechnet. Alle 14 getesteten Welten laufen mit ~60 FPS (vorher teils 43–45).
+- **Bug: Wegschubsen.** Magnet/Schwarzes Loch zogen Objekte an, die man nicht sofort zerstören konnte, und diese schubsten einen weg. Zusätzlich prallte man an mehrschlägigen Objekten mit 1,5× Tempo ab. Jetzt zieht der Magnet nur noch Krümel an, das Schwarze Loch frisst, was es ansaugt, und an zerstörbaren Objekten bremst man nur noch ab.
+- Tests: Skill-Test 64/64, Steuerungs-Test 15/15, Spielstand-/Urknall-Browser-Test ohne Fehler.
 
 ### 2026-11-26: v0.2.2 Einstellungen
 - Feedback: Esc soll ein Einstellungsmenü öffnen, Maus- oder Tastatursteuerung soll wählbar sein, und laut einem Mitspieler steuert das Monster immer noch zur Maus.

@@ -2,7 +2,7 @@
 // jedes Monster im Spiel wirklich etwas bewirkt.
 // Aufruf: node tools/skill-test.js   (Exit-Code 1, wenn etwas nicht wirkt)
 import * as C from '../js/config.js';
-import { Game } from '../js/game.js';
+import { Game, prestigeGain, doPrestige } from '../js/game.js';
 import { defaultSave } from '../js/save.js';
 
 const DT = 1 / 60;
@@ -103,6 +103,67 @@ const L = 5;
   check('Berserker (Aufladung)', b > a * 1.3, `${(a * 100).toFixed(0)} % → ${(b * 100).toFixed(0)} %`);
 }
 
+{
+  const a = makeGame(), b = makeGame({ chaosup: L });
+  const ch = g => { const o = obj(g, g.p.r * 1.6, 0, g.p.r * 0.6); g.kill(o, 'hit'); return g.runChaos; };
+  const x = ch(a), y = ch(b);
+  check('Chaos-Rausch', y > x * 1.3, `Chaos ${x.toFixed(2)} → ${y.toFixed(2)}`);
+}
+{
+  const a = makeGame(), b = makeGame({ luck: L });
+  check('Gold-Riecher', b.stats.goldenChance > a.stats.goldenChance * 1.5, `${(a.stats.goldenChance * 100).toFixed(1)} % → ${(b.stats.goldenChance * 100).toFixed(1)} %`);
+}
+{
+  const count = up => { const g = makeGame(up); let n = 0; for (let i = 0; i < 4000; i++) { g.objects = []; g.spawnOne(g.p.r * 3, g.p.r * 20); if (g.objects[0] && g.objects[0].crate) n++; } return n; };
+  const a = count({}), b = count({ crates: L });
+  check('Kistenfinder', b > a * 1.3, `Kisten pro 4000 Spawns: ${a} → ${b}`);
+}
+{
+  const a = makeGame(), b = makeGame({ combo: L });
+  check('Kettenreaktion', b.stats.comboWindow > a.stats.comboWindow && b.stats.comboMax > a.stats.comboMax, `${a.stats.comboWindow.toFixed(2)} s/×${a.stats.comboMax} → ${b.stats.comboWindow.toFixed(2)} s/×${b.stats.comboMax}`);
+}
+{
+  const q = up => { const g = makeGame(up); g.quest = { type: 'combo', count: 1, progress: 1, label: 'x' }; g.completeQuest(); return g.coins.reduce((s, c) => s + c.value, 0); };
+  const a = q({}), b = q({ quest: L });
+  check('Auftragskiller', b > a * 1.5, `Belohnung ${a.toFixed(1)} → ${b.toFixed(1)}`);
+}
+
+// ---------------------------------------------------------------- Böser Masterplan (◆)
+console.log('\nBöser Masterplan (Stufe 0 gegen 3):');
+function dmGame(perks) { const save = defaultSave(); save.dmPerks = perks; const g = new Game(save, {}); g.vw = 1280; g.vh = 720; g.start(); return g; }
+{
+  const base = dmGame({});
+  const t = [['dm_scrap', 'scrapMult'], ['dm_power', 'damage'], ['dm_growth', 'absorb'], ['dm_rage', 'rageMax'], ['dm_start', 'startRadius'], ['dm_chaos', 'chaosMult']];
+  for (const [id, stat] of t) { const g = dmGame({ [id]: 3 }); check(C.DM_PERKS.find(d => d.id === id).name, g.stats[stat] > base.stats[stat] * 1.1, `${stat} ${base.stats[stat].toFixed(2)} → ${g.stats[stat].toFixed(2)}`); }
+  const m = dmGame({ dm_mut: 2 });
+  check('Genlabor', m.muts.length === 2, `${m.muts.length} Start-Mutationen`);
+}
+{
+  const s = defaultSave(); s.upgrades = { dmg: 10, size: 10 }; s.scrap = 999; s.cycleBest = 6; s.cycleScrap = 5e9; s.chaos = 77; s.dmPerks = { dm_keep: 2 };
+  const gain = prestigeGain(s);
+  const got = doPrestige(s);
+  check('Urknall gibt Dunkle Materie', got > 0 && s.darkMatter === got && got === gain, `+${got} ◆`);
+  check('Urknall setzt Schrott zurück', s.scrap === 0 && s.cycleScrap === 0 && s.cycleBest === 0);
+  check('Schurken-Erbe behält Upgrade-Stufen', s.upgrades.dmg === 2 && s.upgrades.size === 2, `dmg 10 → ${s.upgrades.dmg}`);
+  check('Urknall behält Chaos', s.chaos === 77);
+  const s2 = defaultSave(); s2.cycleBest = 3; s2.cycleScrap = 1e9;
+  check('Urknall erst ab dem Kontinent', prestigeGain(s2) === 0);
+}
+
+{
+  // Magnet darf keine Objekte anziehen, die dich wegschubsen (nur Krümel)
+  const g = makeGame({ magnet: 10 });
+  const o = obj(g, g.p.r * 3, 0, g.p.r * 0.45); o.hp = o.maxHp = 1e12;
+  const x0 = o.x; run(g, 1);
+  check('Magnet zieht keine schweren Objekte an', Math.abs(o.x - x0) < 1e-6 && Math.abs(g.p.x) < 0.5, `Objekt bewegt ${(o.x - x0).toFixed(2)}, Spieler ${g.p.x.toFixed(2)}`);
+}
+{
+  // Gegen ein Objekt laufen, das mehrere Schläge braucht: nicht wegprallen
+  const g = makeGame(); const o = obj(g, g.p.r * 1.9, 0, g.p.r * 0.9); o.hp = o.maxHp = 1e12;
+  let minX = 0; for (let t = 0; t < 1; t += DT) { freeze(g); g.update(DT, input({ dx: 1 })); minX = Math.min(minX, g.p.x); }
+  check('Kein Wegprallen an zerstörbaren Objekten', minX > -0.5 && g.p.vx >= -1, `kleinste x-Position ${minX.toFixed(2)}`);
+}
+
 // ---------------------------------------------------------------- Fähigkeiten
 console.log('\nFähigkeiten:');
 {
@@ -146,7 +207,7 @@ for (const m of C.MUTATIONS) {
   let ok = false, info = '';
   switch (m.id) {
     case 'boom': { const o = obj(g, g.p.r * 1.5, 0, g.p.r * 0.6); const n = obj(g, g.p.r * 2.3, 0, g.p.r * 0.4); g.kill(o, 'hit'); g.processExplosions(); ok = n.dead; info = 'Nachbar mitgerissen'; break; }
-    case 'hole': { const o = obj(g, g.p.r * 5, 0, g.p.r * 0.4); const d0 = o.x - g.p.x; run(g, 0.5); ok = o.dead || (o.x - g.p.x) < d0 * 0.9; info = 'Objekt angesaugt'; break; }
+    case 'hole': { const o = obj(g, g.p.r * 3, 0, g.p.r * 0.5); o.hp = o.maxHp = 1e12; run(g, 1.5); ok = o.dead && Math.abs(g.p.x) < 1; info = 'angesaugt und gefressen, ohne Schubsen'; break; }
     case 'shock': { const o = obj(g, g.p.r * 2.5, 0, g.p.r * 0.5); run(g, 0.2); ok = o.dead; info = 'Druckwelle zerstört'; break; }
     case 'spikes': ok = S.damage > B.damage; break;
     case 'turbo': ok = S.speed > B.speed; break;
