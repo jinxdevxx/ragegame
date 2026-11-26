@@ -127,6 +127,7 @@ Hier steht, was an dem Spiel gemacht wurde und warum.
 - Live-Devlog in Claude angelegt (Stand, Patch-Notes-Historie, Roadmap, Ideen-Pool, PLAY-Button): https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
 - Täglicher Qualitäts-Check eingerichtet (20:13 Uhr): Bugs, Balancing und Spielgefühl prüfen, danach README, Patch Notes und Devlog pflegen.
 - Grundversion auf `main` gebracht, GitHub Pages ist aktiv: https://jinxdevxx.github.io/ragegame/
+- Festgelegt: Getestete Änderungen gehen ab jetzt immer direkt auf `main` und damit sofort live. Spieler bekommen dann den dezenten Update-Hinweis im Spiel.
 
 ---
 
