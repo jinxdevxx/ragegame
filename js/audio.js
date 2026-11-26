@@ -2,7 +2,7 @@
 //  RAGEVERSE – Sound & Musik (alles per WebAudio erzeugt, keine Dateien)
 // =====================================================================
 let ac = null, master = null, sfxBus = null, musicBus = null;
-let muted = false, musicOn = true, intensity = 0;
+let muted = false, musicOn = true, intensity = 0, sfxVol = 0.8, musicVol = 0.6;
 const last = {};
 
 export function initAudio() {
@@ -11,13 +11,18 @@ export function initAudio() {
     ac = new (window.AudioContext || window.webkitAudioContext)();
     master = ac.createGain(); master.gain.value = muted ? 0 : 0.4; master.connect(ac.destination);
     const comp = ac.createDynamicsCompressor(); comp.connect(master);
-    sfxBus = ac.createGain(); sfxBus.gain.value = 1; sfxBus.connect(comp);
-    musicBus = ac.createGain(); musicBus.gain.value = musicOn ? 0.32 : 0; musicBus.connect(comp);
+    sfxBus = ac.createGain(); sfxBus.gain.value = sfxVol * 1.25; sfxBus.connect(comp);
+    musicBus = ac.createGain(); musicBus.gain.value = musicOn ? musicVol * 0.55 : 0; musicBus.connect(comp);
     startMusic();
   } catch { ac = null; }
 }
 export function setMuted(m) { muted = m; if (master) master.gain.value = m ? 0 : 0.4; }
-export function setMusic(on) { musicOn = on; if (musicBus) musicBus.gain.value = on ? 0.32 : 0; }
+export function setMusic(on) { musicOn = on; if (musicBus) musicBus.gain.value = on ? musicVol * 0.55 : 0; }
+export function setVolumes(sfx, music) {
+  sfxVol = sfx; musicVol = music;
+  if (sfxBus) sfxBus.gain.value = sfxVol * 1.25;
+  if (musicBus) musicBus.gain.value = musicOn ? musicVol * 0.55 : 0;
+}
 export function setIntensity(v) { intensity = v; } // 0 = Menü, 1 = Run, 2 = Berserker
 
 function tone(freq, dur, type = 'square', vol = 0.3, slide = 0, bus = sfxBus, when = 0) {

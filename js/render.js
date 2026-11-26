@@ -3,9 +3,9 @@
 //  Reihenfolge: Boden → Trümmer-Flecken → Schatten/Objekte/Monster
 //  (nach Tiefe sortiert) → Trümmer → Münzen → Effekte → Overlays
 // =====================================================================
-import { SPRITES, OUT } from './sprites.js';
-import { drawMonster } from './monster.js';
-import { shadeHex as sh } from './game.js';
+import { SPRITES, OUT } from './sprites.js?v=0.2.2';
+import { drawMonster } from './monster.js?v=0.2.2';
+import { shadeHex as sh } from './game.js?v=0.2.2';
 
 const TAU = Math.PI * 2;
 const STARS = Array.from({ length: 220 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() * 1.8 + 0.4, p: Math.random() * 0.6 + 0.1, tw: Math.random() * 6 }));
@@ -136,7 +136,7 @@ function drawSpace(c, g, W, H, z, world, time) {
 export function render(c, g, W, H, time) {
   const cam = g.cam, z = cam.zoom, p = g.p;
   const world = g.worlds[g.world];
-  const shk = g.shake * Math.min(W, H) * 0.014;
+  const shk = (g.fx && g.fx.shake === false ? 0 : g.shake) * Math.min(W, H) * 0.014;
   const ox = W / 2 + (Math.random() - 0.5) * shk, oy = H / 2 + (Math.random() - 0.5) * shk;
   const sx = x => (x - cam.x) * z + ox, sy = y => (y - cam.y) * z + oy;
   c.lineJoin = 'round'; c.lineCap = 'round';

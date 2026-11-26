@@ -7,7 +7,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.2.1 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.2.2 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -28,7 +28,9 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 | 💥 Stampfer | E | 💥 | Erdbeben im Umkreis von 3,5× deiner Größe, zerstört alles Zerstörbare | 8 s (Upgrade „Erdbeben“) |
 | 😡 Berserker | R | 😡 | Lädt sich durch Zerstörung auf. Gezündet: 6 s riesig, unverwundbar, 3× Schaden, keine Wut-Abnahme | lädt sich auf (Upgrade „Berserker“) |
 
-Steuerung: **linke Maustaste gedrückt halten** (das Monster läuft zur Maus), WASD/Pfeiltasten oder Finger. Ohne gedrückte Taste bleibt das Monster stehen. Pause mit P/Esc. Im Spiel erklärt das **❓ Hilfe**-Fenster alles mit den aktuellen Werten.
+**Steuerung:** Standard ist **WASD/Pfeiltasten**, die Maus steuert dann gar nicht. In den **Einstellungen (Esc)** kannst du auf **Maus** (linke Taste halten = laufen zur Maus, Rechtsklick = Ansturm) oder **Beides** umstellen. Auf dem Handy steuert immer der Finger. Pause mit P.
+
+**Einstellungen (Esc, ⚙ im Menü oder in der Pause):** Steuerung, Lautstärke Soundeffekte/Musik, Bildschirmwackeln, Effekt-Menge (für schwache Geräte), Tipps an/aus, Spielstand zurücksetzen (mit Sicherheitsabfrage). Pause mit P/Esc. Im Spiel erklärt das **❓ Hilfe**-Fenster alles mit den aktuellen Werten.
 
 ### Damit es nicht monoton wird
 - **3 Karten mit je 8 Welten:**
@@ -73,6 +75,8 @@ js/patchnotes.js      Patch Notes (neueste oben) + aktuelle Version
 version.json          Live-Version für den „Update verfügbar“-Hinweis
 tools/balance-sim.js  Bot spielt Runs ohne Grafik → prüft das Balancing
 tools/skill-test.js   Prüft automatisch, ob jedes Upgrade, jede Fähigkeit, Mutation und jedes Monster wirkt
+tools/control-test.cjs Browser-Test: Steuerung (Tastatur/Maus/hängende Maustaste), Esc-Menü, Einstellungen
+tools/bump-version.js Setzt die Version überall (version.json + Datei-Links gegen Browser-Cache)
 ```
 
 ### Lokal starten
@@ -100,7 +104,12 @@ node tools/balance-sim.js 3
 node tools/balance-sim.js 2 west
 ```
 
-Der **Skill-Test** muss mit „0 fehlgeschlagen“ enden. Der **Simulator** zeigt, wie weit ein Bot je Upgrade-Stufe kommt, wie viel Leerlauf es gibt (Zeit ohne zerstörbare Objekte in Sicht, Ziel ≈ 0 %) und eine Progression über 60 Runs.
+```bash
+python3 -m http.server 8080 &
+node tools/control-test.cjs
+```
+
+Der **Skill-Test** und der **Steuerungs-Test** müssen ohne ✘ enden. Der Skill-Test muss mit „0 fehlgeschlagen“ enden. Der **Simulator** zeigt, wie weit ein Bot je Upgrade-Stufe kommt, wie viel Leerlauf es gibt (Zeit ohne zerstörbare Objekte in Sicht, Ziel ≈ 0 %) und eine Progression über 60 Runs.
 
 **Ziel-Kurve Vorstadt (Bot, v0.2.0):**
 
@@ -119,7 +128,7 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 ### Neues Update veröffentlichen
 1. Änderungen machen, dann Skill-Test und Simulator laufen lassen.
 2. In `js/patchnotes.js` einen neuen Eintrag **oben** einfügen.
-3. In `version.json` dieselbe Versionsnummer eintragen.
+3. `node tools/bump-version.js X.Y.Z` ausführen (setzt `version.json` und hängt die Version an alle Datei-Links, damit kein Browser alten Code aus dem Cache lädt).
 4. Auf `main` pushen. Wer das Spiel offen hat, bekommt unten links dezent den Hinweis „Update verfügbar“. Beim nächsten Start erscheint kurz „Neu in vX“, und am Patch-Notes-Button leuchtet ein Punkt.
 5. Live-Devlog und die Session „ragegame · Live-Updates“ aktualisieren.
 
@@ -136,6 +145,15 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 ---
 
 ## Dev-Log
+
+### 2026-11-26: v0.2.2 Einstellungen
+- Feedback: Esc soll ein Einstellungsmenü öffnen, Maus- oder Tastatursteuerung soll wählbar sein, und laut einem Mitspieler steuert das Monster immer noch zur Maus.
+- **Ursache 1, Browser-Cache:** GitHub Pages erlaubt Browsern, Dateien 10 Minuten zwischenzuspeichern. Nach v0.2.1 konnte man also noch den alten Code bekommen. Jetzt hängt jede Version eine Kennung an alle Datei-Links (`?v=0.2.2`, gesetzt mit `tools/bump-version.js`), damit Updates sofort ankommen.
+- **Ursache 2, hängende Maustaste:** Wurde die Maustaste außerhalb des Fensters losgelassen, blieb „gedrückt“ hängen. Jetzt prüft jede Mausbewegung, ob die Taste wirklich noch gedrückt ist. Zusätzlich setzen `mouseup`, Verlassen des Fensters und Fokusverlust die Steuerung zurück.
+- **Standard-Steuerung jetzt nur Tastatur:** Die Maus steuert gar nicht, sie ist in den Einstellungen umschaltbar.
+- **Neues Einstellungsmenü** (Esc): Steuerung, Lautstärken, Bildschirmwackeln, Effekt-Menge, Tipps, Spielstand zurücksetzen.
+- Ohne Eingabe bremst das Monster jetzt 2,2× so stark und steht praktisch sofort.
+- **Neuer Browser-Test** `tools/control-test.cjs` mit 15 Prüfungen, alle bestanden.
 
 ### 2026-11-26: v0.2.1 Volle Kontrolle
 - Feedback: Das Monster lief automatisch der Maus hinterher, auch ohne Klick. Jetzt läuft es nur, solange die linke Maustaste gedrückt ist; loslassen = stehen bleiben (auch wenn die Taste außerhalb des Spielfelds losgelassen wird). Rechtsklick bleibt Ansturm.

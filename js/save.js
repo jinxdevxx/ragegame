@@ -7,6 +7,7 @@ export function defaultSave() {
   return {
     scrap: 0, totalScrap: 0, chaos: 0, totalChaos: 0, totalKills: 0, upgrades: {}, bestWorld: 0, bestRadius: 0, runs: 0,
     seenVersion: null, muted: false, music: true, tutorial: 0,
+    settings: { control: 'keys', sfx: 80, music: 60, shake: true, fx: 'high', hints: true },
     selectedChar: 'grumpf', unlockedChars: ['grumpf'], selectedMap: 'suburb', mapBest: {},
   };
 }
@@ -15,7 +16,9 @@ export function loadSave() {
   try {
     const raw = localStorage.getItem(KEY);
     const s = raw ? JSON.parse(raw) : null;
-    const out = Object.assign(defaultSave(), s || {});
+    const def = defaultSave();
+    const out = Object.assign(def, s || {});
+    out.settings = Object.assign(defaultSave().settings, (s && s.settings) || {});
     if (!out.unlockedChars.includes('grumpf')) out.unlockedChars.push('grumpf');
     if (out.bestWorld && !out.mapBest.suburb) out.mapBest.suburb = out.bestWorld; // Stände aus v0.1
     return out;

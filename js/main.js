@@ -1,12 +1,12 @@
 // =====================================================================
 //  RAGEVERSE – Einstieg: Game-Loop, Steuerung, Menüs, Shop, Updates
 // =====================================================================
-import * as C from './config.js';
-import { Game, computeStats, upgradeLevel, upgradeCost, fmt, charDef, mapDef } from './game.js';
-import { render, drawMonsterPreview } from './render.js';
-import { initAudio, setMuted, setMusic, setIntensity, sfx } from './audio.js';
-import { loadSave, writeSave } from './save.js';
-import { PATCH_NOTES, VERSION } from './patchnotes.js';
+import * as C from './config.js?v=0.2.2';
+import { Game, computeStats, upgradeLevel, upgradeCost, fmt, charDef, mapDef } from './game.js?v=0.2.2';
+import { render, drawMonsterPreview } from './render.js?v=0.2.2';
+import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.2.2';
+import { loadSave, writeSave, resetSave } from './save.js?v=0.2.2';
+import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.2.2';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -34,7 +34,7 @@ const game = new Game(save, {
   onBerserkReady: () => { if (inRun) hint('😡 Berserker bereit! Drück <b>R</b> (oder tippe 😡)', 3); },
   onQuest: (q, done) => { if (inRun) questUpdate(q, done); },
 });
-window.__rv = { game, save, C };
+window.__rv = { game, save, C, get pointer() { return pointer; }, get input() { return input; } };
 
 // ------------------------------------------------------------------
 // Canvas-Größe
@@ -60,33 +60,55 @@ let lastTap = 0;
 window.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   keys.add(k);
+  if (k === 'escape') { e.preventDefault(); onEscape(); return; }
   if (!inRun) return;
   if (k.startsWith('arrow') || k === ' ') e.preventDefault(); // Seite nicht scrollen
   if (e.repeat) return;
+  if (game.state !== 'play') { if (k === 'p' && current === 'screen-pause') resume(); return; }
   if (k === ' ') input.dash = true;
   if (k === 'e' || k === 'shift') input.slam = true;
   if (k === 'r' || k === 'q') input.berserk = true;
-  if ((k === 'p' || k === 'escape') && game.state === 'play') pause();
-  else if ((k === 'p' || k === 'escape') && game.state === 'paused') resume();
+  if (k === 'p') pause();
 });
+// Escape: im Run → Pause + Einstellungen; in Fenstern → zurück
+function onEscape() {
+  if (!$('notes-modal').hidden) { $('notes-modal').hidden = true; return; }
+  if (current === 'screen-settings') { closeSettings(); return; }
+  if (current === 'screen-mutation') return;
+  if (inRun && game.state === 'play') { pause(); openSettings('screen-pause'); return; }
+  if (inRun && current === 'screen-pause') { resume(); return; }
+  if (current === 'screen-help') { back(); return; }
+  if (current === 'screen-menu') { openSettings('screen-menu'); return; }
+  if (!inRun) openMenu();
+}
 window.addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
-window.addEventListener('blur', () => { keys.clear(); if (game.state === 'play' && inRun) pause(); });
+window.addEventListener('blur', () => { keys.clear(); pointer.active = false; if (game.state === 'play' && inRun) pause(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && game.state === 'play' && inRun) pause(); else if (!document.hidden) checkForUpdate(); });
 
+const mouseAllowed = () => save.settings.control !== 'keys';
 canvas.addEventListener('pointerdown', e => {
   initAudio();
-  pointer.active = true; pointer.x = e.clientX; pointer.y = e.clientY;
-  pointer.touch = e.pointerType === 'touch';
+  pointer.x = e.clientX; pointer.y = e.clientY;
+  pointer.touch = e.pointerType !== 'mouse';
   if (pointer.touch) {
+    // Touch/Stift: Finger halten = laufen (immer aktiv)
+    pointer.active = true;
     document.body.classList.add('touch');
     const now = performance.now();
     if (now - lastTap < 300) input.dash = true;
     lastTap = now;
-  } else if (e.button === 2) { input.dash = true; pointer.active = false; }
+  } else if (e.button === 0 && mouseAllowed()) {
+    pointer.active = true; // Maus: nur solange die linke Taste gedrückt ist
+  } else if (e.button === 2 && mouseAllowed()) { input.dash = true; }
 });
-// Maus: Monster läuft nur, solange die linke Maustaste gedrückt ist
-canvas.addEventListener('pointermove', e => { pointer.x = e.clientX; pointer.y = e.clientY; });
+canvas.addEventListener('pointermove', e => {
+  pointer.x = e.clientX; pointer.y = e.clientY;
+  // Sicherheitsnetz: Ist keine Maustaste mehr gedrückt, sofort stoppen
+  if (e.pointerType === 'mouse' && (e.buttons & 1) === 0) pointer.active = false;
+});
 window.addEventListener('pointerup', () => { pointer.active = false; });
+window.addEventListener('mouseup', () => { pointer.active = false; });
+document.addEventListener('mouseleave', () => { if (!pointer.touch) pointer.active = false; });
 canvas.addEventListener('pointercancel', () => { pointer.active = false; });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 const abBtn = (id, key) => $(id).addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); input[key] = true; });
@@ -99,7 +121,7 @@ function readInput() {
   if (keys.has('a') || keys.has('arrowleft')) dx -= 1;
   if (keys.has('d') || keys.has('arrowright')) dx += 1;
   if (dx || dy) { const l = Math.hypot(dx, dy); input.dx = dx / l; input.dy = dy / l; return; }
-  if (pointer.active && game.p) {
+  if (pointer.active && game.p && (pointer.touch || mouseAllowed())) {
     const px = (game.p.x - game.cam.x) * game.cam.zoom + W / 2;
     const py = (game.p.y - game.p.r - game.cam.y) * game.cam.zoom + H / 2;
     const R = game.p.r * game.cam.zoom;
@@ -144,7 +166,7 @@ function frame(t) {
 // ------------------------------------------------------------------
 // Screens
 // ------------------------------------------------------------------
-const SCREENS = ['screen-menu', 'screen-shop', 'screen-chars', 'screen-maps', 'screen-help', 'screen-results', 'screen-mutation', 'screen-pause'];
+const SCREENS = ['screen-menu', 'screen-shop', 'screen-chars', 'screen-maps', 'screen-help', 'screen-results', 'screen-mutation', 'screen-pause', 'screen-settings'];
 let current = 'screen-menu', helpFrom = 'screen-menu';
 function show(id) {
   current = id;
@@ -169,7 +191,7 @@ function startRun() {
   tutorial();
 }
 function pause() { if (game.state !== 'play' || !inRun) return; game.state = 'paused'; show('screen-pause'); }
-function resume() { if (game.state !== 'paused') return; game.state = 'play'; lastT = performance.now(); show(null); }
+function resume() { if (game.state !== 'paused') return; game.state = 'play'; lastT = performance.now(); keys.clear(); pointer.active = false; show(null); }
 function back() { sfx('click'); if (current === 'screen-help' && helpFrom === 'screen-pause') { show('screen-pause'); return; } openMenu(); }
 
 document.querySelectorAll('[data-play]').forEach(b => b.onclick = startRun);
@@ -182,6 +204,59 @@ $('btn-chars').onclick = () => openChars();
 $('btn-maps').onclick = () => openMaps();
 $('btn-help').onclick = () => openHelp('screen-menu');
 $('btn-pause-help').onclick = () => openHelp('screen-pause');
+$('btn-pause-settings').onclick = () => openSettings('screen-pause');
+$('btn-settings').onclick = () => openSettings('screen-menu');
+
+// ------------------------------------------------------------------
+// Einstellungen
+// ------------------------------------------------------------------
+let settingsFrom = 'screen-menu';
+const CONTROL_DESC = {
+  keys: 'Nur Tastatur (WASD/Pfeiltasten). Die Maus steuert gar nicht.',
+  mouse: 'Linke Maustaste gedrückt halten = Monster läuft zur Maus. Rechtsklick = Ansturm.',
+  both: 'Tastatur und Maus (Taste halten) gleichzeitig.',
+};
+function openSettings(from) {
+  settingsFrom = from; sfx('click');
+  renderSettings();
+  show('screen-settings');
+}
+function closeSettings() {
+  sfx('click');
+  if (settingsFrom === 'screen-pause' && inRun) show('screen-pause'); else openMenu();
+}
+function renderSettings() {
+  const st = save.settings;
+  document.querySelectorAll('#set-control button').forEach(b => b.classList.toggle('on', b.dataset.v === st.control));
+  $('set-control-desc').textContent = CONTROL_DESC[st.control];
+  document.querySelectorAll('#set-fx button').forEach(b => b.classList.toggle('on', b.dataset.v === st.fx));
+  $('set-sfx').value = st.sfx; $('set-music').value = st.music;
+  $('set-shake').classList.toggle('on', st.shake);
+  $('set-hints').classList.toggle('on', st.hints);
+  $('set-reset').textContent = resetArmed ? 'Wirklich löschen?' : 'Zurücksetzen';
+  $('set-reset').classList.toggle('primary', resetArmed);
+}
+function applySettings() {
+  const st = save.settings;
+  setVolumes(st.sfx / 100, st.music / 100);
+  game.fx = { shake: st.shake, low: st.fx === 'low' };
+  pointer.active = false;
+  writeSave(save);
+}
+let resetArmed = false;
+$('set-control').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; save.settings.control = b.dataset.v; applySettings(); renderSettings(); sfx('click'); });
+$('set-fx').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; save.settings.fx = b.dataset.v; applySettings(); renderSettings(); sfx('click'); });
+$('set-sfx').addEventListener('input', e => { save.settings.sfx = Number(e.target.value); applySettings(); });
+$('set-sfx').addEventListener('change', () => sfx('coin', 6));
+$('set-music').addEventListener('input', e => { save.settings.music = Number(e.target.value); applySettings(); });
+$('set-shake').onclick = () => { save.settings.shake = !save.settings.shake; applySettings(); renderSettings(); sfx('click'); };
+$('set-hints').onclick = () => { save.settings.hints = !save.settings.hints; applySettings(); renderSettings(); sfx('click'); };
+$('set-reset').onclick = () => {
+  if (!resetArmed) { resetArmed = true; renderSettings(); setTimeout(() => { resetArmed = false; if (current === 'screen-settings') renderSettings(); }, 4000); return; }
+  resetSave(); location.reload();
+};
+$('btn-settings-close').onclick = closeSettings;
+$('btn-settings-done').onclick = closeSettings;
 $('btn-pause').onclick = pause;
 $('btn-resume').onclick = resume;
 $('btn-quit').onclick = () => { game.state = 'play'; game.p.rage = 0; game.die(); show(null); };
@@ -341,8 +416,11 @@ function openHelp(from) {
   $('help-body').innerHTML = `
     <h3>Steuerung</h3>
     <div class="help-grid">
-      <div class="hk"><kbd>Maustaste halten</kbd> / <kbd>WASD</kbd> / Finger</div><div>Bewegen. Solange du die linke Maustaste (oder den Finger) gedrückt hältst, läuft das Monster dorthin. Loslassen = stehen bleiben.</div>
-      <div class="hk"><kbd>P</kbd> / <kbd>Esc</kbd></div><div>Pause</div>
+      <div class="hk"><kbd>WASD</kbd> / <kbd>Pfeiltasten</kbd></div><div>Laufen.</div>
+      <div class="hk"><kbd>Maustaste halten</kbd></div><div>Laufen zur Maus – nur wenn in den Einstellungen „Maus“ oder „Beides“ gewählt ist (aktuell: <b>${{ keys: 'Tastatur', mouse: 'Maus', both: 'Beides' }[save.settings.control]}</b>).</div>
+      <div class="hk">Finger halten</div><div>Laufen auf dem Handy (immer aktiv). Doppeltipp = Ansturm.</div>
+      <div class="hk"><kbd>Esc</kbd></div><div>Einstellungen</div>
+      <div class="hk"><kbd>P</kbd></div><div>Pause</div>
     </div>
     <h3>Fähigkeiten</h3>
     <div class="help-abs">
@@ -453,6 +531,7 @@ function questUpdate(q, done) {
 }
 let hintTimer = 0;
 function hint(html, secs = 4) {
+  if (!save.settings.hints) return;
   const el = $('hint'); el.innerHTML = html; el.hidden = false;
   clearTimeout(hintTimer); hintTimer = setTimeout(() => el.hidden = true, secs * 1000);
 }
@@ -460,7 +539,8 @@ function tutorial() {
   if ((save.tutorial || 0) >= 3) return;
   save.tutorial = (save.tutorial || 0) + 1; writeSave(save);
   const steps = [
-    [0.5, '<b>Maustaste halten</b> (oder WASD) zum Laufen – renn in Dinge, die <b>kleiner</b> sind als du! 👊'],
+    [0.5, (save.settings.control === 'keys' ? '<b>WASD</b> / Pfeiltasten zum Laufen' : '<b>Maustaste halten</b> oder <b>WASD</b> zum Laufen') + ' – renn in Dinge, die <b>kleiner</b> sind als du! 👊'],
+    [3, '<b>Esc</b> = Einstellungen (z. B. Maus- oder Tastatursteuerung)'],
     [5, '<b>Leertaste</b> (oder Doppeltipp) = ⚡ Ansturm nach vorne'],
     [10, '<b>E</b> = 💥 Stampfer: Erdbeben um dich herum'],
     [15, 'Die 🔥 <b>Wut</b> sinkt ständig – zerstör weiter, sonst ist der Run vorbei!'],
@@ -519,6 +599,7 @@ function applyAudio() {
 $('btn-mute').onclick = () => { initAudio(); save.muted = !save.muted; writeSave(save); applyAudio(); };
 $('btn-music').onclick = () => { initAudio(); save.music = !save.music; writeSave(save); applyAudio(); };
 applyAudio();
+applySettings();
 document.addEventListener('pointerdown', () => initAudio(), { once: true });
 
 // ------------------------------------------------------------------

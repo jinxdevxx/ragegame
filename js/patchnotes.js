@@ -6,6 +6,18 @@
 
 export const PATCH_NOTES = [
   {
+    version: '0.2.2',
+    date: '2026-11-26',
+    title: 'Einstellungen',
+    summary: 'Neues Einstellungsmenü (Esc) – und die Maus steuert standardmäßig gar nicht mehr.',
+    changes: [
+      'Neues Einstellungsmenü mit Esc (oder ⚙ im Menü/in der Pause): Steuerung, Soundeffekte, Musik, Bildschirmwackeln, Effekt-Menge, Tipps, Spielstand zurücksetzen.',
+      'Steuerung wählbar: ⌨ Tastatur (Standard – die Maus steuert gar nicht), 🖱 Maus (linke Taste halten) oder Beides. Auf dem Handy steuert immer der Finger.',
+      'Fix: Die Maus konnte „hängen bleiben“, wenn die Taste außerhalb des Fensters losgelassen wurde – das Monster lief dann weiter zur Maus. Passiert jetzt nicht mehr.',
+      'Fix: Browser luden nach einem Update teils noch alten Spielcode. Jede Version hat jetzt eigene Datei-Links, Updates kommen sofort an.',
+    ],
+  },
+  {
     version: '0.2.1',
     date: '2026-11-26',
     title: 'Volle Kontrolle',

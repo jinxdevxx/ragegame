@@ -5,8 +5,8 @@
 //  Jede Welt = eine Evolutionsstufe (größere Hörner, Stacheln, Panzer,
 //  Lava-Risse, Sternenstaub …).
 // =====================================================================
-import * as C from './config.js';
-import { shadeHex as sh } from './game.js';
+import * as C from './config.js?v=0.2.2';
+import { shadeHex as sh } from './game.js?v=0.2.2';
 
 const TAU = Math.PI * 2;
 const OUT = '#1f1212';

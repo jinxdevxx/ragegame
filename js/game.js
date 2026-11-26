@@ -1,7 +1,7 @@
 // =====================================================================
 //  RAGEVERSE – Spiel-Logik (Simulation, keine Grafik)
 // =====================================================================
-import * as C from './config.js';
+import * as C from './config.js?v=0.2.2';
 
 const TAU = Math.PI * 2;
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -161,7 +161,8 @@ export class Game {
       p.vy = p.dashY * maxV * C.PLAYER.dashPower;
       if (Math.random() < 0.6) this.puff(p.x, p.y + p.r * 0.6, p.r * rand(0.25, 0.45), '#f4ead8');
     } else {
-      const k = Math.min(1, C.PLAYER.accel * dt);
+      const idle = Math.abs(input.dx) + Math.abs(input.dy) < 0.01;
+      const k = Math.min(1, C.PLAYER.accel * (idle ? 2.2 : 1) * dt); // ohne Eingabe hart bremsen
       p.vx += (input.dx * maxV - p.vx) * k;
       p.vy += (input.dy * maxV - p.vy) * k;
     }
@@ -455,7 +456,8 @@ export class Game {
         rot: Math.random() * TAU, vr: rand(-12, 12), life: rand(1, 1.6), max: 1.6, sides: 3 + (i % 3),
       });
     }
-    if (this.chunks.length > 260) this.chunks.splice(0, this.chunks.length - 260);
+    const maxChunks = this.fx && this.fx.low ? 80 : 260;
+    if (this.chunks.length > maxChunks) this.chunks.splice(0, this.chunks.length - maxChunks);
     for (let i = 0; i < (big ? 6 : 3); i++) this.puff(o.x + rand(-0.6, 0.6) * o.size, o.y + rand(-0.3, 0.3) * o.size, o.size * rand(0.4, 0.8), '#efe6d6');
     if (rel > 0.25) {
       this.decals.push({ x: o.x, y: o.y, size: o.size * 1.15, color: o.color, life: 14, max: 14, seed: Math.random() });
@@ -740,11 +742,12 @@ export class Game {
   }
 
   particle(x, y, color, size, life, vx, vy, kind = 'bit') {
-    if (this.particles.length > 500) return;
+    if (this.particles.length > (this.fx && this.fx.low ? 120 : 500)) return;
+    if (this.fx && this.fx.low && Math.random() < 0.5) return;
     this.particles.push({ x, y, color, size, life, max: life, vx, vy, rot: Math.random() * TAU, vr: rand(-8, 8), kind });
   }
   puff(x, y, r, color) {
-    if (this.puffs.length > 120) return;
+    if (this.puffs.length > (this.fx && this.fx.low ? 30 : 120)) return;
     this.puffs.push({ x, y, r, grow: r * rand(1.5, 2.5), life: rand(0.35, 0.6), max: 0.6, color });
   }
   text(x, y, s, color, life, vy, big = false) {
