@@ -1,12 +1,12 @@
 // =====================================================================
 //  RAGEVERSE – Einstieg: Game-Loop, Steuerung, Menüs, Shop, Updates
 // =====================================================================
-import * as C from './config.js?v=0.4.0';
-import { Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.4.0';
-import { render, drawMonsterPreview } from './render.js?v=0.4.0';
-import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.4.0';
-import { loadSave, writeSave, resetSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.4.0';
-import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.4.0';
+import * as C from './config.js?v=0.4.1';
+import { Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.4.1';
+import { render, drawMonsterPreview } from './render.js?v=0.4.1';
+import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.4.1';
+import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.4.1';
+import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.4.1';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -47,7 +47,7 @@ const game = new Game(save, {
     if (what === 'dead') { $('boss-bar').hidden = true; document.body.classList.remove('bossfight'); callout('ZORNOS BESIEGT!', 5); setIntensity(1); }
   },
 });
-window.__rv = { game, save, C, get pointer() { return pointer; }, get input() { return input; } };
+window.__rv = { game, save, C, computeStats, get pointer() { return pointer; }, get input() { return input; } };
 
 // ------------------------------------------------------------------
 // Canvas-Größe
@@ -86,6 +86,7 @@ window.addEventListener('keydown', e => {
 });
 // Escape: im Run → Pause + Einstellungen; in Fenstern → zurück
 function onEscape() {
+  if (!$('confirm-modal').hidden) { closeConfirm(); return; }
   if (!$('notes-modal').hidden) { $('notes-modal').hidden = true; return; }
   if (current === 'screen-settings') { closeSettings(); return; }
   if (current === 'screen-mutation') return;
@@ -331,7 +332,7 @@ function openSlots() {
         <span style="grid-column:1/-1">Zuletzt: <b>${fmtDate(d.lastPlayed)}</b></span>
       </div>
       <div class="slot-actions">
-        <button class="btn del ${slotDelArmed === i ? 'primary' : ''}" data-del="${i}" title="Spielstand löschen">${slotDelArmed === i ? 'Wirklich löschen?' : '🗑'}</button>
+        <button class="btn del" data-del="${i}" title="Spielstand löschen">🗑</button>
         <button class="btn primary" data-load="${i}">Spielen</button>
       </div>
     </div>`;
@@ -354,11 +355,12 @@ $('slot-grid').addEventListener('click', e => {
   }
   if (t.dataset.load !== undefined) { const i = Number(t.dataset.load); slotDelArmed = -1; loadSlotInto(save, i); sfx('buy'); game.start(); openMenu(); return; }
   if (t.dataset.del !== undefined) {
-    const i = Number(t.dataset.del);
-    if (slotDelArmed !== i) { slotDelArmed = i; sfx('click'); openSlots(); setTimeout(() => { if (slotDelArmed === i) { slotDelArmed = -1; if (current === 'screen-slots') openSlots(); } }, 4000); return; }
-    deleteSlot(i); slotDelArmed = -1; sfx('deny');
-    if (getSlot() === i) loadSlotInto(save, i), deleteSlot(i), location.reload();
-    else openSlots();
+    const i = Number(t.dataset.del), d = listSlots()[i];
+    sfx('click');
+    askConfirm('Spielstand löschen?', `„${d && d.name ? d.name : 'Spielstand ' + (i + 1)}“ wird mit allem Fortschritt (Schrott, Chaos, Upgrades, Monster, Erfolge) endgültig gelöscht. Das kann nicht rückgängig gemacht werden.`, () => {
+      deleteSlot(i); sfx('deny');
+      if (getSlot() === i) location.reload(); else openSlots();
+    });
   }
 });
 $('btn-slots-back').onclick = () => openMenu();
@@ -389,8 +391,6 @@ function renderSettings() {
   $('set-sfx').value = st.sfx; $('set-music').value = st.music;
   $('set-shake').classList.toggle('on', st.shake);
   $('set-hints').classList.toggle('on', st.hints);
-  $('set-reset').textContent = resetArmed ? 'Wirklich löschen?' : 'Zurücksetzen';
-  $('set-reset').classList.toggle('primary', resetArmed);
 }
 function applySettings() {
   const st = save.settings;
@@ -399,7 +399,6 @@ function applySettings() {
   pointer.active = false;
   writeSave(save);
 }
-let resetArmed = false;
 $('set-control').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; save.settings.control = b.dataset.v; applySettings(); renderSettings(); sfx('click'); });
 $('set-fx').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; save.settings.fx = b.dataset.v; applySettings(); renderSettings(); sfx('click'); });
 $('set-sfx').addEventListener('input', e => { save.settings.sfx = Number(e.target.value); applySettings(); });
@@ -407,22 +406,29 @@ $('set-sfx').addEventListener('change', () => sfx('coin', 6));
 $('set-music').addEventListener('input', e => { save.settings.music = Number(e.target.value); applySettings(); });
 $('set-shake').onclick = () => { save.settings.shake = !save.settings.shake; applySettings(); renderSettings(); sfx('click'); };
 $('set-hints').onclick = () => { save.settings.hints = !save.settings.hints; applySettings(); renderSettings(); sfx('click'); };
-$('set-reset').onclick = () => {
-  if (!resetArmed) { resetArmed = true; renderSettings(); setTimeout(() => { resetArmed = false; if (current === 'screen-settings') renderSettings(); }, 4000); return; }
-  resetSave(); location.reload();  // lädt neu und zeigt die Spielstand-Auswahl
-};
 $('btn-settings-close').onclick = closeSettings;
 $('btn-settings-done').onclick = closeSettings;
 $('btn-pause').onclick = pause;
 $('btn-resume').onclick = resume;
+// Sicherheitsabfrage (z. B. Spielstand löschen). „Löschen“ wird erst nach kurzer Pause klickbar.
+let confirmCb = null;
+function askConfirm(title, text, cb) {
+  confirmCb = cb; $('confirm-title').textContent = title; $('confirm-text').textContent = text;
+  const y = $('confirm-yes'); y.disabled = true; setTimeout(() => { y.disabled = false; }, 700);
+  $('confirm-modal').hidden = false;
+}
+function closeConfirm() { $('confirm-modal').hidden = true; confirmCb = null; }
+$('confirm-no').onclick = closeConfirm;
+$('confirm-yes').onclick = () => { const cb = confirmCb; closeConfirm(); if (cb) cb(); };
+
 // Run beenden: Schrott und Chaos werden behalten (wie bei einem normalen Run-Ende)
 function endRun() { if (!inRun || !game.p || (game.state !== 'play' && game.state !== 'paused')) return; game.state = 'play'; game.p.rage = 0; game.die(); show(null); }
 $('btn-quit').onclick = endRun;
 let endArmed = 0;
 $('btn-endrun').onclick = () => {
   const b = $('btn-endrun');
-  if (!endArmed) { endArmed = setTimeout(() => { endArmed = 0; b.classList.remove('armed'); b.textContent = '🏁'; }, 2500); b.classList.add('armed'); b.textContent = '🏁 Beenden?'; return; }
-  clearTimeout(endArmed); endArmed = 0; b.classList.remove('armed'); b.textContent = '🏁'; endRun();
+  if (!endArmed) { endArmed = setTimeout(() => { endArmed = 0; b.classList.remove('armed'); b.innerHTML = '🏁 <span>Run beenden</span>'; }, 3000); b.classList.add('armed'); b.innerHTML = '🏁 <span>Sicher? Nochmal klicken</span>'; sfx('click'); return; }
+  clearTimeout(endArmed); endArmed = 0; b.classList.remove('armed'); b.innerHTML = '🏁 <span>Run beenden</span>'; endRun();
 };
 
 function bestWorldAny() { return Math.max(save.bestWorld || 0, ...Object.values(save.mapBest || {}), 0); }

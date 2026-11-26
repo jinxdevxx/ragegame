@@ -18,6 +18,22 @@ const OUT = process.argv[2] || '/tmp';
   log('Neuer Spielstand → Menü', (await vis(p)) === 'screen-menu');
   await p.close();
 
+  // Einstellungen: kein „Spielstand löschen“ mehr; Löschen nur mit eigener Bestätigung
+  p = await page('?slot=1');
+  await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  log('Einstellungen ohne Spielstand-Reset', await p.evaluate(() => !document.getElementById('set-reset') && !/zurücksetzen|Spielstand löschen/i.test(document.getElementById('screen-settings').innerText)));
+  await p.evaluate(() => { localStorage.setItem('rageverse_slot_2', JSON.stringify({ name: 'Wegwerf', created: 1, lastPlayed: 1 })); });
+  await p.keyboard.press('Escape'); await p.waitForTimeout(100);
+  await click(p, '#menu-slot'); await p.waitForTimeout(300);
+  await click(p, '[data-del="2"]'); await p.waitForTimeout(150);
+  const asked = await p.evaluate(() => !document.getElementById('confirm-modal').hidden && !!localStorage.getItem('rageverse_slot_2'));
+  await click(p, '#confirm-no'); await p.waitForTimeout(100);
+  const kept = await p.evaluate(() => !!localStorage.getItem('rageverse_slot_2'));
+  await click(p, '[data-del="2"]'); await p.waitForTimeout(800); await click(p, '#confirm-yes'); await p.waitForTimeout(300);
+  const gone = await p.evaluate(() => !localStorage.getItem('rageverse_slot_2'));
+  log('Spielstand löschen: Abfrage, Abbrechen behält, Bestätigen löscht', asked && kept && gone);
+  await p.close();
+
   // Erfolge + Statistik
   p = await page('?slot=1');
   await p.evaluate(() => { const s = window.__rv.save; s.totalKills = 1500; s.runs = 12; s.stats = { bestCombo: 25, playTime: 3700 }; });

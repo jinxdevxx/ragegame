@@ -7,7 +7,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.4.0 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.4.1 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -35,11 +35,11 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 
 **Skill-Evolutionen (☠ Chaos):** Ansturm → Flammen-Ansturm (Feuerspur) → Meteor-Ansturm (Einschlag am Ende). Stampfer → Nachbeben (zweite Welle) → Erdspalter (betäubt Hindernisse). Berserker → Titanenwut (größer, mehr Schaden) → Endloser Zorn (jede Zerstörung verlängert). Stufe II braucht Stufe I und ein höheres Upgrade-Level.
 
-**🏁 Run beenden:** Knopf oben rechts (zweimal klicken). Der Run endet sofort, der Schrott bleibt.
+**🏁 Run beenden:** Knopf „Run beenden“ oben rechts im Spiel (klicken, dann „Sicher? Nochmal klicken“). Der Run endet sofort, der Schrott bleibt.
 
 **Steuerung:** Standard ist **WASD/Pfeiltasten**, die Maus steuert dann gar nicht. In den **Einstellungen (Esc)** kannst du auf **Maus** (linke Taste halten = laufen zur Maus, Rechtsklick = Ansturm) oder **Beides** umstellen. Auf dem Handy steuert immer der Finger. Pause mit P.
 
-**Einstellungen (Esc, ⚙ im Menü oder in der Pause):** Steuerung, Lautstärke Soundeffekte/Musik, Bildschirmwackeln, Effekt-Menge (für schwache Geräte), Tipps an/aus, Spielstand zurücksetzen (mit Sicherheitsabfrage). Pause mit P/Esc. Im Spiel erklärt das **❓ Hilfe**-Fenster alles mit den aktuellen Werten.
+**Einstellungen (Esc, ⚙ im Menü oder in der Pause):** Steuerung, Lautstärke Soundeffekte/Musik, Bildschirmwackeln, Effekt-Menge (für schwache Geräte), Tipps an/aus, Pause mit P/Esc. Im Spiel erklärt das **❓ Hilfe**-Fenster alles mit den aktuellen Werten.
 
 ### Damit es nicht monoton wird
 - **50 Welten (Vorstadt):** Garten → Straße → Stadt → Gebirge → Kontinent → Planetar → Sonnensystem → Galaxie → Galaxienhaufen → Kosmisches Netz → Multiversum, danach 39 Dimensionen (je ×4 Größe, ×3 Schrott, eigene Farben, eigener Boden, 12 eigene Objekte inkl. explosiver, flüchtender und gefährlicher). Welt 50: **Höllenschlund**, danach endlos.
@@ -91,6 +91,7 @@ tools/balance-sim.js  Bot spielt Runs ohne Grafik → prüft das Balancing
 tools/skill-test.js   Prüft automatisch, ob jedes Upgrade, jede Fähigkeit, Mutation und jedes Monster wirkt
 tools/control-test.cjs Browser-Test: Steuerung (Tastatur/Maus/hängende Maustaste), Esc-Menü, Einstellungen
 tools/browser-test.cjs Browser-Test: Erfolge, Statistik, Evolution, Aufträge, 🏁, Boss, Monster, Hölle-FPS
+tools/perf-test.cjs   Browser-Test: FPS/Frame-Zeiten in Last-Szenarien (Meteor, Magnet, hohe Welten, Boss)
 tools/prestige-check.js Rechnet den Urknall-Ertrag durch
 tools/bump-version.js Setzt die Version überall (version.json + Datei-Links gegen Browser-Cache)
 ```
@@ -169,6 +170,10 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.4.1 Sicher raus
+- Nutzer-Feedback: Run beenden war zu umständlich (Esc → Esc → Knopf), und in den Esc-Einstellungen stand „Spielstand zurücksetzen“. Jetzt: beschrifteter 🏁-Knopf im HUD, Reset aus den Einstellungen entfernt, Löschen nur noch in der Spielstand-Auswahl mit eigenem Bestätigungsfenster (Löschen-Knopf erst nach 0,7 s klickbar).
+- Neuer Test im browser-test (Einstellungen ohne Reset, Abbrechen behält, Bestätigen löscht). Neues tools/perf-test.cjs misst Frame- und Update-Zeit in Last-Szenarien.
+
 ### 2026-11-26: v0.4.0 Endlose Wut
 - **50 Welten:** 11 feste Welten + 39 generierte Dimensionen (Größe ×4, Schrott ×3 je Welt). Jede hat Palette, Boden (Dimension, Hölle …) und 12 Objekte. Objekte werden nie „babyklein“: Spawngröße relativ zum Monster (minRel 0,22, sweetSpot 0,65), Wachstum pro Kill gedeckelt (5 %).
 - **Währungs-Stufen** bis 👑 Rageium (10⁵⁴), Anzeige mit Nachkommastellen.
@@ -238,6 +243,9 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.4.1: Sicher raus (2026-11-26)
+- 🏁 Run beenden direkt im Spiel, Spielstand löschen nur mit Bestätigung
 
 ### v0.4.0: Endlose Wut (2026-11-26)
 - 50 Welten bis zum Höllenschlund, Endboss ZORNOS, Monster Infernus

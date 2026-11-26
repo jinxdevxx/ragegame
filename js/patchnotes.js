@@ -6,6 +6,18 @@
 
 export const PATCH_NOTES = [
   {
+    version: '0.4.1',
+    date: '2026-11-26',
+    title: 'Sicher raus',
+    summary: 'Run beenden geht jetzt direkt im Spiel – und Spielstände löscht man nicht mehr aus Versehen.',
+    changes: [
+      'Neuer Knopf „🏁 Run beenden“ oben rechts im Spiel: einmal klicken, dann „Sicher? Nochmal klicken“ – der Schrott bleibt. Kein Umweg mehr über Esc.',
+      '„Spielstand löschen“ ist aus den Einstellungen (Esc) entfernt.',
+      'Spielstände löscht man nur noch in der Spielstand-Auswahl, mit eigenem Bestätigungsfenster („Endgültig löschen“).',
+      'Tastenhilfe in den Einstellungen zeigt jetzt auch F (Monster-Skill) und den 🏁-Knopf.',
+    ],
+  },
+  {
     version: '0.4.0',
     date: '2026-11-26',
     title: 'Endlose Wut',
