@@ -14,9 +14,10 @@ export function bot(g) {
   const p = g.p, lim = g.breakLimit();
   let best = null, bs = Infinity;
   for (const o of g.objects) {
-    if (o.size > lim) continue;
+    if (o.size > lim && !o.mother) continue;
     const d = Math.hypot(o.x - p.x, o.y - p.y) - o.size;
-    const score = d / Math.max(0.3, Math.min(1.5, o.size / p.r));
+    let score = d / Math.max(0.3, Math.min(1.5, o.size / p.r));
+    if (o.leaf) score *= 0.35; if (o.mother) score *= 0.05; // Karte 420: Blätter und Mutterpflanze bevorzugen
     if (score < bs) { bs = score; best = o; }
   }
   const out = { dx: 0, dy: 0, dash: false, slam: false, berserk: p.berserk >= 1 };

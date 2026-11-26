@@ -1,7 +1,7 @@
 // =====================================================================
 //  RAGEVERSE – Spiel-Logik (Simulation, keine Grafik)
 // =====================================================================
-import * as C from './config.js?v=0.7.0';
+import * as C from './config.js?v=0.8.0';
 
 const TAU = Math.PI * 2;
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -18,9 +18,9 @@ export function upgradeLevel(save, id) { return (save.upgrades && save.upgrades[
 export function upgradeDef(id) { return C.UPGRADES.find(u => u.id === id); }
 export function upgradeCost(u, level) { return Math.ceil(u.base * Math.pow(u.growth, level)); }
 
-export function worldIndexFor(r) {
+export function worldIndexFor(r, worlds = C.WORLDS) {
   let w = 0;
-  for (let i = 0; i < C.WORLDS.length; i++) if (r >= C.WORLDS[i].minRadius) w = i;
+  for (let i = 0; i < worlds.length; i++) if (r >= worlds[i].minRadius) w = i;
   return w;
 }
 
@@ -161,7 +161,7 @@ export class Game {
       berserk: 0, berserkT: 0, squash: 0, slamCd: 0, slamT: 0,
       skillCd: 0, roarT: 0, rushT: 0, lavaT: 0, phoenixT: 0, revived: false,
     };
-    this.world = worldIndexFor(r);
+    this.world = worldIndexFor(r, this.worlds);
     this.startWorld = this.world;
     this.clear();
     this.bossKilled = false;
@@ -174,6 +174,7 @@ export class Game {
     this.quest = null; this.questT = C.QUESTS.firstAfter; this.questsDone = 0;
     this.pendingWorlds = 0;
     this.boss = null; this.bossDone = false; this.bossShots = [];
+    this.leaves = 0; this.leafT = 0; this.mother = null; this.won420 = false; this.winT = 0; // Karte 420
     this.lava = []; this.rockets = []; this.spikes = []; this.blasts = []; this.singularity = null; this.freezeT = 0; this.grabFx = [];
     this.cam.x = 0; this.cam.y = 0; this.cam.zoom = this.targetZoom();
     // Genlabor: mit zufälligen Mutationen starten
@@ -184,15 +185,16 @@ export class Game {
   }
 
   // Je länger ein Run dauert (ab ~2,5 min), desto weniger Wut gibt es zurück
-  lateFactor() { return 1 + Math.pow(Math.max(0, this.time - C.WORLD_SCALING.lateRunAfter) / 60, 1.5); }
+  lateFactor() { return this.map.goal && this.map.goal.noLate ? 1 : 1 + Math.pow(Math.max(0, this.time - C.WORLD_SCALING.lateRunAfter) / 60, 1.5); }
 
   // Nach der letzten Welt geht es endlos weiter: alle ×4 Größe zählt wie eine neue Welt
   endless() {
+    if (this.map.goal) return 0; // Karte 420: feste Schwierigkeit, egal wie groß man wird
     const last = this.worlds.length - 1;
     if (this.world < last) return 0;
     return Math.max(0, Math.log(this.p.r / this.worlds[last].minRadius) / Math.log(4));
   }
-  level(world) { return world + (world === this.worlds.length - 1 ? this.endless() : 0); }
+  level(world) { return (this.map.levelBase || 0) + world + (world === this.worlds.length - 1 ? this.endless() : 0); }
   hpScale(world) { return scaleOf('hp', this.level(world)) * this.map.hpMult; }
 
   // effektiver Radius (Berserker macht größer)
@@ -296,7 +298,7 @@ export class Game {
 
     // --- Wut
     const frenzy = this.event && this.event.id === 'frenzy';
-    if (!frenzy && p.berserkT <= 0 && !this.boss) p.rage -= S.rageDrain * this.map.drainMult * scaleOf('rageDrain', this.level(this.world)) * (1 + C.PLAYER.rageDrainGrowth * this.time + Math.pow(Math.max(0, this.time - C.WORLD_SCALING.lateRunAfter) / 60, 2)) * dt;
+    if (!frenzy && p.berserkT <= 0 && !this.boss) p.rage -= S.rageDrain * this.map.drainMult * scaleOf('rageDrain', this.level(this.world)) * (1 + C.PLAYER.rageDrainGrowth * this.time + (this.map.goal && this.map.goal.noLate ? 0 : Math.pow(Math.max(0, this.time - C.WORLD_SCALING.lateRunAfter) / 60, 2))) * dt;
     p.rage = Math.min(p.rage, S.rageMax);
     if (p.rage <= 0 && this.char.id === 'phoenix' && !p.revived) { // Wiedergeburt
       p.revived = true; p.rage = S.rageMax * 0.5; this.flash = 1; this.shake = 1.2; this.sfx('unlock');
@@ -342,6 +344,9 @@ export class Game {
     // --- Endboss
     if (this.world === C.BOSS.world && !this.boss && !this.bossDone && this.worlds.length - 1 === C.BOSS.world) this.spawnBoss();
     if (this.boss) { this.updateBoss(dt); if (this.state !== 'play') return; }
+
+    // --- Karte 420
+    if (this.map.goal) { this.updateGoal(dt); if (this.state !== 'play') return; }
 
     // --- Spawning
     this.spawnT -= dt;
@@ -499,7 +504,7 @@ export class Game {
       if (p.phoenixT > 0 && o.size <= limit) { this.kill(o, 'hit'); continue; } // Feuerflug vernichtet alles auf dem Weg
       if (berserk && this.evo('berserk1') && o.size <= limit) { this.kill(o, 'hit'); continue; } // Titanenwut
       const nx = d > 1e-6 ? dx / d : 1, ny = d > 1e-6 ? dy / d : 0;
-      const breakable = o.size <= limit;
+      const breakable = o.size <= limit || o.mother; // Mutter Mary Jane ist riesig, aber angreifbar
       if (breakable && o.hitCd <= 0) {
         const approach = Math.max(0, p.vx * nx + p.vy * ny);
         let impact = clamp(approach / (S.speed * p.r), 0.45, 1.3);
@@ -548,6 +553,17 @@ export class Game {
     const p = this.p, S = this.stats;
     this.kills++;
     if (o.golden) this.rs.golden++;
+    if (o.leaf) { // Karte 420
+      this.leaves++; p.rage = Math.min(S.rageMax, p.rage + S.rageMax * this.map.goal.leafRage);
+      this.text(o.x, o.y - o.size, `🍃 ${this.leaves}/${this.map.goal.leaves}`, '#c9f0a0', 0.8, p.r * 0.6);
+      if (this.leaves >= this.map.goal.leaves && !this.mother) this.spawnMother();
+    }
+    if (o.mother && !this.won420) {
+      this.won420 = true; this.winT = 2.5; this.quest = null;
+      this.runChaos += this.map.goal.rewardChaos * S.chaosMult;
+      this.hook('onCallout', '420 GESCHAFFT!', 6); this.sfx('unlock'); this.flash = 1; this.shake = 2;
+      for (let i = 0; i < 8; i++) this.explosionQueue.push({ x: o.x + rand(-1, 1) * o.size, y: o.y + rand(-1, 1) * o.size, r: o.size * 1.2, dmg: 0, big: true, noStop: true });
+    }
     if (o.crate) this.rs.crates++;
     if (o.explosive) this.rs.explosions++;
     const rel = o.size / p.r;
@@ -1018,7 +1034,7 @@ export class Game {
         for (let i = 0; i < 6; i++) this.puff(e.x + rand(-0.4, 0.4) * e.r, e.y + rand(-0.3, 0.3) * e.r, e.r * rand(0.25, 0.45), '#5a4a44');
       }
       for (const o of this.objects) {
-        if (o.dead || o.size > (e.maxSize || e.r * 1.1)) continue;
+        if (o.dead || (o.size > (e.maxSize || e.r * 1.1) && !o.mother)) continue;
         const d = Math.hypot(o.x - e.x, o.y - e.y);
         if (d > e.r + o.size * 0.5) continue;
         o.hp -= e.dmg * (1 - 0.5 * clamp(d / e.r, 0, 1));
@@ -1036,6 +1052,7 @@ export class Game {
     const viewR = Math.hypot(this.vw, this.vh) / 2 / this.targetZoom();
     const area = viewR * C.SPAWN.areaViews, desp = viewR * C.SPAWN.despawnViews;
     this.objects = this.objects.filter(o => {
+      if (o.mother) return true; // die Mutterpflanze verschwindet nie
       const d = Math.hypot(o.x - p.x, o.y - p.y);
       if (d > desp) return false;
       if (o.size < p.r * 0.05 && d > viewR * 0.7) return false;
@@ -1077,6 +1094,9 @@ export class Game {
       }
     }
     if (!ok) return;
+    this.makeObject(t, x, y, popIn);
+  }
+  makeObject(t, x, y, popIn = false, extra = null) {
     const evGold = this.event && this.event.id === 'gold';
     const golden = !t.crate && Math.random() < (evGold ? 0.3 : this.stats.goldenChance);
     const hp = Math.pow(t.size, 1.5) * this.hpScale(t.world) * (t.crate ? 0.5 : 1);
@@ -1092,7 +1112,30 @@ export class Game {
       o.vx = Math.cos(a) * o.speed * o.size; o.vy = Math.sin(a) * o.speed * o.size;
       o.face = o.vx >= 0 ? 1 : -1;
     }
+    if (extra) Object.assign(o, extra);
     this.objects.push(o);
+    return o;
+  }
+
+  // ---------------- Karte 420: goldene Blätter sammeln, dann die Mutterpflanze
+  updateGoal(dt) {
+    const G = this.map.goal, p = this.p;
+    if (this.winT > 0) { this.winT -= dt; p.rage = this.stats.rageMax; if (this.winT <= 0) this.finish(); return; }
+    if (this.mother) return;
+    this.leafT -= dt;
+    if (this.leafT <= 0 && this.objects.filter(o => o.leaf && !o.dead).length < G.leafAlive) {
+      this.leafT = G.leafEvery;
+      const a = Math.random() * TAU, d = p.r * rand(3, 9), hp = this.oneHit() * 0.5;
+      this.makeObject({ name: 'Goldenes Hanfblatt', size: p.r * rand(0.3, 0.5), shape: 'leaf', color: '#ffd23f', value: 6, world: 0, move: 'flee', speed: 2.4 },
+        p.x + Math.cos(a) * d, p.y + Math.sin(a) * d, true, { leaf: true, golden: true, hp, maxHp: hp });
+    }
+  }
+  spawnMother() {
+    const p = this.p, G = this.map.goal, a = Math.random() * TAU, d = p.r * 9, hp = this.oneHit() * G.motherHits;
+    this.mother = this.makeObject({ name: 'Mutter Mary Jane', size: p.r * 2.5, shape: 'weed', color: '#3c9a3a', value: 420, world: 0 },
+      p.x + Math.cos(a) * d, p.y + Math.sin(a) * d, true, { mother: true, golden: false, hp, maxHp: hp });
+    this.quest = { type: 'kill', target: 'Mutter Mary Jane', count: 1, progress: 0, label: 'Hau Mutter Mary Jane um!' }; this.questT = Infinity;
+    this.hook('onCallout', 'MUTTER MARY JANE!', 6); this.sfx('berserk'); this.shake = 1.2; this.flash = 0.6;
   }
 
   pickType() {
@@ -1232,6 +1275,10 @@ export class Game {
     st.bestCombo = Math.max(st.bestCombo || 0, this.bestCombo);
     st.longestRun = Math.max(st.longestRun || 0, this.time);
     st.bestRadius = Math.max(st.bestRadius || 0, this.maxRadius);
+    if (this.won420) {
+      s.won420 = (s.won420 || 0) + 1;
+      s.darkMatter = (s.darkMatter || 0) + this.map.goal.rewardDM; s.totalDarkMatter = (s.totalDarkMatter || 0) + this.map.goal.rewardDM;
+    }
     if (this.bossKilled) {
       s.bossKills = (s.bossKills || 0) + 1;
       s.darkMatter = (s.darkMatter || 0) + C.BOSS.rewardDM; s.totalDarkMatter = (s.totalDarkMatter || 0) + C.BOSS.rewardDM;
@@ -1249,7 +1296,7 @@ export class Game {
     this.hook('onEnd', {
       xp, lvlBefore, lvlAfter: md.lvl, lvlUps, charId: this.char.id,
       earned, chaos, kills: this.kills, map: this.map.id, time: this.time, world: this.world, maxRadius: this.maxRadius,
-      bestCombo: this.bestCombo, muts: this.muts.slice(), quests: this.questsDone, bossKilled: !!this.bossKilled, ...rec,
+      bestCombo: this.bestCombo, muts: this.muts.slice(), quests: this.questsDone, bossKilled: !!this.bossKilled, won420: !!this.won420, leaves: this.leaves || 0, ...rec,
     });
   }
 

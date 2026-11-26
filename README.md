@@ -7,7 +7,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.7.0 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.8.0 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -64,6 +64,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 - **Eigene Gestalt je Monster** (js/monster.js): Grumpf (Klassiker), Stachelkönig (Igel), Flitzer (Sprint-Gecko), Magma-Golem (Felsblock), Goldzahn (Drache), Void (schwebendes Sternenwesen), Frostbeule (Yeti), Kraken (Oktopus), Mecha-Rex (Roboter), Phönix (Feuervogel), Infernus (Dämon). Vorschau aller Monster: `tools/sheet.html`, `tools/sheet-big.html?skin=gold`.
 - **Premium-Skins** je Monster, Stufe für Stufe mit Schrott: 🥈 Silber (500 Mio.) → 🥇 Gold (100 Bio.) → 💠 Platin (10²²) → 👑 Gott (10³³). Rein optisch: Metallglanz, Glanzstreifen, Funkeln, Aura; Platin/Gott schillern, Gott mit Heiligenschein.
 - **Monster-Level 1–99 + Talente:** EP pro Run = 20 + 0,08 × Kills (max. 2.500) + 18 × (Welt + 1) + 6 × Aufträge. EP pro Level = 25 + 6 × L^1,25 (Summe bis 99 ≈ 84.000, also ~280 Runs mit einem Monster). 1 Punkt pro Level, 4 Talente à 25 Ränge: 💪 Kraft (+0,6 % Schaden/Rang), 🍖 Hunger (+0,3 % Wachstum/Rang), 🎯 Skill-Meister ab Lvl 15 (−1 % F-Abklingzeit/Rang), ⭐ Signatur ab Lvl 40 (je Monster eigenes Talent, siehe `SIGNATURES` in config.js).
+- **🥚 Easter-Egg-Karte „420“:** Nach dem ZORNOS-Sieg erscheint im Hauptmenü ein Popup, die Karte ist vorher als „???“ versteckt. Eine einzige Welt (Hanfplantage, Höllen-Niveau, ×5 zäher, Wutverlust ×2,2, feste Schwierigkeit unabhängig von der Größe, kein Spätrun-Abzug). Ziel: in einem Run 420 goldene Hanfblätter (fliehen, +6 % Wut) sammeln, dann die riesige „Mutter Mary Jane“ (2,5× so groß, ~90 Treffer) umhauen. Belohnung: ◆ 1.500, ☠ 5 Mio., Erfolg „Grüner Daumen“, Sonder-Skin 🌿 Kush. Objekte: Clipper, Zucker, Handy, Weed-Blatt, Snacks, Lavalampe, Grow-Zelt, Grow-Haus, Hippie-Bus, Razzia …
 - **Geheimes Monster Urzorn** (Easter Egg): erscheint als „???“ und wird freigeschaltet, wenn **alle** Erfolge geschafft sind. Skill Urknall-Faust (zerstört alles Zerstörbare in Sicht). Die Erfolge sind so eingestellt, dass der letzte der ZORNOS-Sieg ist.
 - **Sonder-Skin 🔥 Höllenbezwinger:** für alle Monster nach dem ZORNOS-Sieg, nicht käuflich.
 - **Mutationen ausgeschöpft?** Dann gibt es stapelbare Verstärkungen (+10 % Schaden, +8 % Wachstum, +15 % Schrott, +10 % Wut-Tank). Nach 10 s wird automatisch gewählt.
@@ -181,6 +182,12 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.8.0 Grüner Daumen
+- **Easter Egg 420** (Wunsch: eine schwere Welt mit Ziel, Weed-Thema, Mutter Mary Jane). Erst als 50-Welten-Karte geplant, vom Nutzer korrigiert: eine einzige Welt mit Ziel.
+- **Balance (tools/check420.js, Bot je 8 Runs):** Erste Fassung unschaffbar – Wachstum hob die Schwierigkeit endlos an, ab Level ~68 tötete der Wutverlust in 2 s. Fix: feste Schwierigkeit auf dieser Karte, kein Spätrun-Abzug. Danach zu leicht (8/8 mit vollem Endgame) → Wutverlust ×2,2, 6 % Wut pro Blatt. Ergebnis: direkt nach dem ZORNOS-Sieg (Upgrades ~85 %, Masterplan 20) 1/8, mit vollem Ausbau zuverlässig.
+- **Bug gefunden:** `worldIndexFor` nutzte immer die Vorstadt-Welten statt der Kartenwelten.
+- **Fenster:** Hauptmenü zweispaltig ab 900 px und bei Quer-Handys, Einstellungen/Spielstände flex mit innerem Scrollen. Prüfskript: alle Fenster in 6 Bildschirmgrößen passen.
+
 ### 2026-11-26: v0.7.0 Echte Dimensionen
 - **Nutzer-Feedback:** Ab Pilz-Kosmos sahen alle Welten gleich aus (nur Farben), und die Objekte passten nicht zum Thema (Götterberg mit Augen und Planeten).
 - **Themen:** `DIM_THEMES` in config.js ordnet jeder Dimension ein Boden-Thema + 8 passende Objekte + 4 thematische Extras zu (Größen/Werte unverändert → Balance unverändert). `DIM_GROUND` in render.js: 21 Boden-Zeichner (crystal, mirror, lava, ice, fungal, garden, circuit, glitch, shadow, clockwork, forge, sweets, hoard, ocean, soup, sky, temple, dream, fiery, heaven, genesis, forest, desert, chaos), Weltraum-Dimensionen über `spaceTheme`. Deko bleibt flach (ohne Umriss/Schatten), Objekte haben Umriss.
@@ -292,6 +299,10 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.8.0: Grüner Daumen (2026-11-26)
+- Geheimes Easter Egg nach dem ZORNOS-Sieg
+- Hauptmenü, Einstellungen, Spielstände passen auf jeden Bildschirm
 
 ### v0.7.0: Echte Dimensionen (2026-11-26)
 - Alle 39 Dimensionen mit eigenem Boden und passenden Objekten (40 neue Grafiken)

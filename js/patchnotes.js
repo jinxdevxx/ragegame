@@ -6,6 +6,18 @@
 
 export const PATCH_NOTES = [
   {
+    version: '0.8.0',
+    date: '2026-11-26',
+    title: 'Grüner Daumen',
+    summary: 'Ein geheimes Easter Egg wartet auf alle, die ZORNOS besiegen – und alle Fenster passen jetzt auf jeden Bildschirm.',
+    changes: [
+      '🥚 Easter Egg: Besiege ZORNOS in Welt 50 und geh zurück ins Hauptmenü …',
+      'Hauptmenü neu angeordnet: auf breiten Bildschirmen zweispaltig, Hilfe und Einstellungen nebeneinander, alles passt ohne Scrollen auf den Bildschirm – auch auf dem Handy quer.',
+      'Einstellungen und Spielstand-Auswahl passen ebenfalls immer auf den Bildschirm.',
+      'Fix: Auf Karten mit eigener ersten Welt wurde die Startwelt nach der Vorstadt-Karte berechnet.',
+    ],
+  },
+  {
     version: '0.7.0',
     date: '2026-11-26',
     title: 'Echte Dimensionen',

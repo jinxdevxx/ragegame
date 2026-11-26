@@ -3,9 +3,9 @@
 //  Reihenfolge: Boden → Trümmer-Flecken → Schatten/Objekte/Monster
 //  (nach Tiefe sortiert) → Trümmer → Münzen → Effekte → Overlays
 // =====================================================================
-import { SPRITES, OUT } from './sprites.js?v=0.7.0';
-import { drawMonster } from './monster.js?v=0.7.0';
-import { shadeHex as sh, shadeHex } from './game.js?v=0.7.0';
+import { SPRITES, OUT } from './sprites.js?v=0.8.0';
+import { drawMonster } from './monster.js?v=0.8.0';
+import { shadeHex as sh, shadeHex } from './game.js?v=0.8.0';
 
 const TAU = Math.PI * 2;
 const STARS = Array.from({ length: 220 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() * 1.8 + 0.4, p: Math.random() * 0.6 + 0.1, tw: Math.random() * 6 }));
@@ -371,6 +371,17 @@ const DIM_GROUND = {
     terrain(kk, S * 8, sd, [{ t: 0.35, color: '#f0d698', rim: '#c8a860' }, { t: 0.5, color: 'rgba(255,154,61,0.35)' }, { t: 0.62, color: 'rgba(255,90,140,0.3)' }, { t: 0.74, color: 'rgba(120,200,255,0.35)' }]);
     const c = kk.c; c.lineWidth = Math.max(1, S * kk.z * 0.03);
     scatter(kk, S * 1.3, 0.5, 221, (X, Y, u) => { c.strokeStyle = 'rgba(160,120,60,0.35)'; c.beginPath(); c.moveTo(X - u * 0.4, Y); c.quadraticCurveTo(X, Y - u * 0.15, X + u * 0.4, Y); c.stroke(); });
+  } },
+  // 420: Felder mit Pflanzenreihen, Erdwege und grüne Rauchschwaden
+  hemp: { bg: p => '#3a2a1a', paint(kk, p, S, sd) {
+    terrain(kk, S * 10, sd, [{ t: 0.3, color: '#2f5a1f', rim: '#1a3a10' }, { t: 0.0, t2: 0.22, color: '#5a4026', rim: '#3a2a1a' }]);
+    const c = kk.c, C = S * 0.9;
+    cells(kk.v, C, (ix, iy) => { const x = ix * C, y = iy * C; if (iy % 3 === 0 || fbm(x / (S * 10), y / (S * 10), sd) < 0.3) return;
+      const X = kk.sx(x + C / 2), Y = kk.sy(y + C / 2), u = C * kk.z;
+      c.fillStyle = 'rgba(30,60,20,0.55)'; c.beginPath(); c.ellipse(X, Y + u * 0.15, u * 0.35, u * 0.15, 0, 0, TAU); c.fill();
+      c.fillStyle = hash(ix, iy, 9) > 0.5 ? '#5ab04a' : '#4a9a3a';
+      for (let k = 0; k < 5; k++) { const a = -Math.PI / 2 + (k - 2) * 0.5; c.beginPath(); c.ellipse(X + Math.cos(a) * u * 0.18, Y + Math.sin(a) * u * 0.18, u * 0.2, u * 0.06, a, 0, TAU); c.fill(); } });
+    scatter(kk, S * 4, 0.45, 241, (X, Y, u, h) => { c.fillStyle = 'rgba(200,240,190,0.09)'; for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(X + Math.cos(i * 1.7 + h * 5) * u * 0.25, Y + Math.sin(i * 1.7) * u * 0.15, u * (0.3 + i * 0.05), 0, TAU); c.fill(); } });
   } },
   // Chaos: bunte Wirbel und Risse
   chaos: { space: true, paint(kk, p, S, sd) {

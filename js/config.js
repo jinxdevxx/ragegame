@@ -679,6 +679,7 @@ export const SKINS = [
   { id: 'platinum', name: 'Platin', icon: '💠', cost: 1e22, desc: 'Eisiges Platin, schillert in allen Farben' },
   { id: 'god',      name: 'Gott',   icon: '👑', cost: 1e33, desc: 'Göttliches Licht: Heiligenschein, Strahlen, Regenbogen-Schimmer' },
   // Sonder-Skin: nicht käuflich – wer ZORNOS besiegt, bekommt ihn für ALLE Monster
+  { id: 'kush',     name: 'Kush',      icon: '🌿', special: '420', desc: 'Grüner Kush-Skin mit Rauchschwaden – nur für alle, die die geheime Karte 420 geschafft haben.' },
   { id: 'hell',     name: 'Bezwinger', icon: '🔥', special: 'boss', desc: 'Höllenbezwinger: Obsidian mit Lava-Adern, Flammenkrone und Glut-Aura. Nur für den Sieg über ZORNOS.' },
 ];
 
@@ -858,6 +859,37 @@ const CANDY = [
   },
 ];
 
+// ---------------------------------------------------------------------
+// EASTER EGG: Karte „420“ – eine einzige Welt nach dem Sieg über ZORNOS.
+// Ziel: in EINEM Run 420 goldene Hanfblätter sammeln, dann die Mutterpflanze umhauen.
+// Startet auf Höllen-Niveau (levelBase 49) und ist 5× zäher.
+// ---------------------------------------------------------------------
+export const GOAL420 = { leaves: 420, leafRage: 0.06, leafAlive: 6, leafEvery: 0.4, noLate: true, motherHits: 90, rewardDM: 1500, rewardChaos: 5000000 };
+const WEED_WORLD = {
+  id: 'w420', name: 'Hanfplantage 420', minRadius: 10, scrapMult: Math.pow(3, 49), ground: 'dimension', theme: 'hemp',
+  bg: '#16300f', bg2: '#244a18', accent: '#7fe07f', pal: ['#16300f', '#244a18', '#7fe07f', '#2f5a1f', '#4f9e4a', '#c9f0a0'], evo: 'Grüner Zorn',
+  objects: [
+    { name: 'Weed-Blatt', size: 2.5, shape: 'leaf', color: '#4fa84a', value: 1 },
+    { name: 'Zucker', size: 3.2, shape: 'sugar', color: '#ffffff', value: 2 },
+    { name: 'Clipper', size: 3.8, shape: 'lighter', color: '#ff4a7a', value: 2 },
+    { name: 'Clipper', size: 3.8, shape: 'lighter', color: '#3ad0ff', value: 2 },
+    { name: 'Handy', size: 4.5, shape: 'phone', color: '#3a8ad8', value: 3 },
+    { name: 'Raupe', size: 5, shape: 'snake', color: '#7fe07f', value: 3, move: 'flee', speed: 3 },
+    { name: 'Snacktüte', size: 5.5, shape: 'chips', color: '#e0342a', value: 3 },
+    { name: 'Pizzastück', size: 6.5, shape: 'pizza', color: '#f0c060', value: 4 },
+    { name: 'Lavalampe', size: 8, shape: 'lavalamp', color: '#7fe07f', value: 5 },
+    { name: 'Gaskartusche', size: 8, shape: 'tank', color: '#ff6a1f', value: 6, explosive: true },
+    { name: 'Hanfpflanze', size: 10, shape: 'weed', color: '#4fa84a', value: 6 },
+    { name: 'Sitzsack', size: 12, shape: 'beanbag', color: '#b06bff', value: 8 },
+    { name: 'Rauchring', size: 13, shape: 'smokering', color: '#c9f0a0', value: 9, move: 'flee', speed: 1.6 },
+    { name: 'Razzia', size: 14, shape: 'police', color: '#2a4a8a', value: 10, move: 'wander', speed: 0.9, hazard: 14 },
+    { name: 'Grow-Zelt', size: 16, shape: 'growtent', color: '#b06bff', value: 11 },
+    { name: 'Discokugel', size: 16, shape: 'discoball', color: '#c8d0e0', value: 10 },
+    { name: 'Hippie-Bus', size: 22, shape: 'bus', color: '#e09a2a', value: 14, move: 'drive', speed: 1.1 },
+    { name: 'Grow-Haus', size: 26, shape: 'greenhouse', color: '#4fa84a', value: 18 },
+  ],
+};
+
 export const MAPS = [
   { id: 'suburb', name: 'Vorstadt', icon: '🏡', worlds: WORLDS,
     desc: 'Vom Gartenzwerg bis zur Galaxie. Hier fängt jede Wut an.',
@@ -868,6 +900,9 @@ export const MAPS = [
   { id: 'candy', name: 'Zuckerland', icon: '🍭', worlds: [...CANDY, ...WORLDS.slice(3)],
     desc: 'Gummibärchen, Torten, Schokoberge. Süß aussehend, brutal schwer – und extrem viel Beute.',
     scrapMult: 36, hpMult: 5.5, drainMult: 1.2, chaosMult: 4, req: { world: 5, label: 'Erreiche den Erdorbit' } },
+  { id: '420', name: '420', icon: '🌿', worlds: [WEED_WORLD], secret: true, goal: GOAL420, levelBase: 49,
+    desc: 'Geheime Easter-Egg-Karte. Nur eine Welt – aber was für eine: Sammle in EINEM Run 420 goldene Hanfblätter, dann hau die Mutterpflanze „Mary Jane“ um. 5× zäher als alles davor.',
+    scrapMult: 5, hpMult: 5, drainMult: 2.2, chaosMult: 8, req: { boss: true, label: 'Geheim – besiege ZORNOS' } },
 ];
 
 // ---------------------------------------------------------------------
@@ -915,5 +950,6 @@ export const ACHIEVEMENTS = [
   { id: 'maps1', group: 'maps', name: 'Kartograf', icon: '🌍', stat: 'maps', goal: 3, reward: 50000, desc: 'Spiele auf allen 3 Karten' },
   { id: 'long1', group: 'long', name: 'Zähe Wut', icon: '⏱', stat: 'longestRun', goal: 180, reward: 5000, desc: 'Überlebe einen Run 3 Minuten lang' },
   ...ach('skins', 'Glanzstück', '✨', 'skinTier', [1, 2, 3, 4], [20000, 2000000, 50000000, 500000000], g => `Kaufe einen ${['', 'Silber', 'Gold', 'Platin', 'Gott'][g]}-Skin`),
+  { id: 'w4201', group: 'w420', name: 'Grüner Daumen', icon: '🌿', stat: 'won420', goal: 1, reward: 20000000, desc: 'Schaffe die geheime Karte 420' },
   { id: 'boss1', group: 'boss', name: 'Höllenbezwinger', icon: '😈', stat: 'bossKills', goal: 1, reward: 10000000, desc: 'Besiege ZORNOS, den Höllenfürsten, in Welt 50' },
 ];

@@ -1,12 +1,12 @@
 // =====================================================================
 //  RAGEVERSE – Einstieg: Game-Loop, Steuerung, Menüs, Shop, Updates
 // =====================================================================
-import * as C from './config.js?v=0.7.0';
-import { monsterData, talentRank, talentFree, canRaiseTalent, raiseTalent, Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.7.0';
-import { render, drawMonsterPreview } from './render.js?v=0.7.0';
-import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.7.0';
-import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.7.0';
-import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.7.0';
+import * as C from './config.js?v=0.8.0';
+import { monsterData, talentRank, talentFree, canRaiseTalent, raiseTalent, Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.8.0';
+import { render, drawMonsterPreview } from './render.js?v=0.8.0';
+import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.8.0';
+import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.8.0';
+import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.8.0';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -100,6 +100,7 @@ window.addEventListener('keydown', e => {
 // Escape: im Run → Pause + Einstellungen; in Fenstern → zurück
 function onEscape() {
   if (!$('confirm-modal').hidden) { closeConfirm(); return; }
+  if (!$('egg-modal').hidden) { $('egg-modal').hidden = true; return; }
   if (!$('notes-modal').hidden) { $('notes-modal').hidden = true; return; }
   if (current === 'screen-settings') { closeSettings(); return; }
   if (current === 'screen-mutation') return;
@@ -257,6 +258,7 @@ function statValue(stat) {
     case 'evos': return Object.keys(save.evos || {}).length;
     case 'maps': return Object.keys(save.mapBest || {}).length;
     case 'bossKills': return save.bossKills || 0;
+    case 'won420': return save.won420 || 0;
     case 'skinTier': return Math.max(0, ...Object.values(save.skins || {}).map(l => Math.max(0, ...l.map(id => C.SKINS.findIndex(k => k.id === id) + 1))));
     default: return st[stat] || 0;
   }
@@ -434,6 +436,15 @@ $('btn-settings-close').onclick = closeSettings;
 $('btn-settings-done').onclick = closeSettings;
 $('btn-pause').onclick = pause;
 $('btn-resume').onclick = resume;
+// Easter Egg: geheime Karte 420 freigeschaltet
+function showEgg420() {
+  if (save.egg420 || current !== 'screen-menu') return;
+  save.egg420 = true; writeSave(save);
+  $('egg-modal').hidden = false; sfx('unlock'); setTimeout(() => sfx('berserk'), 350);
+}
+$('egg-go').onclick = () => { $('egg-modal').hidden = true; save.selectedMap = '420'; writeSave(save); openMaps(); };
+$('egg-later').onclick = () => { $('egg-modal').hidden = true; };
+
 // Sicherheitsabfrage (z. B. Spielstand löschen). „Löschen“ wird erst nach kurzer Pause klickbar.
 let confirmCb = null;
 function askConfirm(title, text, cb) {
@@ -475,6 +486,7 @@ function reqProgress(req) {
 
 function openMenu() {
   if (getSlot() < 0) { openSlots(); return; }
+  if (save.bossKills > 0 && !save.egg420) setTimeout(showEgg420, 500); // Easter Egg nach dem ZORNOS-Sieg
   inRun = false; setIntensity(0);
   $('menu-slot-name').textContent = save.name || 'Spielstand';
   const ch = charDef(save.selectedChar), mp = mapDef(save.selectedMap);
@@ -713,9 +725,10 @@ function openChars() {
 function skinRow(ch) {
   const owned = (save.skins[ch.id] || []).slice(), cur = save.skinSel[ch.id] || '';
   if (save.bossKills > 0) owned.push('hell'); // Sonder-Skin: ZORNOS besiegt → für alle Monster
+  if (save.won420 > 0) owned.push('kush');   // Sonder-Skin: Karte 420 geschafft
   const chips = [`<button class="skin-chip ${cur ? '' : 'on'}" data-skin="" data-skinchar="${ch.id}" title="Normal">🎨<small>Normal</small></button>`];
   C.SKINS.forEach((k, i) => {
-    if (k.special) { const has = owned.includes(k.id); chips.push(`<button class="skin-chip ${has ? (cur === k.id ? 'on' : '') : 'locked'} sk-${k.id}" data-skin="${k.id}" data-skinchar="${ch.id}" title="${esc(k.desc)}">${k.icon}<small>${has ? esc(k.name) : '😈 ZORNOS'}</small></button>`); return; }
+    if (k.special) { const has = owned.includes(k.id); chips.push(`<button class="skin-chip ${has ? (cur === k.id ? 'on' : '') : 'locked'} sk-${k.id}" data-skin="${k.id}" data-skinchar="${ch.id}" title="${esc(k.desc)}">${has ? k.icon : '🔒'}<small>${has ? esc(k.name) : k.special === 'boss' ? '😈 ZORNOS' : '???'}</small></button>`); return; }
     const has = owned.includes(k.id), prevOk = i === 0 || owned.includes(C.SKINS[i - 1].id), afford = save.scrap >= k.cost;
     const cls = has ? (cur === k.id ? 'on' : '') : (prevOk && afford ? 'buy' : 'locked');
     const label = has ? k.name : prevOk ? money(k.cost) : '🔒';
@@ -756,7 +769,7 @@ $('char-grid').addEventListener('click', e => {
   if (sk) {
     const cid = sk.dataset.skinchar, id = sk.dataset.skin, owned = save.skins[cid] || (save.skins[cid] = []);
     const spec = C.SKINS.find(k => k.id === id && k.special);
-    if (spec) { if (save.bossKills > 0) { save.skinSel[cid] = id; writeSave(save); sfx('unlock'); openChars(); } else sfx('deny'); return; }
+    if (spec) { if (spec.special === 'boss' ? save.bossKills > 0 : save.won420 > 0) { save.skinSel[cid] = id; writeSave(save); sfx('unlock'); openChars(); } else sfx('deny'); return; }
     if (!id || owned.includes(id)) { save.skinSel[cid] = id; writeSave(save); sfx('click'); openChars(); return; }
     const i = C.SKINS.findIndex(k => k.id === id), k = C.SKINS[i];
     if ((i > 0 && !owned.includes(C.SKINS[i - 1].id)) || save.scrap < k.cost) { sfx('deny'); return; }
@@ -791,13 +804,16 @@ function openMaps() {
   $('map-grid').innerHTML = C.MAPS.map(m => {
     const met = reqMet(m.req), sel = save.selectedMap === m.id;
     const best = (save.mapBest || {})[m.id];
+    if (m.secret && !met) return `<div class="map locked secret"><div class="map-top"><span class="map-ic">❓</span><div><div class="map-name">???</div></div></div>
+      <div class="char-desc">Eine geheime Karte. Wer weiß, was passiert, wenn man ganz am Ende etwas Großes besiegt …</div>
+      <button class="btn" disabled>🔒 Geheim</button></div>`;
     const cols = m.worlds.slice(0, 3).map(w => `<i style="background:${w.bg}"></i>`).join('');
     return `<div class="map ${sel ? 'sel' : ''} ${met ? '' : 'locked'}">
       <div class="map-top"><span class="map-ic">${m.icon}</span><div><div class="map-name">${esc(m.name)}</div><div class="map-sw">${cols}</div></div></div>
       <div class="char-desc">${esc(m.desc)}</div>
       <div class="map-stats"><span>⚙ ×${m.scrapMult}</span><span>☠ ×${m.chaosMult}</span><span>❤ ×${m.hpMult} zäher</span></div>
-      <div class="map-worlds">${m.worlds.slice(0, 3).map(w => esc(w.name)).join(' → ')} → …</div>
-      ${best !== undefined ? `<div class="char-req ok">Rekord: ${esc(m.worlds[best].name)}</div>` : ''}
+      <div class="map-worlds">${m.goal ? `🎯 Ziel: ${m.goal.leaves} goldene Blätter in einem Run, dann Mutter Mary Jane${save.won420 ? ` · ✔ ${save.won420}× geschafft` : ''}` : m.worlds.slice(0, 3).map(w => esc(w.name)).join(' → ') + ' → …'}</div>
+      ${best !== undefined && !m.goal ? `<div class="char-req ok">Rekord: ${esc(m.worlds[best].name)}</div>` : ''}
       ${sel ? '<button class="btn" disabled>✔ Ausgewählt</button>' : met ? `<button class="btn primary" data-map="${m.id}">Wählen</button>` : `<button class="btn" disabled>🔒 ${esc(m.req.label)}</button>`}
     </div>`;
   }).join('');
@@ -865,6 +881,7 @@ function lvlBlock(s) {
 }
 function showResults(s) {
   writeSave(save);
+  $('res-title').textContent = s.won420 ? '🌿 420 GESCHAFFT!' : s.bossKilled ? '😈 ZORNOS BESIEGT!' : 'Wut verraucht!';
   setIntensity(0);
   const mins = Math.floor(s.time / 60), secs = Math.floor(s.time % 60);
   const mutNames = s.muts.map(id => { const m = C.MUTATIONS.find(x => x.id === id) || C.BOOSTS.find(x => x.id === id); return m ? m.icon + ' ' + m.name : id; });
@@ -1021,10 +1038,17 @@ function updateHud() {
   const now = performance.now();
   if (now - (hudCache.numT || 0) > 100) { hudCache.numT = now; setText('hud-scrap', money(game.runScrap)); setText('hud-chaos', fmt(game.runChaos)); } // Zahlen max. 10×/s
   const w = game.worlds[game.world], next = game.worlds[game.world + 1];
-  setText('hud-world-num', `${game.map.id === 'suburb' ? 'WELT' : game.map.name.toUpperCase() + ' · WELT'} ${game.world + 1} / ${game.worlds.length}`);
-  setText('hud-world-name', w.name);
-  setText('hud-world-next', next ? `→ Welt ${game.world + 2}: ${next.name}` : '∞ Endlos');
-  setBar('hud-world-bar', game.worldProgress());
+  if (game.map.goal) { // Karte 420: Fortschritt = goldene Blätter
+    const G = game.map.goal;
+    setText('hud-world-num', '🥚 EASTER EGG · 420');
+    setText('hud-world-name', w.name);
+    setText('hud-world-next', game.mother ? '🌿 Hau Mutter Mary Jane um!' : `🍃 ${game.leaves} / ${G.leaves} goldene Blätter`);
+  } else {
+    setText('hud-world-num', `${game.map.id === 'suburb' ? 'WELT' : game.map.name.toUpperCase() + ' · WELT'} ${game.world + 1} / ${game.worlds.length}`);
+    setText('hud-world-name', w.name);
+    setText('hud-world-next', next ? `→ Welt ${game.world + 2}: ${next.name}` : '∞ Endlos');
+  }
+  setBar('hud-world-bar', game.map.goal ? (game.mother ? 1 - Math.max(0, game.mother.hp / game.mother.maxHp) : game.leaves / game.map.goal.leaves) : game.worldProgress());
   const comboEl = $('hud-combo');
   if (game.combo >= 3) {
     if (comboEl.hidden) comboEl.hidden = false;

@@ -8,8 +8,8 @@
 //  Sternenstaub und Aura dazu. Premium-Skins (Silber, Gold, Platin, Gott)
 //  färben das Monster metallisch und legen Glanz, Funkeln und Aura darüber.
 // =====================================================================
-import * as C from './config.js?v=0.7.0';
-import { shadeHex as sh } from './game.js?v=0.7.0';
+import * as C from './config.js?v=0.8.0';
+import { shadeHex as sh } from './game.js?v=0.8.0';
 
 const TAU = Math.PI * 2;
 const OUT = '#1f1212';
@@ -527,6 +527,7 @@ export const SKIN_PALETTES = {
   silver:   { body: '#b9c3cf', belly: '#eef2f7', horn: '#ffffff', dark: '#3e4652', wing: '#8a95a4', glow: 'rgba(220,235,255,', shine: 0.55 },
   gold:     { body: '#f2b822', belly: '#fff0a0', horn: '#fff8dc', dark: '#6a4200', wing: '#d08f10', glow: 'rgba(255,205,60,', shine: 0.7 },
   platinum: { body: '#cfe6f5', belly: '#ffffff', horn: '#9ff0ff', dark: '#2a4a6a', wing: '#9fc4dc', glow: 'rgba(160,240,255,', shine: 0.8 },
+  kush:     { body: '#3c9a3a', belly: '#c9f0a0', horn: '#ffd23f', dark: '#14300c', wing: '#2a6a2a', glow: 'rgba(120,230,120,', shine: 0.45, sweep: '210,255,200' },
   hell:     { body: '#1c0a0a', belly: '#ff5a1a', horn: '#ffd23f', dark: '#000000', wing: '#3a0808', glow: 'rgba(255,90,20,', shine: 0.5, sweep: '255,160,60' },
   god:      { body: '#fff8ea', belly: '#ffe28a', horn: '#ffd23f', dark: '#9a6a00', wing: '#fff0c0', glow: 'rgba(255,230,140,', shine: 0.9 },
 };
@@ -612,11 +613,15 @@ function drawSkinned(c, X, Y, R, s, skin) {
   }
   o.globalCompositeOperation = 'source-over';
   c.drawImage(skinCanvas, 0, 0, W, H, X - ox, Y - oy, W, H);
-  const n = id === 'silver' ? 3 : id === 'gold' ? 5 : id === 'hell' ? 0 : 7;
+  const n = id === 'silver' ? 3 : id === 'gold' ? 5 : id === 'hell' || id === 'kush' ? 0 : 7;
   for (let i = 0; i < n; i++) {
     const cyc = t * 0.7 + i / n, ph = cyc % 1, k = Math.floor(cyc), a = Math.sin(ph * Math.PI);
     const px = X + Math.sin(i * 4.7 + k * 2.3) * R * 0.9, py = Y - R * (0.4 + ((i * 0.37 + k * 0.61) % 1) * 1.8);
     c.fillStyle = `rgba(255,255,255,${a})`; star4(c, px, py, R * 0.05 * (0.5 + a));
+  }
+  if (id === 'kush') { // grüne Rauchschwaden steigen auf
+    for (let i = 0; i < 6; i++) { const ph = (t * 0.35 + i / 6) % 1, x = X + Math.sin(i * 2.3 + t * 0.8) * R * (0.6 + ph * 0.5), y = Y - R * (1.2 + ph * 2.2);
+      c.fillStyle = `rgba(200,245,190,${0.35 * (1 - ph)})`; c.beginPath(); c.arc(x, y, R * (0.18 + ph * 0.35), 0, TAU); c.fill(); }
   }
   if (id === 'hell') { // Glut steigt auf, Flammenkrone
     for (let i = 0; i < 8; i++) { const ph = (t * 0.9 + i / 8) % 1; c.fillStyle = `rgba(255,${150 + (i % 3) * 40},40,${1 - ph})`; c.beginPath(); c.arc(X + Math.sin(i * 3.3 + t) * R * 0.9, Y - R * (0.3 + ph * 2.4), R * 0.06 * (1 - ph * 0.6), 0, TAU); c.fill(); }

@@ -117,6 +117,32 @@ const OUT = process.argv[2] || '/tmp';
   log('⏫ Talent: alle 20 Punkte in Kraft', tp === 20, `Kraft ${tp}/25`);
   await p.close();
 
+  // Easter Egg 420: Popup nach ZORNOS-Sieg, Karte geheim bis dahin, Ziel-Anzeige, Mutterpflanze, Sieg
+  p = await page('?slot=1');
+  await p.evaluate(() => { const s = window.__rv.save; s.bossKills = 0; s.egg420 = false; });
+  await click(p, '#btn-maps'); await p.waitForTimeout(200);
+  const hidden420 = await p.evaluate(() => /\?\?\?/.test(document.getElementById('map-grid').innerText) && !document.querySelector('[data-map="420"]'));
+  await p.keyboard.press('Escape'); await p.waitForTimeout(150);
+  await p.evaluate(() => { window.__rv.save.bossKills = 1; }); await click(p, '#btn-maps'); await p.waitForTimeout(150); await p.keyboard.press('Escape'); await p.waitForTimeout(900);
+  const egg = await p.evaluate(() => !document.getElementById('egg-modal').hidden);
+  await click(p, '#egg-go'); await p.waitForTimeout(200);
+  const sel = await p.evaluate(() => window.__rv.save.selectedMap);
+  log('Easter Egg: 420 geheim, Popup nach ZORNOS, Karte wählbar', hidden420 && egg && sel === '420');
+  await p.keyboard.press('Escape'); await p.waitForTimeout(150);
+  await p.evaluate(() => { const s = window.__rv.save; window.__rv.C.UPGRADES.forEach(u => s.upgrades[u.id] = u.max); });
+  await click(p, '#btn-play'); await p.waitForTimeout(2500);
+  const g1 = await p.evaluate(() => ({ num: document.getElementById('hud-world-num').textContent, next: document.getElementById('hud-world-next').textContent, leaves: window.__rv.game.objects.filter(o => o.leaf).length }));
+  await p.evaluate(() => { const g = window.__rv.game; setInterval(() => { g.p.rage = g.stats.rageMax; }, 30); g.leaves = 419; const l = g.objects.find(o => o.leaf); g.kill(l, 'hit'); });
+  await p.waitForTimeout(400);
+  const m = await p.evaluate(() => { const g = window.__rv.game; return { mother: !!g.mother, big: g.mother && g.mother.size > g.p.r * 2, next: document.getElementById('hud-world-next').textContent }; });
+  await p.screenshot({ path: OUT + '/420.png' });
+  await p.evaluate(() => { const g = window.__rv.game; g.kill(g.mother, 'hit'); }); await p.waitForTimeout(3800);
+  const won = await p.evaluate(() => ({ title: document.getElementById('res-title').textContent, w: window.__rv.save.won420, kush: true }));
+  log('420: Blätter-Anzeige, riesige Mutter Mary Jane, Sieg', /420/.test(g1.num) && /goldene Blätter/.test(g1.next) && g1.leaves > 0 && m.mother && m.big && /Mary Jane/.test(m.next) && /420 GESCHAFFT/.test(won.title) && won.w >= 1, `${g1.next} → ${m.next} → ${won.title}`);
+  await p.screenshot({ path: OUT + '/420-sieg.png' });
+  await p.evaluate(() => { window.__rv.save.selectedMap = 'suburb'; });
+  await p.close();
+
   // Erfolge + Statistik
   p = await page('?slot=1');
   await p.evaluate(() => { const s = window.__rv.save; s.totalKills = 1500; s.runs = 12; s.stats = { bestCombo: 25, playTime: 3700 }; });

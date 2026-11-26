@@ -4,7 +4,7 @@
 //  x von -1 bis 1, y von -1 (oben) bis 1 (Boden). Outline wird vom
 //  Aufrufer gesetzt (lineWidth/strokeStyle), Farbe kommt aus o.color.
 // =====================================================================
-import { shadeHex as sh } from './game.js?v=0.7.0';
+import { shadeHex as sh } from './game.js?v=0.8.0';
 
 const TAU = Math.PI * 2;
 
@@ -942,4 +942,57 @@ export const SPRITES = {
   mirror(c, o) { ell(c, 0, -0.05, 0.62, 0.9, '#d8b860'); ell(c, 0, -0.05, 0.5, 0.78, o.color); poly(c, [-0.3, -0.5, -0.1, -0.7, 0.2, 0.2, 0, 0.4], 'rgba(255,255,255,0.55)', true); rr(c, -0.3, 0.8, 0.6, 0.17, 0.04, '#d8b860'); },
   moon(c, o) { c.beginPath(); c.arc(0, 0, 0.9, 0.6, TAU - 0.6); c.arc(0.45, 0, 0.62, TAU - 1.05, 1.05, true); c.closePath(); fs(c, o.color); eyes(c, -0.45, -0.15, 0.1, -0.3); line(c, -0.55, 0.3, -0.35, 0.32, 0.05, OUT); },
   sheep(c, o) { for (const [x, y] of [[-0.4, 0.05], [0, -0.15], [0.4, 0.05], [-0.2, 0.3], [0.2, 0.3]]) circ(c, x, y, 0.35, o.color); rr(c, -0.4, 0.5, 0.14, 0.45, 0.05, '#3a2a2a'); rr(c, 0.26, 0.5, 0.14, 0.45, 0.05, '#3a2a2a'); ell(c, 0.65, -0.15, 0.25, 0.2, '#3a2a2a'); eyes(c, 0.72, -0.2, 0.06, 0.3); },
+
+  // ================= Easter-Egg-Karte „420“ =================
+  leaf(c, o) { // Hanfblatt (7 Finger)
+    line(c, 0, 0.2, 0, 0.98, 0.08, sh(o.color, -0.3));
+    for (const [a, l, w] of [[-90, 1, 0.2], [-60, 0.9, 0.18], [-120, 0.9, 0.18], [-30, 0.7, 0.15], [-150, 0.7, 0.15], [5, 0.45, 0.11], [175, 0.45, 0.11]]) {
+      const r = a * Math.PI / 180, tx = Math.cos(r) * l, ty = 0.25 + Math.sin(r) * l, nx = -Math.sin(r) * w, ny = Math.cos(r) * w;
+      c.beginPath(); c.moveTo(0, 0.25); c.quadraticCurveTo(tx * 0.5 + nx, 0.25 + (ty - 0.25) * 0.5 + ny, tx, ty); c.quadraticCurveTo(tx * 0.5 - nx, 0.25 + (ty - 0.25) * 0.5 - ny, 0, 0.25); fs(c, o.color);
+    }
+  },
+  weed(c, o) { // Hanfpflanze im Topf
+    rr(c, -0.42, 0.45, 0.84, 0.5, 0.08, '#c96f3a'); rr(c, -0.5, 0.4, 1, 0.14, 0.05, '#e08a4a');
+    line(c, 0, 0.45, 0, -0.6, 0.07, '#3c7a2a');
+    const sway = Math.sin((o.anim || 0) * 1.5 + o.seed * 9) * 0.06;
+    for (const [y, s2, d] of [[0.2, 0.62, -1], [0.1, 0.62, 1], [-0.25, 0.55, -1], [-0.35, 0.55, 1], [-0.55, 0.5, 0]]) {
+      c.save(); c.translate(d * 0.22 + sway, y); c.rotate(d * 0.5 + sway); c.scale(s2, s2); SPRITES.leaf(c, o); c.restore();
+    }
+  },
+  lighter(c, o) {
+    rr(c, -0.35, -0.3, 0.7, 1.25, 0.12, o.color); rr(c, -0.3, -0.55, 0.6, 0.28, 0.05, '#c0c8d0'); circ(c, 0.12, -0.42, 0.1, '#9aa0aa');
+    const f = 0.9 + Math.sin((o.anim || 0) * 14) * 0.1; c.fillStyle = '#ffb13d'; c.beginPath(); c.ellipse(-0.1, -0.85 * f, 0.12, 0.25 * f, 0, 0, TAU); c.fill(); c.fillStyle = '#fff36a'; c.beginPath(); c.ellipse(-0.1, -0.8, 0.06, 0.14, 0, 0, TAU); c.fill();
+  },
+  lavalamp(c, o) {
+    poly(c, [-0.35, 0.95, -0.2, 0.55, 0.2, 0.55, 0.35, 0.95], '#3a3a4a'); poly(c, [-0.2, -0.75, 0.2, -0.75, 0.32, 0.55, -0.32, 0.55], 'rgba(255,240,200,0.6)');
+    poly(c, [-0.16, -0.75, 0.16, -0.75, 0.1, -0.98, -0.1, -0.98], '#3a3a4a');
+    const t = o.anim || 0; for (let i = 0; i < 3; i++) circ(c, Math.sin(t + i * 2) * 0.08, 0.35 - ((t * 0.25 + i * 0.33) % 1) * 1, 0.1 + (i % 2) * 0.05, o.color, true);
+  },
+  chips(c, o) { // Snack-Tüte
+    poly(c, [-0.6, -0.8, 0.6, -0.8, 0.7, 0.95, -0.7, 0.95], o.color); poly(c, [-0.62, -0.8, 0.62, -0.8, 0.55, -0.95, -0.55, -0.95], sh(o.color, -0.2));
+    circ(c, 0, 0.05, 0.38, '#ffd23f'); for (let i = 0; i < 3; i++) ell(c, -0.15 + i * 0.15, 0.05 + (i % 2) * 0.1, 0.14, 0.09, '#e0a020', i);
+    c.fillStyle = '#fff'; c.font = 'bold 0.22px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('SNACK', 0, -0.5);
+  },
+  pizza(c, o) { poly(c, [-0.85, -0.6, 0.85, -0.6, 0, 0.95], '#f0c060'); rr(c, -0.9, -0.75, 1.8, 0.22, 0.1, '#c98a3a'); for (const [x, y] of [[-0.35, -0.3], [0.3, -0.25], [0, 0.2], [-0.1, -0.4]]) circ(c, x, y, 0.13, '#d0342a'); },
+  beanbag(c, o) { c.beginPath(); c.moveTo(-0.95, 0.9); c.quadraticCurveTo(-1, -0.2, -0.3, -0.6); c.quadraticCurveTo(0.4, -0.9, 0.85, -0.2); c.quadraticCurveTo(1.05, 0.5, 0.9, 0.9); c.closePath(); fs(c, o.color); ell(c, 0.05, 0.1, 0.5, 0.3, sh(o.color, -0.15), 0, true); circ(c, -0.4, -0.35, 0.12, 'rgba(255,255,255,0.25)', true); },
+  discoball(c, o) { line(c, 0, -1, 0, -0.75, 0.04, '#aab'); circ(c, 0, 0, 0.75, '#c8d0e0'); const t = o.anim || 0;
+    for (let i = -3; i <= 3; i++) for (let k = -3; k <= 3; k++) { if (i * i + k * k > 9) continue; c.fillStyle = (i + k + Math.floor(t * 6)) % 3 ? 'rgba(255,255,255,0.25)' : ['#ff4ab0', '#7fd3ff', '#ffd23f'][(i * 7 + k) & 1 ? 0 : 1]; c.fillRect(i * 0.2 - 0.09, k * 0.2 - 0.09, 0.18, 0.18); } },
+  greenhouse(c, o) { poly(c, [-0.95, 0.95, -0.95, -0.2, 0, -0.85, 0.95, -0.2, 0.95, 0.95], 'rgba(200,255,220,0.55)'); for (let i = -2; i <= 2; i++) line(c, i * 0.38, i === 0 ? -0.85 : -0.2 - (2 - Math.abs(i)) * 0.3, i * 0.38, 0.95, 0.04, '#e0f0e8'); line(c, -0.95, 0.3, 0.95, 0.3, 0.04, '#e0f0e8'); for (let i = 0; i < 4; i++) circ(c, -0.6 + i * 0.4, 0.6, 0.18, o.color); },
+  smokering(c, o) { const t = o.anim || 0, s2 = 1 + Math.sin(t * 2) * 0.06; c.beginPath(); c.ellipse(0, 0, 0.85 * s2, 0.55 * s2, 0, 0, TAU); c.ellipse(0, 0, 0.45 * s2, 0.25 * s2, 0, 0, TAU, true); c.globalAlpha = 0.8; fs(c, o.color); c.globalAlpha = 1; },
+
+  sugar(c, o) { // Zuckerwürfel-Stapel
+    for (const [x, y] of [[-0.45, 0.45], [0.45, 0.45], [0, -0.35]]) { poly(c, [x - 0.4, y - 0.2, x, y - 0.45, x + 0.4, y - 0.2, x, y + 0.05], '#ffffff'); poly(c, [x - 0.4, y - 0.2, x, y + 0.05, x, y + 0.5, x - 0.4, y + 0.25], '#e6e9f0'); poly(c, [x + 0.4, y - 0.2, x, y + 0.05, x, y + 0.5, x + 0.4, y + 0.25], '#cfd4de'); }
+    for (let i = 0; i < 6; i++) circ(c, -0.7 + i * 0.28, 0.9, 0.04, '#ffffff', true);
+  },
+  phone(c, o) { // Handy
+    rr(c, -0.5, -0.95, 1, 1.9, 0.16, '#1a1c22'); rr(c, -0.42, -0.8, 0.84, 1.55, 0.06, o.color);
+    const t = o.anim || 0; for (let i = 0; i < 3; i++) rr(c, -0.32, -0.62 + i * 0.32, 0.64 - (i % 2) * 0.2, 0.18, 0.08, i === Math.floor(t * 1.5) % 3 ? '#ffffff' : 'rgba(255,255,255,0.55)', true);
+    circ(c, 0, 0.86, 0.05, '#555', true); circ(c, 0.3, -0.9, 0.11, '#ff3b2f'); c.fillStyle = '#fff'; c.font = 'bold 0.14px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('3', 0.3, -0.9);
+  },
+  growtent(c, o) { // Grow-Zelt mit lila Licht
+    poly(c, [-0.9, 0.95, -0.9, -0.55, -0.6, -0.9, 0.6, -0.9, 0.9, -0.55, 0.9, 0.95], '#2a2a30');
+    rr(c, -0.7, -0.5, 1.4, 1.35, 0.06, 'rgba(200,120,255,0.55)'); line(c, -0.6, -0.55, 0.6, -0.55, 0.06, '#e0b0ff');
+    for (let i = 0; i < 3; i++) { c.save(); c.translate(-0.42 + i * 0.42, 0.45); c.scale(0.32, 0.32); SPRITES.leaf(c, { ...o, color: '#4fa84a' }); c.restore(); }
+    line(c, 0, -0.9, 0, 0.95, 0.03, '#9a9aa6');
+  },
 };
