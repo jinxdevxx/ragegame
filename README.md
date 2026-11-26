@@ -8,7 +8,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Cheat-/Testversion:** https://jinxdevxx.github.io/ragegame-cheat/ (getrennter Speicher, Cheat-Menü per 🛠 oder Taste ^)
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.8.4 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.8.5 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -186,6 +186,10 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.8.5 Mutation auf Autopilot
+- **Nutzer:** Ein separater Knopf unter Escape, damit beim Welt-Aufstieg automatisch eine zufällige der 3 Mutationen gewählt wird, ohne manuell klicken zu müssen.
+- **Lösung:** Neue Einstellung `save.settings.autoMut` (pro Spielstand), Schalter in den Einstellungen (Escape öffnet sie im Run) und als Knopf im Pause-Menü, beide synchron. `showMutation` wählt bei aktivem Schalter sofort zufällig, öffnet kein Fenster und zeigt die Mutation im Welt-Banner. Einstellungszeilen kompakter (passt bei 1280×720 ohne Scrollen). Neuer Browser-Test: Schalter an → Aufstieg ohne Fenster, 1 Mutation, Einstellung gespeichert.
+
 ### 2026-11-26: v0.8.4 Echte Hanfpflanzen
 - **Nutzer:** Die klassische Weed-Pflanze soll erkennbarer sein, Hauptsache Performance passt.
 - **Lösung:** `hempPlant` neu: 5 große Fächerblätter mit je 7 schmalen, gezackten Fingern (zwei waagerecht, zwei schräg, eins nach oben), dunkler Rand, helle Adern, Stiel und Blüte mit orangen Härchen. Wird nur in die 1024-px-Kachel gemalt → Kosten pro Frame unverändert (`tools/perf420.cjs`: ~52 FPS, Boden 0,23 ms).
@@ -322,6 +326,9 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.8.5: Mutation auf Autopilot (2026-11-26)
+- 🎲 Schalter „Mutation automatisch“ unter Escape und im Pause-Menü
 
 ### v0.8.4: Echte Hanfpflanzen (2026-11-26)
 - Karte 420: klassische, sofort erkennbare Hanfpflanzen

@@ -68,6 +68,20 @@ const OUT = process.argv[2] || '/tmp';
   log('Mutation: volle Auswahl, nach 10 s automatisch gewählt, Run geht weiter', mut1.scr === 'screen-mutation' && mut1.cards === 3 && /10 s/.test(mut1.auto) && mut2.state === 'play' && mut2.n === 15, `${mut1.cards} Karten, danach ${mut2.state}`);
   await p.close();
 
+  // 🎲 Auto-Mutation im Pause-Menü: Knopf an → beim Aufstieg sofort zufällige Wahl, kein Fenster
+  p = await page('?slot=1');
+  await click(p, '#btn-play'); await p.waitForTimeout(500);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+  await click(p, '#set-automut'); await p.waitForTimeout(200);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+  const amLabel = await p.evaluate(() => (document.getElementById('set-automut').classList.contains('on') ? 'AN' : 'AUS') + ' / ' + document.getElementById('btn-automut').textContent);
+  await click(p, '#btn-resume'); await p.waitForTimeout(300);
+  await p.evaluate(() => { const g = window.__rv.game; g.p.mass = Math.pow(g.worlds[1].minRadius * 1.1, 2); g.p.r = Math.sqrt(g.p.mass); });
+  await p.waitForTimeout(800);
+  const am = await p.evaluate(() => ({ state: window.__rv.game.state, n: window.__rv.game.muts.length, w: window.__rv.game.world, mutOpen: !document.getElementById('screen-mutation').hidden, saved: window.__rv.save.settings.autoMut }));
+  log('🎲 Mutation automatisch: Knopf im Pause-Menü, Wahl ohne Fenster', /^AN .*AN$/.test(amLabel) && am.state === 'play' && am.n === 1 && am.w >= 1 && !am.mutOpen && am.saved === true, `${amLabel} · ${am.n} Mutation, Welt ${am.w + 1}`);
+  await p.close();
+
   // Monster-Level & Talente: Punkt vergeben, Run gibt EP, Balken korrekt (nicht halbiert/leer)
   p = await page('?slot=1');
   await p.evaluate(() => { const s = window.__rv.save; s.monsters = { grumpf: { xp: 0, lvl: 20, pts: {} } }; s.totalKills = 50; s.achievements = {}; });
