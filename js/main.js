@@ -1,12 +1,12 @@
 // =====================================================================
 //  RAGEVERSE – Einstieg: Game-Loop, Steuerung, Menüs, Shop, Updates
 // =====================================================================
-import * as C from './config.js?v=0.6.1';
-import { monsterData, talentRank, talentFree, canRaiseTalent, raiseTalent, Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.6.1';
-import { render, drawMonsterPreview } from './render.js?v=0.6.1';
-import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.6.1';
-import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.6.1';
-import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.6.1';
+import * as C from './config.js?v=0.6.2';
+import { monsterData, talentRank, talentFree, canRaiseTalent, raiseTalent, Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.6.2';
+import { render, drawMonsterPreview } from './render.js?v=0.6.2';
+import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.6.2';
+import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.6.2';
+import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.6.2';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -220,7 +220,7 @@ function startRun() {
   $('boss-bar').hidden = true; document.body.classList.remove('bossfight');
   setIntensity(1);
   show(null);
-  showBanner(game.worlds[game.world].name.toUpperCase());
+  showBanner(`WELT ${game.world + 1}: ${game.worlds[game.world].name.toUpperCase()}`);
   tutorial();
 }
 function pause() { if (game.state !== 'play' || !inRun) return; game.state = 'paused'; show('screen-pause'); }
@@ -351,7 +351,7 @@ function openSlots() {
       <div><div class="slot-num">Platz ${i + 1}${i === last ? ' · zuletzt gespielt' : ''}</div><div class="slot-name">${esc(d.name || 'Spielstand ' + (i + 1))}</div></div>
       <div class="slot-stats">
         <span>Monster: <b>${esc(ch.name)}</b></span><span>Karte: <b>${esc(mp.name)}</b></span>
-        <span>Weiteste Welt: <b>${esc(C.WORLDS[best].name)}</b></span><span>Runs: <b>${d.runs || 0}</b></span>
+        <span>Weiteste Welt: <b>${best + 1}: ${esc(C.WORLDS[best].name)}</b></span><span>Runs: <b>${d.runs || 0}</b></span>
         <span><b>${money(d.scrap || 0)}</b></span><span>☠ <b>${fmt(d.chaos || 0)}</b></span>
         <span style="grid-column:1/-1">Zuletzt: <b>${fmtDate(d.lastPlayed)}</b></span>
       </div>
@@ -467,7 +467,7 @@ function reqMet(req) {
 function reqProgress(req) {
   if (!req) return '';
   if (req.kills) return `${fmt(Math.min(save.totalKills || 0, req.kills))} / ${fmt(req.kills)}`;
-  if (req.world !== undefined) return reqMet(req) ? 'erreicht' : `bisher: ${C.WORLDS[bestWorldAny()].name}`;
+  if (req.world !== undefined) return reqMet(req) ? 'erreicht' : `bisher: Welt ${bestWorldAny() + 1} (${C.WORLDS[bestWorldAny()].name})`;
   if (req.boss) return reqMet(req) ? 'besiegt' : 'noch nicht besiegt';
   if (req.allAch) return `${achDone()} / ${C.ACHIEVEMENTS.length}`;
   return '';
@@ -853,7 +853,7 @@ function showResults(s) {
       <div class="chaos"><b id="res-chaos">0</b><span>☠ Chaos</span></div>
     </div>
     <div class="res-grid">
-      <div class="stat"><b>${esc(worlds[s.world].name)}</b><small>Welt erreicht ${s.newWorld ? '<span class="badge">NEU!</span>' : ''}</small></div>
+      <div class="stat"><b>${esc(worlds[s.world].name)}</b><small>Welt ${s.world + 1} / ${worlds.length} erreicht ${s.newWorld ? '<span class="badge">NEU!</span>' : ''}</small></div>
       <div class="stat"><b>${fmt(s.kills)}</b><small>Zerstört</small></div>
       <div class="stat"><b>${mins}:${String(secs).padStart(2, '0')}</b><small>Wutdauer</small></div>
       <div class="stat"><b>${s.bestCombo}×</b><small>Beste Kombo</small></div>
@@ -895,11 +895,11 @@ function countUp(el, target, ms, isMoney = false) {
 // Mutation / Welt-Aufstieg / Events / Aufträge
 // ------------------------------------------------------------------
 function showMutation(w, choices) {
-  $('mut-title').textContent = game.worlds[w].name.toUpperCase() + ' ERREICHT!';
+  $('mut-title').textContent = `WELT ${w + 1}: ${game.worlds[w].name.toUpperCase()} ERREICHT!`;
   const evo = game.char.colors ? `${game.char.name} wird stärker!` : `Grumpf evolviert zum ${C.EVOLUTION[Math.min(w, 7)].name}!`;
   $('mut-evo').textContent = '🧬 ' + evo;
   // Sicherheitsnetz: nie ohne Auswahl hängen bleiben
-  if (!choices || !choices.length) { game.chooseMutation(null); lastT = performance.now(); showBanner(game.worlds[game.world].name.toUpperCase()); return; }
+  if (!choices || !choices.length) { game.chooseMutation(null); lastT = performance.now(); showBanner(`WELT ${game.world + 1}: ${game.worlds[game.world].name.toUpperCase()}`); return; }
   $('mut-cards').innerHTML = choices.map(m => `<button class="mut-card" data-mut="${m.id}"><div class="ic">${m.icon}</div><b>${m.name}</b><span>${m.desc}</span></button>`).join('');
   show('screen-mutation');
   // nach 10 s automatisch eine zufällige Karte wählen
@@ -921,7 +921,7 @@ $('mut-cards').addEventListener('click', e => {
   renderMuts();
   lastT = performance.now();
   show(null);
-  showBanner(game.worlds[game.world].name.toUpperCase());
+  showBanner(`WELT ${game.world + 1}: ${game.worlds[game.world].name.toUpperCase()}`);
 });
 function renderMuts() {
   // Mutationen einzeln, stapelbare Verstärkungen zusammengefasst (×N)
@@ -996,8 +996,9 @@ function updateHud() {
   const now = performance.now();
   if (now - (hudCache.numT || 0) > 100) { hudCache.numT = now; setText('hud-scrap', money(game.runScrap)); setText('hud-chaos', fmt(game.runChaos)); } // Zahlen max. 10×/s
   const w = game.worlds[game.world], next = game.worlds[game.world + 1];
+  setText('hud-world-num', `${game.map.id === 'suburb' ? 'WELT' : game.map.name.toUpperCase() + ' · WELT'} ${game.world + 1} / ${game.worlds.length}`);
   setText('hud-world-name', w.name);
-  setText('hud-world-next', next ? '→ ' + next.name : '∞ Endlos');
+  setText('hud-world-next', next ? `→ Welt ${game.world + 2}: ${next.name}` : '∞ Endlos');
   setBar('hud-world-bar', game.worldProgress());
   const comboEl = $('hud-combo');
   if (game.combo >= 3) {
@@ -1083,7 +1084,7 @@ else if (save.seenVersion !== VERSION) {
   toast(`<b>Neu in v${esc(VERSION)}:</b><p>${esc(PATCH_NOTES[0].title)}</p>`, [
     { label: 'Patch Notes', go: true, fn: openNotes },
     { label: 'Später', fn: () => { markSeen(); hideToast(); } },
-  ], 10000, () => { save.seenVersion = VERSION; writeSave(save); }); // nach 10 s weg, der Punkt am Patch-Notes-Knopf bleibt bis zum Neustart
+  ], 6000, () => { save.seenVersion = VERSION; writeSave(save); }); // nach 6 s weg, der Punkt am Patch-Notes-Knopf bleibt bis zum Neustart
 }
 
 let updateOffered = false;
@@ -1099,7 +1100,7 @@ async function checkForUpdate() {
       toast(`<b>Update v${esc(version)} verfügbar</b><p>Lade neu, wann es dir passt. Dein Fortschritt bleibt gespeichert.</p>`, [
         { label: 'Jetzt aktualisieren', go: true, fn: () => { writeSave(save); location.reload(); } },
         { label: 'Später', fn: hideToast },
-      ], 10000); // nach 10 s weg, der Punkt am Patch-Notes-Knopf bleibt
+      ], 6000); // nach 6 s weg, der Punkt am Patch-Notes-Knopf bleibt
     }
   } catch { /* offline */ }
 }

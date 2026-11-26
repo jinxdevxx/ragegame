@@ -7,7 +7,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.6.1 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.6.2 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -181,6 +181,10 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.6.2 Weltnummer im Blick
+- Nutzer-Wunsch (dringend): Man soll immer sehen, in welcher Welt (1–50) man ist. HUD-Plakette „WELT 12 / 50“ über dem Weltnamen, „→ Welt 13: …“ als nächste Welt; Nummer auch im Banner, Mutations-Titel, Ergebnis, Spielstand-Übersicht, Statistik.
+- Update-Hinweis: 6 s statt 10 s, Titel der v0.6.1-Notiz neutraler („Immer auf dem neuesten Stand“).
+
 ### 2026-11-26: v0.6.1 Hinweis geht von selbst
 - Nutzer-Wunsch: Der „Neu in vX“-Hinweis soll nicht erst „Später“ brauchen. `toast()` hat jetzt eine Auto-Ausblendung (10 s, Ablaufbalken, pausiert bei Maus darüber), gilt auch für „Update verfügbar“. Neuer Browser-Test.
 
@@ -282,8 +286,12 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
 
-### v0.6.1: Hinweis geht von selbst (2026-11-26)
-- Update-Hinweis verschwindet nach 10 s von allein
+### v0.6.2: Weltnummer im Blick (2026-11-26)
+- Weltnummer immer oben links sichtbar (WELT x / 50)
+- Update-Hinweis verschwindet nach 6 s
+
+### v0.6.1: Immer auf dem neuesten Stand (2026-11-26)
+- Update-Hinweis verschwindet von allein
 
 ### v0.6.0: Monster-Level (2026-11-26)
 - Monster-Level 1–99 mit Talentbaum (4 Talente je Monster, eigenes Signatur-Talent)
