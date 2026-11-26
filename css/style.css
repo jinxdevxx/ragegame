@@ -103,6 +103,7 @@ h3 { font-family: var(--display); font-weight: 400; font-size: 22px; margin: 18p
 .btn.bang-btn { background: linear-gradient(180deg, #3ad9b0, #1a7a8a); border-color: #7fffe0; box-shadow: 0 5px 0 #0a3a3a; font-family: var(--display); font-weight: 400; font-size: 26px; }
 .btn.bang-btn.armed { background: linear-gradient(180deg, #ff6a3d, #d61f26); border-color: #ff9a6a; box-shadow: 0 5px 0 #7a0d12; animation: glowPulse .5s infinite alternate; }
 @keyframes glowPulse { to { box-shadow: 0 5px 0 #7a0d12, 0 0 28px rgba(255,80,40,.9); } }
+.dmtag { color: #7fffe0; font-weight: 800; }
 .upg.dmp { border-color: #1f5a5a; }
 .upg.dmp.can { border-color: #3ad9b0; }
 .upg.dmp .upg-lvl { color: #7fffe0; }

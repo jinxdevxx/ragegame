@@ -6,6 +6,17 @@
 
 export const PATCH_NOTES = [
   {
+    version: '0.3.1',
+    date: '2026-11-26',
+    title: 'Urknall-Fix',
+    summary: 'Der Urknall lohnt sich jetzt von Anfang an – und man sieht, was der Masterplan bringt.',
+    changes: [
+      'Mehr ◆ Dunkle Materie pro Urknall (z. B. am Kontinent ~11 statt ~4). Vorher konnte man nach dem ersten Urknall weniger Schrott haben als vorher.',
+      'Anzeige-Fix: Die Schurkenhöhle zeigt jetzt den Masterplan-Bonus. Vorher stand nach dem Urknall „1,00× Schrott“, obwohl Schwarzgeld aktiv war.',
+      'Neue Vorschau im Urknall-Reiter: zeigt, mit wie viel Schrott-Bonus du nach dem Urknall startest.',
+    ],
+  },
+  {
     version: '0.3.0',
     date: '2026-11-26',
     title: 'Schurkenhöhle & Urknall',
