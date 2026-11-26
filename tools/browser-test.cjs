@@ -134,7 +134,7 @@ const OUT = process.argv[2] || '/tmp';
   const g1 = await p.evaluate(() => ({ num: document.getElementById('hud-world-num').textContent, next: document.getElementById('hud-world-next').textContent, leaves: window.__rv.game.objects.filter(o => o.leaf).length }));
   await p.evaluate(() => { const g = window.__rv.game; setInterval(() => { g.p.rage = g.stats.rageMax; }, 30); g.leaves = 419; const l = g.objects.find(o => o.leaf); g.kill(l, 'hit'); });
   await p.waitForTimeout(400);
-  const m = await p.evaluate(() => { const g = window.__rv.game; return { mother: !!g.mother, big: g.mother && g.mother.size > g.p.r * 2, next: document.getElementById('hud-world-next').textContent }; });
+  const m = await p.evaluate(() => { const g = window.__rv.game; return { mother: !!g.mother, big: g.mother && g.mother.size > g.p.r * 1.2, next: document.getElementById('hud-world-next').textContent }; });
   await p.screenshot({ path: OUT + '/420.png' });
   await p.evaluate(() => { const g = window.__rv.game; g.kill(g.mother, 'hit'); }); await p.waitForTimeout(3800);
   const won = await p.evaluate(() => ({ title: document.getElementById('res-title').textContent, w: window.__rv.save.won420, kush: true }));

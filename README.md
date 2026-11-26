@@ -8,7 +8,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Cheat-/Testversion:** https://jinxdevxx.github.io/ragegame-cheat/ (getrennter Speicher, Cheat-Menü per 🛠 oder Taste ^)
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.8.3 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.8.4 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -186,6 +186,10 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.8.4 Echte Hanfpflanzen
+- **Nutzer:** Die klassische Weed-Pflanze soll erkennbarer sein, Hauptsache Performance passt.
+- **Lösung:** `hempPlant` neu: 5 große Fächerblätter mit je 7 schmalen, gezackten Fingern (zwei waagerecht, zwei schräg, eins nach oben), dunkler Rand, helle Adern, Stiel und Blüte mit orangen Härchen. Wird nur in die 1024-px-Kachel gemalt → Kosten pro Frame unverändert (`tools/perf420.cjs`: ~52 FPS, Boden 0,23 ms).
+
 ### 2026-11-26: v0.8.3 Plantage im Abendlicht
 - **Nutzer:** 420 laggt ausgemaxt (Dev-Build), Design soll neu. Messung (`tools/perf420.cjs`, alles maximal): Boden 26 ms pro Frame, Spitzen bis 1,3 s – beim schnellen Wachsen wurde der aufwendige Pflanzenboden (hunderte Formen je Pflanze) ständig neu gebaut.
 - **Lösung:** `draw420` malt die Landschaft einmal als nahtlose 1024-px-Kachel (Gras, Erdwege, Pflanzenreihen) und legt sie als Muster (`createPattern` + `setTransform`) – zwei Größenstufen, Überblendung nur kurz vor dem Größensprung. Dazu Abendlicht-Verlauf, vorgefertigte Rauchwolken-Bilder und Glühwürmchen. Ergebnis: Boden 0,2 ms/Frame, ~50 statt 23 FPS, keine Spitzen mehr (einmalig ~200 ms beim ersten Aufbau).
@@ -318,6 +322,9 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.8.4: Echte Hanfpflanzen (2026-11-26)
+- Karte 420: klassische, sofort erkennbare Hanfpflanzen
 
 ### v0.8.3: Plantage im Abendlicht (2026-11-26)
 - Karte 420 neu gestaltet und flüssig auch ausgemaxt
