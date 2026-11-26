@@ -8,7 +8,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Cheat-/Testversion:** https://jinxdevxx.github.io/ragegame-cheat/ (getrennter Speicher, Cheat-Menü per 🛠 oder Taste ^)
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.8.9 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.9.0 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -186,6 +186,13 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.9.0 Urknall lohnt sich
+- **Nutzer:** Mehr Urknall-Punkte, um effektiver nach vorne zum Bossfight zu kommen.
+- **Sim-Werkzeug:** `tools/balance-sim.js` kämpft jetzt im Bosskampf mit Hit & Run (`bossBot`) statt in der leeren Arena zu wandern, zählt Welt-50-Erreichen / ZORNOS-Siege und hat `PGM` (◆-Faktor) und `DMG` (Kostenkurve ×) zum Testen.
+- **Analyse** (220 Runs, mehrere Läufe je Variante): bisher Welt 50 erst um Run ~215 oder gar nicht. Nur ◆ ×1,5 / ×1,6 / ×2 änderte kaum etwas (Streuung > Effekt), weil die Masterplan-Kosten +25 % pro Stufe steigen – ×1,6 ◆ = nur ~2 Stufen mehr pro Perk. Erst ◆ ×1,5 **plus** flachere Kurve wirkt: Kurve ×0,75 → Welt 50 in Run ~128, ×0,6 → Run ~95. In allen Varianten bleiben die ersten 50 Runs gleich (Welt 19–23).
+- **Gewählt:** `PRESTIGE.gainMult = 1,5`, Wachstum der Multiplikator-Perks 1,25 → 1,19 (Schwarzgeld, Wutkern), 1,24 → 1,18 (Mutagen, Chaostheorie), 1,35 → 1,26 (Ewiger Zorn), 1,3 → 1,225 (Frühstart). Neuer Perk **Höllenjäger** (`dm_boss`, max 20, Basis 3, ×1,4): +5 % Boss-Schaden nach der Stauchung, −2 % erlittener Boss-Schaden pro Stufe – damit wirkt ◆ auch direkt im Bosskampf (Wutkern wirkt dort wegen der Stauchung nur schwach).
+- **Bestätigung** mit festen Werten: Welt 50 + erster Sieg in Run 98 bzw. 124; nach 20 Runs Welt 9, nach 50 Runs Welt 23 (wie vorher).
+
 ### 2026-11-26: v0.8.9 Direkt zu ZORNOS
 - **Nutzer:** Wer ZORNOS einmal gesehen hat (Welt 50 erreicht, aber verloren), soll ihn schneller wieder probieren können, ohne durch alle Karten zu rushen.
 - **Umsetzung:** `game.start({ bossRush: true })` startet in Welt 50 (Radius = Mindestgröße ×1,02) mit 49 zufälligen Mutationen (wie Auto-Wahl auf dem Weg). Freischaltung: `bestWorld ≥ 49` oder Boss besiegt, nur auf 50-Welten-Karten. Knopf im Hauptmenü und im Ergebnis; „Nochmal!“ wiederholt den letzten Modus.
@@ -350,6 +357,9 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.9.0: Urknall lohnt sich (2026-11-26)
+- ◆ ×1,5, Masterplan günstiger, neuer Boss-Perk Höllenjäger – ZORNOS etwa doppelt so schnell erreichbar
 
 ### v0.8.9: Direkt zu ZORNOS (2026-11-26)
 - Nach Welt 50 einmal erreicht: Boss direkt nochmal herausfordern

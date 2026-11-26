@@ -10,7 +10,24 @@ const RUNS = Number(process.argv[2]) || 6;
 const MAP = process.argv[3] || 'suburb';
 const DT = 1 / 30;
 
+// Bosskampf: Hit & Run (Ansturm rein, abprallen, auf Abstand kreisen, Meteoren ausweichen)
+export function bossBot(g) {
+  const p = g.p, b = g.boss, out = { dx: 0, dy: 0, dash: false, slam: false, berserk: p.berserk >= 1 };
+  const dx = b.x - p.x, dy = b.y - p.y, d = Math.hypot(dx, dy) || 1;
+  let mx, my;
+  if (p.dashCd <= 0 && !(b.windup > 0) && !(b.charge > 0)) { mx = dx / d; my = dy / d; out.dash = d < b.size * 3.5; }
+  else {
+    const want = b.size * 2.6, rad = (d - want) / want;
+    mx = -dy / d + dx / d * rad * 2; my = dx / d + dy / d * rad * 2;
+    if (b.windup > 0 || b.charge > 0) { mx = -dy / d; my = dx / d; }
+  }
+  for (const sh of g.bossShots) if (sh.kind === 'meteor') { const ex = p.x - sh.x, ey = p.y - sh.y, e = Math.hypot(ex, ey) || 1; if (e < sh.r + p.r * 1.5) { mx += ex / e * 3; my += ey / e * 3; } }
+  const l = Math.hypot(mx, my) || 1; out.dx = mx / l; out.dy = my / l;
+  return out;
+}
+
 export function bot(g) {
+  if (g.boss && !g.noBossBot) return bossBot(g);
   const p = g.p, lim = g.breakLimit();
   let best = null, bs = Infinity;
   for (const o of g.objects) {
@@ -99,8 +116,13 @@ if (isMain) {
       save.darkMatter -= cc; save.dmPerks[cheapest.id] = (save.dmPerks[cheapest.id] || 0) + 1;
     }
   };
+  const gains = []; let firstBoss = 0, firstKill = 0, kills = 0, tries = 0;
+  if (process.env.PGM) C.PRESTIGE.gainMult = Number(process.env.PGM);
+  if (process.env.DMG) for (const d of C.DM_PERKS) if (d.mult) d.growth = 1 + (d.growth - 1) * Number(process.env.DMG); // Test: flachere ◆-Kostenkurve
   for (let run = 1; run <= RUNS_TOTAL; run++) {
     const r = playRun(save);
+    if (r.world >= C.BOSS.world) { tries++; if (!firstBoss) firstBoss = run; }
+    if (r.bossKilled) { kills++; if (!firstKill) { firstKill = run; console.log(`   😈 ZORNOS zum ersten Mal besiegt in Run ${run}`); } }
     buy();
     const newBest = r.world > bestWorld;
     if (newBest) { bestWorld = r.world; stuck = 0; } else stuck++;
@@ -112,8 +134,10 @@ if (isMain) {
     if (run % 10 === 0) console.log(`   ▸ nach ${run} Runs: weiteste Welt ${everBest + 1} (${worlds[everBest].name})`);
     if (!NOPRESTIGE && stuck >= STUCK && prestigeGain(save) > 0) {
       const g = doPrestige(save); buy();
+      gains.push(g);
       console.log(`   💥 URKNALL nach Run ${run} (Durchgang ${save.prestiges} dauerte ${run - cycleStart + 1} Runs): +${g} ◆, Masterplan-Stufen ${Object.values(save.dmPerks).reduce((a, b) => a + b, 0)}`);
       cycleStart = run + 1; bestWorld = -1; stuck = 0;
     }
   }
+  console.log(`\nZUSAMMENFASSUNG: Welt 50 erstmals in Run ${firstBoss || '–'}, ZORNOS erstmals besiegt in Run ${firstKill || '–'}, Boss-Versuche ${tries}, Siege ${kills}, Urknall-◆: ${gains.join(', ')}`);
 }
