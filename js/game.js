@@ -1,7 +1,7 @@
 // =====================================================================
 //  RAGEVERSE – Spiel-Logik (Simulation, keine Grafik)
 // =====================================================================
-import * as C from './config.js?v=0.5.1';
+import * as C from './config.js?v=0.5.2';
 
 const TAU = Math.PI * 2;
 const rand = (a, b) => a + Math.random() * (b - a);

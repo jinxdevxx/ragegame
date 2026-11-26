@@ -1,12 +1,12 @@
 // =====================================================================
 //  RAGEVERSE – Einstieg: Game-Loop, Steuerung, Menüs, Shop, Updates
 // =====================================================================
-import * as C from './config.js?v=0.5.1';
-import { Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.5.1';
-import { render, drawMonsterPreview } from './render.js?v=0.5.1';
-import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.5.1';
-import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.5.1';
-import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.5.1';
+import * as C from './config.js?v=0.5.2';
+import { Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.5.2';
+import { render, drawMonsterPreview } from './render.js?v=0.5.2';
+import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.5.2';
+import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.5.2';
+import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.5.2';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -53,15 +53,15 @@ window.__rv = { game, save, C, computeStats, get pointer() { return pointer; }, 
 // Canvas-Größe
 // ------------------------------------------------------------------
 let W = 0, H = 0, DPR = 1;
-// Adaptive Auflösung: ruckelt es, wird intern gröber gerendert (bis 0,8× CSS-Pixel), läuft es flüssig, wieder feiner
-const RES_STEPS = [1, 0.75, 0.62, 0.5, 0.4];
+// Adaptive Auflösung: ruckelt es, wird intern gröber gerendert (bis 0,6× CSS-Pixel), läuft es flüssig, wieder feiner
+const RES_STEPS = [1, 0.85, 0.72, 0.6, 0.5, 0.4];
 let resStep = 0, slowT = 0, fastT = 0, emaDt = 16.7;
 function adaptRes(ms) {
   if (ms > 100) return; // Tab-Wechsel o. Ä. ignorieren
   emaDt += (ms - emaDt) * 0.05;
   const baseDpr = Math.min(window.devicePixelRatio || 1, 2);
   if (emaDt > 22) { slowT += ms; fastT = 0; } else if (emaDt < 17.5) { fastT += ms; slowT = 0; } else { slowT = 0; fastT = 0; }
-  const minScale = 0.8 / baseDpr; // nie unter 0,8 CSS-Pixel
+  const minScale = 0.6 / baseDpr; // nie unter 0,6 CSS-Pixel
   if (slowT > 1500 && resStep < RES_STEPS.length - 1 && RES_STEPS[resStep + 1] >= minScale - 1e-6) { resStep++; slowT = 0; emaDt = 16.7; resize(); }
   else if (fastT > 5000 && resStep > 0) { resStep--; fastT = 0; resize(); }
 }
@@ -175,9 +175,9 @@ function frame(t) {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (inRun) {
     readInput();
-    game.update(dt, input);
-    render(ctx, game, W, H, time);
-    updateHud(time);
+    if (!(window.__skip && window.__skip.update)) game.update(dt, input);
+    if (!(window.__skip && window.__skip.render)) render(ctx, game, W, H, time);
+    if (!(window.__skip && window.__skip.hud)) updateHud(time);
   } else {
     // Menü-Hintergrund: Demo-Welt, das Monster stapft herum
     menuTime += dt;
@@ -908,7 +908,7 @@ function questUpdate(q, done) {
   const r = q.reward;
   if (r) $('q-reward').innerHTML = `🎁 Belohnung: ${money(r.scrap)} · ☠ ${fmt(r.chaos)}${game.boss ? '' : ` · 🔥 +${r.rage} % Wut`} · 😡 +${r.berserk} % Berserker`;
   if (!done) { el.classList.remove('fresh'); void el.offsetWidth; el.classList.add('fresh'); sfx('event'); hint('📜 Neuer Auftrag: <b>' + esc(q.label) + '</b>', 3); }
-  if (done) { $('q-bar').style.width = '100%'; callout('AUFTRAG ERFÜLLT!', 3); setTimeout(() => { if (!game.quest) el.hidden = true; }, 1500); }
+  if (done) { setBar('q-bar', 1); callout('AUFTRAG ERFÜLLT!', 3); setTimeout(() => { if (!game.quest) el.hidden = true; }, 1500); }
 }
 let hintTimer = 0;
 function hint(html, secs = 4) {
@@ -935,35 +935,40 @@ function tutorial() {
 // ------------------------------------------------------------------
 let lastCombo = 0, hudCache = {};
 function setText(id, v) { if (hudCache[id] !== v) { hudCache[id] = v; $(id).textContent = v; } }
+// HUD schreibt nur, was sich wirklich geändert hat (jede DOM-Änderung kostet ein Neumalen)
+function setBar(id, frac) {
+  const v = Math.round(Math.max(0, Math.min(1, frac)) * 400) / 400; // 0,25-%-Schritte
+  if (hudCache[id + 'b'] !== v) { hudCache[id + 'b'] = v; $(id).style.transform = `scaleX(${v})`; }
+}
 function setAb(id, frac, label, ready, extra = '') {
-  const el = $(id);
-  el.style.setProperty('--p', (frac * 100).toFixed(1) + '%');
-  el.classList.toggle('ready', ready);
+  const el = $(id), pc = Math.round(Math.max(0, Math.min(1, frac)) * 100);
+  if (hudCache[id + 'p'] !== pc) { hudCache[id + 'p'] = pc; el.style.setProperty('--p', pc + '%'); }
+  if (hudCache[id + 'r'] !== ready) { hudCache[id + 'r'] = ready; el.classList.toggle('ready', ready); }
   if (hudCache[id + 't'] !== label) { hudCache[id + 't'] = label; el.querySelector('.ab-t').textContent = label; }
-  el.dataset.extra = extra;
+  if (hudCache[id + 'x'] !== extra) { hudCache[id + 'x'] = extra; el.dataset.extra = extra; }
 }
 function updateHud() {
   if (!inRun || !game.p) return;
   const p = game.p, S = game.stats, rf = p.rage / S.rageMax;
-  $('hud-rage-bar').style.width = (rf * 100).toFixed(1) + '%';
-  $('hud-rage-bar').parentElement.classList.toggle('low', rf < 0.25);
-  setText('hud-scrap', money(game.runScrap));
-  setText('hud-chaos', fmt(game.runChaos));
+  setBar('hud-rage-bar', rf);
+  const low = rf < 0.25; if (hudCache.low !== low) { hudCache.low = low; $('hud-rage-bar').parentElement.classList.toggle('low', low); }
+  const now = performance.now();
+  if (now - (hudCache.numT || 0) > 100) { hudCache.numT = now; setText('hud-scrap', money(game.runScrap)); setText('hud-chaos', fmt(game.runChaos)); } // Zahlen max. 10×/s
   const w = game.worlds[game.world], next = game.worlds[game.world + 1];
   setText('hud-world-name', w.name);
   setText('hud-world-next', next ? '→ ' + next.name : '∞ Endlos');
-  $('hud-world-bar').style.width = (game.worldProgress() * 100).toFixed(1) + '%';
+  setBar('hud-world-bar', game.worldProgress());
   const comboEl = $('hud-combo');
   if (game.combo >= 3) {
-    comboEl.hidden = false;
+    if (comboEl.hidden) comboEl.hidden = false;
     const mult = Math.min(C.COMBO.max, 1 + game.combo * C.COMBO.perStep);
     setText('hud-combo', `${game.combo} KOMBO · ×${mult.toFixed(1)}`);
-    if (game.combo !== lastCombo) { comboEl.classList.remove('bump'); void comboEl.offsetWidth; comboEl.classList.add('bump'); }
-  } else comboEl.hidden = true;
+    if (game.combo !== lastCombo && comboEl.animate && now - (hudCache.bumpT || 0) > 120) { hudCache.bumpT = now; comboEl.animate([{ transform: 'translateX(-50%) scale(1.18)' }, { transform: 'translateX(-50%) scale(1)' }], { duration: 150 }); } // ohne erzwungenes Layout
+  } else if (!comboEl.hidden) comboEl.hidden = true;
   lastCombo = game.combo;
-  if (!game.event) $('hud-event').hidden = true;
-  if (game.boss) $('boss-hp').style.width = Math.max(0, game.boss.hp * 100).toFixed(1) + '%';
-  if (game.quest) { $('q-bar').style.width = (Math.min(1, game.quest.progress / game.quest.count) * 100) + '%'; setText('q-label', `${game.quest.label} (${Math.min(game.quest.progress, game.quest.count)}/${game.quest.count})`); }
+  if (!game.event && !$('hud-event').hidden) $('hud-event').hidden = true;
+  if (game.boss) setBar('boss-hp', game.boss.hp);
+  if (game.quest) { setBar('q-bar', game.quest.progress / game.quest.count); setText('q-label', `${game.quest.label} (${Math.min(game.quest.progress, game.quest.count)}/${game.quest.count})`); }
   // Fähigkeiten
   setAb('ab-skill', p.skillCd / game.char.skill.cd, p.skillCd > 0 ? p.skillCd.toFixed(1) : '', p.skillCd <= 0);
   setAb('ab-dash', p.dashCd / S.dashCooldown, p.dashCd > 0 ? p.dashCd.toFixed(1) : '', p.dashCd <= 0);

@@ -279,7 +279,7 @@ export const WORLDS = [
   },
   {
     id: 'multiverse', name: 'Multiversum', minRadius: 10485760, scrapMult: 59049, ground: 'space',
-    bg: '#f4f0ff', bg2: '#c9b8ff', accent: '#ff3b2f',
+    bg: '#0d0620', bg2: '#3a1470', accent: '#ff4ab0',
     objects: [
       { name: 'Paralleluniversum', size: 2400000, shape: 'planet', color: '#b06bff', value: 1 },
       { name: 'Weltenblase', size: 4000000, shape: 'ringplanet', color: '#7fd3ff', value: 2 },

@@ -6,6 +6,17 @@
 
 export const PATCH_NOTES = [
   {
+    version: '0.5.2',
+    date: '2026-11-26',
+    title: 'Flüssiger durchs All',
+    summary: 'Mehr Leistung in den hohen Welten und ein neues, dunkles Multiversum.',
+    changes: [
+      'Die Anzeige (Wut-Balken, Zahlen, Fähigkeiten) malt sich nicht mehr jeden Frame komplett neu – Balken laufen jetzt über die Grafikkarte, Zahlen aktualisieren 10× pro Sekunde.',
+      'Automatische Auflösung greift jetzt auf allen Bildschirmen (vorher nur auf hochauflösenden): Ruckelt es, rendert das Spiel intern etwas gröber, läuft es wieder flüssig, wird es wieder scharf.',
+      'Multiversum neu: dunkler, farbiger Weltraum mit leuchtenden Universums-Blasen statt weißem Hintergrund.',
+    ],
+  },
+  {
     version: '0.5.1',
     date: '2026-11-26',
     title: 'Kein Stillstand',

@@ -241,7 +241,7 @@ input[type=range] { width: 180px; accent-color: var(--rage2); }
 #hud-world-name { font-family: var(--display); font-size: 24px; font-weight: 400; }
 #hud-world-next { font-size: 12px; }
 .bar { background: rgba(0,0,0,.5); border: 2px solid rgba(0,0,0,.55); border-radius: 999px; overflow: hidden; height: 16px; }
-.bar > div { height: 100%; width: 50%; border-radius: 999px; }
+.bar > div { height: 100%; width: 100%; border-radius: 999px; transform-origin: left center; transform: scaleX(.5); will-change: transform; } /* Füllstand per transform: kein Neumalen pro Frame */
 .bar.small { height: 10px; width: min(160px, 30vw); }
 .bar.small > div { background: linear-gradient(90deg, #6be07b, #c6ff7a); }
 .bar.tiny { height: 8px; }

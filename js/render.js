@@ -3,9 +3,9 @@
 //  Reihenfolge: Boden → Trümmer-Flecken → Schatten/Objekte/Monster
 //  (nach Tiefe sortiert) → Trümmer → Münzen → Effekte → Overlays
 // =====================================================================
-import { SPRITES, OUT } from './sprites.js?v=0.5.1';
-import { drawMonster } from './monster.js?v=0.5.1';
-import { shadeHex as sh, shadeHex } from './game.js?v=0.5.1';
+import { SPRITES, OUT } from './sprites.js?v=0.5.2';
+import { drawMonster } from './monster.js?v=0.5.2';
+import { shadeHex as sh, shadeHex } from './game.js?v=0.5.2';
 
 const TAU = Math.PI * 2;
 const STARS = Array.from({ length: 220 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() * 1.8 + 0.4, p: Math.random() * 0.6 + 0.1, tw: Math.random() * 6 }));
@@ -48,9 +48,11 @@ function terrain(k, scale, seed, layers) {
   while (((v.x1 - v.x0) / C) * ((v.y1 - v.y0) / C) > 9000) C *= 1.5;
   const x0 = Math.floor(v.x0 / C), y0 = Math.floor(v.y0 / C);
   const nx = Math.ceil(v.x1 / C) - x0 + 1, ny = Math.ceil(v.y1 / C) - y0 + 1;
+  const PF = typeof window !== 'undefined' && window.__prof, t0 = PF ? performance.now() : 0;
   const val = new Float32Array((nx + 1) * (ny + 1));
   for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) val[j * (nx + 1) + i] = fbm((x0 + i) * C / scale, (y0 + j) * C / scale, seed);
   const P = (i, j) => [sx((x0 + i) * C), sy((y0 + j) * C)];
+  if (PF) { PF.t_noise = (PF.t_noise || 0) + performance.now() - t0; PF.t_cells = (PF.t_cells || 0) + nx * ny; PF.t_calls = (PF.t_calls || 0) + 1; }
   for (const L of layers) {
     const g = L.t2 !== undefined ? n => L.t2 - n : n => n - L.t;
     // Volle Zellen werden pro Zeile zu Streifen zusammengefasst (wenige Rechtecke statt tausender Pfade),
@@ -88,6 +90,7 @@ function terrain(k, scale, seed, layers) {
     if (L.rim) draw(0, Math.max(2, C * z * 0.35), L.rim);
     draw(0, 0, L.color);
   }
+  if (PF) PF.t_total = (PF.t_total || 0) + performance.now() - t0;
 }
 
 // Teure Landschaften einmal vorzeichnen und wiederverwenden (bis man sich weit bewegt oder stark wächst)
@@ -595,13 +598,15 @@ function spaceTheme(o, world, w, h) {
       break;
     }
     case 'multiverse': { // Multiversum: schillernde Universums-Blasen
-      for (let i = 0; i < 16; i++) {
+      for (let i = 0; i < 10; i++) {
         const X = rnd() * w, Y = rnd() * h, R = m * (0.06 + rnd() * 0.16), hue = Math.floor(rnd() * 360);
         wrap(() => {
-          const bg2 = o.createRadialGradient(X - R * 0.3, Y - R * 0.3, R * 0.1, X, Y, R); bg2.addColorStop(0, `hsla(${hue},80%,92%,0.15)`); bg2.addColorStop(0.85, `hsla(${hue},80%,75%,0.22)`); bg2.addColorStop(1, `hsla(${(hue + 60) % 360},90%,60%,0.5)`);
+          // Universums-Blase: dunkles Inneres mit eigenem Farbnebel, leuchtender Rand
+          const bg2 = o.createRadialGradient(X - R * 0.3, Y - R * 0.3, R * 0.1, X, Y, R); bg2.addColorStop(0, `hsla(${hue},85%,55%,0.22)`); bg2.addColorStop(0.7, `hsla(${hue},80%,30%,0.16)`); bg2.addColorStop(1, `hsla(${(hue + 60) % 360},95%,65%,0.35)`);
           o.fillStyle = bg2; o.beginPath(); o.arc(X, Y, R, 0, TAU); o.fill();
-          o.strokeStyle = `hsla(${(hue + 120) % 360},90%,60%,0.45)`; o.lineWidth = 1.5; o.stroke();
-          o.fillStyle = 'rgba(255,255,255,0.6)'; o.beginPath(); o.ellipse(X - R * 0.4, Y - R * 0.45, R * 0.18, R * 0.08, -0.6, 0, TAU); o.fill();
+          o.strokeStyle = `hsla(${(hue + 120) % 360},95%,70%,0.4)`; o.lineWidth = 1.5; o.stroke();
+          o.fillStyle = 'rgba(255,255,255,0.8)'; for (let k = 0; k < 6; k++) o.fillRect(X + (rnd() - 0.5) * R * 1.2, Y + (rnd() - 0.5) * R * 1.2, 1.2, 1.2);
+          o.fillStyle = 'rgba(255,255,255,0.5)'; o.beginPath(); o.ellipse(X - R * 0.4, Y - R * 0.45, R * 0.18, R * 0.08, -0.6, 0, TAU); o.fill();
         });
       }
       break;
@@ -651,7 +656,8 @@ export function render(c, g, W, H, time) {
 
   const PF = typeof window !== 'undefined' && window.__prof; let pt = PF ? performance.now() : 0;
   const lap = n => { if (!PF) return; const t2 = performance.now(); PF[n] = (PF[n] || 0) + t2 - pt; if (t2 - pt > 60) (PF.spikes = PF.spikes || []).push(n + '@' + world.name + ':' + (t2 - pt).toFixed(0)); pt = t2; };
-  drawGround(c, g, W, H, sx, sy, z, world, time); lap('boden');
+  const SK = typeof window !== 'undefined' && window.__skip || {};
+  if (SK.boden) { c.fillStyle = world.bg; c.fillRect(0, 0, W, H); } else drawGround(c, g, W, H, sx, sy, z, world, time); lap('boden');
 
   // Trümmer-Flecken auf dem Boden
   for (const d of g.decals) {
@@ -717,9 +723,9 @@ export function render(c, g, W, H, time) {
   drawBossFloor(c, g, sx, sy, z, time);
   const hasFilter = 'filter' in c;
   for (const o of drawList) {
-    if (o === null) { if (g.state !== 'dying' && g.state !== 'over') drawPlayer(c, g, sx(p.x), sy(p.y), g.hr() * z, time); continue; }
+    if (o === null) { if (g.state !== 'dying' && g.state !== 'over' && !SK.player) drawPlayer(c, g, sx(p.x), sy(p.y), g.hr() * z, time); continue; }
     if (o === BOSS_TOKEN) { drawBoss(c, g, sx, sy, z, time); continue; }
-    drawObject(c, g, o, sx(o.x), sy(o.y), o.size * z, limit, time, hasFilter);
+    if (!SK.objekte) drawObject(c, g, o, sx(o.x), sy(o.y), o.size * z, limit, time, hasFilter);
   }
 
   lap('objekte');

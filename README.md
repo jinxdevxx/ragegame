@@ -7,7 +7,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.5.1 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.5.2 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -180,6 +180,12 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.5.2 Flüssiger durchs All
+- **Ruckeln ab Kristallreich (Meldung vom Kollegen) analysiert:** Mit `tools/real-perf.cjs` (echte WASD-Steuerung) zeigt sich: Langsam wird es bei schnellem Wachstum in allen Welten, nicht nur in den Dimensionen. Spiel-Update 0,5 ms, Canvas-JS ~6 ms pro Frame – der Rest liegt im Browser (Chrome-Trace: Commit + Raster + Compositing). „Hängt komplett“ war sehr wahrscheinlich der Mutations-Bug (v0.5.1).
+- **Maßnahmen:** HUD schreibt nur noch Änderungen ins DOM, Balken per `transform: scaleX` (kein Neumalen), Zahlen max. 10×/s, Kombo-Hüpfer per Web Animations statt erzwungenem Layout. Adaptive Auflösung jetzt bis 0,6× CSS-Pixel auf allen Bildschirmen.
+- **Multiversum:** dunkler Hintergrund statt Weiß, dezente Universums-Blasen (klar von Objekten unterscheidbar).
+- **Hinweis:** Headless-Chromium rastert Canvas in Software, die FPS-Werte dort sind deutlich schlechter als auf echter Hardware. Aussagekräftig sind die relativen Vergleiche und die Spitzen.
+
 ### 2026-11-26: v0.5.1 Kein Stillstand
 - **Spielbrechender Bug (Meldung vom Kollegen, „Pilz-Kosmos erreicht“, keine Karten):** Es gibt 14 Mutationen, jede nur einmal; mit Genlabor-Startmutationen sind sie ab ~Welt 12–15 aufgebraucht → leere Auswahl, `state = 'mutation'` ohne Ausweg. Der Balance-Bot hat das nicht gemerkt, weil er bei leerer Auswahl einfach weiterlief. Fix: stapelbare Verstärkungen füllen die Auswahl auf, Sicherheitsnetz bei leerer Auswahl, 10-s-Autowahl. Tests: skill-test (Auswahl nie leer, Stapeln, Aufstieg mit allen Mutationen) und browser-test (Karten sichtbar, Autowahl, Run läuft weiter).
 - **Geheimes Monster Urzorn + Sonder-Skin Höllenbezwinger.** Erfolgs-Ziele aufs Spielende abgestimmt (Runs 1.000 → 250, Urknalle 50 → 15, Kills 1 Mio. → 500.000, Monster 11 → 10).
@@ -266,6 +272,10 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.5.2: Flüssiger durchs All (2026-11-26)
+- Leistung: HUD ohne Dauer-Neumalen, adaptive Auflösung überall
+- Multiversum dunkel und farbig
 
 ### v0.5.1: Kein Stillstand (2026-11-26)
 - Fix: Run hing bei leerer Mutations-Auswahl; jetzt Verstärkungen + 10-s-Autowahl
