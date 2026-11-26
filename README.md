@@ -8,7 +8,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Cheat-/Testversion:** https://jinxdevxx.github.io/ragegame-cheat/ (getrennter Speicher, Cheat-Menü per 🛠 oder Taste ^)
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.8.5 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.8.6 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -186,6 +186,11 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.8.6 Echter Bosskampf
+- **Nutzer:** Ein Kollege macht ZORNOS 0 Schaden, der Boss macht auch ihm kaum Schaden; es soll ein reiner Bosskampf mit Skill und Ausweichen sein, ohne andere Objekte.
+- **Analyse** (`tools/boss-check.js`: Bot spielt natürliche Runs bis Welt 50 und kämpft): Die Stärke Schaden ÷ Boss-Härte streute bei Ankunft von 0,02 bis 440 – unbesiegbar bzw. tot nach 0 s. Dazu stieg die Boss-Härte mit jedem Wachsen in der Endlos-Welt (Objekte drumherum fressen → ×1,68 pro 4× Größe), Multiplikatoren stapelten sich (Ansturm ×2,5 × Ansturm-Mutation ×2 × Berserker ×3 → ein Treffer > alle HP), Kuscheln am Boss kostete nichts und Berserker machte unverwundbar.
+- **Lösung:** Härte beim Erscheinen festgehalten; Arena (Objekte verpuffen, kein Spawn); Stärke gestaucht `(Schaden/Härte)^0,15`, gedeckelt 0,6–1,4; Ansturm ×2,2 × Ansturm-Bonus^0,25, Berserker ×1,5, Kontakt-Schläge ×0,35, nach Ansturm-Treffer 0,45 s Pause; HP 70 → 190; Kontakt verbrennt 7 %, Angriffe alle 2,6–3,8 s, Schaden Ring 20 / Meteor 16 / Sturm 26 / Feuerball 12 %; Schutz nur als Wurzel, Berserker halbiert. Bot-Ergebnis: Profil 80 % ~60 s (knapp), 90 % ~35 s, alles max ~30 s; Kuscheln im Browser → tot nach 14 s. Neuer Rand-Pfeil zum Boss.
+
 ### 2026-11-26: v0.8.5 Mutation auf Autopilot
 - **Nutzer:** Ein separater Knopf unter Escape, damit beim Welt-Aufstieg automatisch eine zufällige der 3 Mutationen gewählt wird, ohne manuell klicken zu müssen.
 - **Lösung:** Neue Einstellung `save.settings.autoMut` (pro Spielstand), Schalter in den Einstellungen (Escape öffnet sie im Run) und als Knopf im Pause-Menü, beide synchron. `showMutation` wählt bei aktivem Schalter sofort zufällig, öffnet kein Fenster und zeigt die Mutation im Welt-Banner. Einstellungszeilen kompakter (passt bei 1280×720 ohne Scrollen). Neuer Browser-Test: Schalter an → Aufstieg ohne Fenster, 1 Mutation, Einstellung gespeichert.
@@ -326,6 +331,9 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.8.6: Echter Bosskampf (2026-11-26)
+- ZORNOS: Fehler mit 0 Schaden behoben, reine Arena, Hit & Run, härtere Angriffe
 
 ### v0.8.5: Mutation auf Autopilot (2026-11-26)
 - 🎲 Schalter „Mutation automatisch“ unter Escape und im Pause-Menü

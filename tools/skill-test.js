@@ -424,8 +424,11 @@ console.log('\nEndboss ZORNOS (Welt 50):');
   for (let t = 0; t < 0.2; t += DT) g.update(DT, input());
   check('Boss erscheint in Welt 50', !!g.boss, g.worlds[g.world].name);
   const rage0 = g.p.rage; g.boss.intro = 0; g.boss.attackT = 1e9;
-  for (let t = 0; t < 3; t += DT) { g.spawnT = 1e9; g.update(DT, input()); }
+  for (let t = 0; t < 3; t += DT) { g.spawnT = 1e9; g.boss.x = g.p.x + g.boss.size * 6; g.boss.y = g.p.y; g.update(DT, input()); }
   check('Wut sinkt im Bosskampf nicht (Wut = Leben)', Math.abs(g.p.rage - rage0) < 1e-6, `${rage0.toFixed(1)} → ${g.p.rage.toFixed(1)}`);
+  { const r1 = g.p.rage; g.boss.x = g.p.x + g.boss.size * 0.5; g.boss.y = g.p.y; g.p.hurtCd = 0; g.p.dashT = 0; g.update(DT, input());
+    check('Kontakt mit ZORNOS verbrennt Wut (Hit & Run statt Kuscheln)', g.p.rage < r1, `${r1.toFixed(0)} → ${g.p.rage.toFixed(0)}`);
+    check('Arena: keine Objekte im Bosskampf', g.objects.filter(o => o.name !== 'Höllenwächter').length === 0); }
   const o = obj(g, g.p.r * 1.5, 0, g.p.r * 0.4); o.hp = 1e-9; g.kill(o, 'hit');
   check('Zerstörung füllt im Bosskampf keine Wut auf', g.p.rage <= rage0 + 1e-6);
   // Feuerring trifft
