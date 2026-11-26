@@ -319,7 +319,26 @@ const ring = (g, n, dist, size, extra = {}) => Array.from({ length: n }, (_, i) 
   const g = charGame('infernus'); const big = ring(g, 6, 3, 1.3); big.forEach(o => { o.hp = o.maxHp = g.oneHit() * 2; }); g.useSkill(); run(g, 1);
   check('Infernus · Höllenfeuer: sprengt auch zu große Objekte', big.filter(o => o.dead).length >= 5, `${big.filter(o => o.dead).length}/6 (130 % deiner Größe)`);
 }
+{
+  const g = charGame('urzorn'); const os = ring(g, 10, 7, 0.6); os.forEach(o => { o.hp = o.maxHp = g.oneHit() * 3; }); const b0 = g.p.berserk; g.useSkill(); run(g, 0.2);
+  check('Urzorn · Urknall-Faust: zerstört alles Zerstörbare in Sicht + Berserker', os.filter(o => o.dead).length >= 9 && g.p.berserk > b0, `${os.filter(o => o.dead).length}/10, Berserker +${((g.p.berserk - b0) * 100).toFixed(0)} %`);
+}
+check('Hölle-Sonder-Skin ist nicht käuflich', C.SKINS.find(k => k.id === 'hell').special === 'boss' && !C.SKINS.find(k => k.id === 'hell').cost);
 check('Jedes Monster hat einen Skill', C.CHARACTERS.every(c => c.skill && c.skill.id && c.skill.cd > 0));
+
+// ---------------------------------------------------------------- Mutationen ausgeschöpft
+console.log('\nAlle Mutationen vergeben:');
+{
+  const g = makeGame({}, C.MUTATIONS.map(m => m.id));
+  const ch = g.mutationChoices();
+  check('Auswahl nie leer – stapelbare Verstärkungen', ch.length === 3 && ch.every(c => c.stack), ch.map(c => c.name).join(', '));
+  const a = makeGame({}, ['b_dmg']), b = makeGame({}, ['b_dmg', 'b_dmg', 'b_scrap']), base0 = makeGame();
+  check('Verstärkungen stapeln sich', b.stats.damage > a.stats.damage && a.stats.damage > base0.stats.damage && b.stats.scrapMult > base0.stats.scrapMult, `Schaden ×${(b.stats.damage / base0.stats.damage).toFixed(2)}`);
+  // Welt-Aufstieg mit allen Mutationen: Spiel muss weiterlaufen können
+  const h = makeGame({}, C.MUTATIONS.map(m => m.id)); let offered = null; h.hooks = { onWorld: (w, c) => { offered = c; } };
+  h.p.mass = Math.pow(C.WORLDS[1].minRadius * 1.1, 2); h.p.r = Math.sqrt(h.p.mass); run(h, 0.05);
+  check('Welt-Aufstieg mit allen Mutationen bietet Auswahl an', h.state === 'mutation' && offered && offered.length === 3);
+}
 
 // ---------------------------------------------------------------- Skill-Evolutionen
 console.log('\nSkill-Evolutionen:');

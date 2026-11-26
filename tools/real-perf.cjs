@@ -3,7 +3,7 @@
 const { chromium } = require('playwright');
 (async () => {
   const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
-  await p.goto('http://localhost:8080/?slot=1&upgrades=' + (process.argv[2] || 40)); await p.waitForTimeout(500);
+  await p.goto('http://localhost:8080/?slot=1&upgrades=' + (process.argv[2] || 40) + (process.env.WORLD ? '&world=' + process.env.WORLD : '')); await p.waitForTimeout(500);
   await p.evaluate(() => document.querySelector('#btn-play').click()); await p.waitForTimeout(300);
   await p.evaluate(() => { window.__prof = {}; const g = window.__rv.game; window.__pf = { n: 0, sum: 0, slow: 0, worst: 0, last: performance.now(), log: [] };
     setInterval(() => { if (g.state === 'mutation') g.chooseMutation(null); g.p.rage = g.stats.rageMax; }, 100);

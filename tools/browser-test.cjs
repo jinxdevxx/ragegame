@@ -48,6 +48,26 @@ const OUT = process.argv[2] || '/tmp';
   log('Skins: zurück auf Normal', await p.evaluate(() => window.__rv.save.skinSel.grumpf === ''));
   await p.close();
 
+  // Geheimes Monster: erscheint erst, wenn alle Erfolge geschafft sind
+  p = await page('?slot=1');
+  const sec1 = await p.evaluate(() => { document.querySelector('#btn-chars').click(); return !window.__rv.save.unlockedChars.includes('urzorn') && /\?\?\?/.test(document.getElementById('char-grid').innerText) && !/Urzorn/.test(document.getElementById('char-grid').innerText); });
+  await p.evaluate(() => { const s = window.__rv.save; window.__rv.C.ACHIEVEMENTS.forEach(a => s.achievements[a.id] = 1); document.querySelector('#btn-achievements').click(); });
+  await p.waitForTimeout(400);
+  const sec2 = await p.evaluate(() => window.__rv.save.unlockedChars.includes('urzorn'));
+  log('Geheimes Monster: versteckt, nach allen Erfolgen freigeschaltet', sec1 && sec2);
+  await p.close();
+
+  // Welt-Aufstieg mit allen Mutationen: Karten werden angezeigt, nach 10 s automatische Wahl, Run läuft weiter
+  p = await page('?slot=1');
+  await click(p, '#btn-play'); await p.waitForTimeout(500);
+  await p.evaluate(() => { const g = window.__rv.game; g.muts = window.__rv.C.MUTATIONS.map(m => m.id); g.p.mass = Math.pow(g.worlds[1].minRadius * 1.1, 2); g.p.r = Math.sqrt(g.p.mass); });
+  await p.waitForTimeout(600);
+  const mut1 = await p.evaluate(() => ({ scr: [...document.querySelectorAll('.screen')].filter(s => !s.hidden).map(s => s.id).join(), cards: document.querySelectorAll('#mut-cards [data-mut]').length, auto: document.getElementById('mut-auto').textContent }));
+  await p.waitForTimeout(10800);
+  const mut2 = await p.evaluate(() => ({ state: window.__rv.game.state, n: window.__rv.game.muts.length }));
+  log('Mutation: volle Auswahl, nach 10 s automatisch gewählt, Run geht weiter', mut1.scr === 'screen-mutation' && mut1.cards === 3 && /10 s/.test(mut1.auto) && mut2.state === 'play' && mut2.n === 15, `${mut1.cards} Karten, danach ${mut2.state}`);
+  await p.close();
+
   // Erfolge + Statistik
   p = await page('?slot=1');
   await p.evaluate(() => { const s = window.__rv.save; s.totalKills = 1500; s.runs = 12; s.stats = { bestCombo: 25, playTime: 3700 }; });
@@ -97,7 +117,7 @@ const OUT = process.argv[2] || '/tmp';
   // Monster-Auswahl zeigt Skills
   p = await page('?slot=1&unlock=1');
   await click(p, '#btn-chars'); await p.waitForTimeout(800);
-  log('Monster-Auswahl zeigt 11 Monster mit Skill', await p.evaluate(() => document.querySelectorAll('.char').length === 11 && document.querySelectorAll('.char-skill').length === 11));
+  log('Monster-Auswahl zeigt 11 Monster mit Skill + 1 geheimes', await p.evaluate(() => document.querySelectorAll('.char').length === 12 && document.querySelectorAll('.char-skill').length + document.querySelectorAll('.char.secret').length === 12));
   await p.screenshot({ path: OUT + '/monster.png' });
   await p.close();
 

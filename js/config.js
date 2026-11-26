@@ -500,6 +500,14 @@ export const MUTATIONS = [
   { id: 'armor',    name: 'Panzerhaut',     icon: '🛡', desc: 'Hindernisse tun nur noch halb so weh.' },
 ];
 
+// Stapelbare Verstärkungen: kommen beim Welt-Aufstieg, sobald alle Mutationen vergeben sind
+export const BOOSTS = [
+  { id: 'b_dmg',   name: 'Mehr Wucht',   icon: '💪', desc: '+10 % Schaden (stapelbar).', stack: true },
+  { id: 'b_grow',  name: 'Mehr Hunger',  icon: '🍖', desc: '+8 % Wachstum (stapelbar).', stack: true },
+  { id: 'b_scrap', name: 'Mehr Beute',   icon: '💰', desc: '+15 % Schrott (stapelbar).', stack: true },
+  { id: 'b_rage',  name: 'Mehr Zorn',    icon: '🔥', desc: '+10 % Wut-Tank (stapelbar).', stack: true },
+];
+
 // ---------------------------------------------------------------------
 // Zufällige Events während eines Runs
 // ---------------------------------------------------------------------
@@ -549,6 +557,8 @@ export const SKINS = [
   { id: 'gold',     name: 'Gold',   icon: '🥇', cost: 1e14, desc: 'Strahlendes Gold mit goldener Aura' },
   { id: 'platinum', name: 'Platin', icon: '💠', cost: 1e22, desc: 'Eisiges Platin, schillert in allen Farben' },
   { id: 'god',      name: 'Gott',   icon: '👑', cost: 1e33, desc: 'Göttliches Licht: Heiligenschein, Strahlen, Regenbogen-Schimmer' },
+  // Sonder-Skin: nicht käuflich – wer ZORNOS besiegt, bekommt ihn für ALLE Monster
+  { id: 'hell',     name: 'Bezwinger', icon: '🔥', special: 'boss', desc: 'Höllenbezwinger: Obsidian mit Lava-Adern, Flammenkrone und Glut-Aura. Nur für den Sieg über ZORNOS.' },
 ];
 
 export const CHARACTERS = [
@@ -606,6 +616,12 @@ export const CHARACTERS = [
     colors: { body: '#2a0505', belly: '#ff6a1f', horn: '#ffd23f', dark: '#000000' },
     skill: { id: 'hellfire', name: 'Höllenfeuer', icon: '😈', cd: 12, desc: '3 Explosionswellen um dich herum – sprengen auch Objekte, die eigentlich zu groß sind.' },
     perks: { damage: 2.5, absorb: 1.4, rage: 1.4, boom: 1.5, scrap: 2, berserkTime: 4 }, cost: 0, req: { boss: true, label: 'Besiege ZORNOS in Welt 50' }, bossOnly: true },
+  // Geheimes Monster: erscheint erst, wenn ALLE Erfolge geschafft sind (der letzte ist der Sieg über ZORNOS)
+  { id: 'urzorn', name: 'Urzorn', type: 'monster', title: 'Die Wut vor dem Urknall', secret: true,
+    desc: 'Das geheime Ur-Monster – nur für alle, die wirklich alles geschafft haben. ×3 Schaden, ×1,5 Wachstum, +50 % Wut, ×2,5 Schrott, Berserker lädt doppelt.',
+    colors: { body: '#160b33', belly: '#ffd23f', horn: '#ffffff', dark: '#000000' },
+    skill: { id: 'urfaust', name: 'Urknall-Faust', icon: '🌌', cd: 20, desc: 'Eine Druckwelle über den ganzen Bildschirm: zerstört alles Zerstörbare in Sicht, trifft auch den Boss hart und lädt den Berserker auf.' },
+    perks: { damage: 3, absorb: 1.5, rage: 1.5, scrap: 2.5, berserk: 2 }, cost: 0, req: { allAch: true, label: 'Schaffe alle Erfolge' } },
 ];
 
 // ---------------------------------------------------------------------
@@ -761,7 +777,7 @@ export const DM_PERKS = [
 const ach = (id, name, icon, stat, steps, rewards, desc) => steps.map((goal, i) => ({ id: `${id}${i + 1}`, group: id, name: `${name} ${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][i]}`, icon, stat, goal, reward: rewards[i], desc: desc(goal) }));
 const de = n => n.toLocaleString('de-DE');
 export const ACHIEVEMENTS = [
-  ...ach('kills', 'Zerstörer', '💥', 'kills', [100, 1000, 10000, 100000, 1000000], [100, 500, 2500, 15000, 100000], g => `Zerstöre insgesamt ${de(g)} Objekte`),
+  ...ach('kills', 'Zerstörer', '💥', 'kills', [100, 1000, 10000, 100000, 500000], [100, 500, 2500, 15000, 100000], g => `Zerstöre insgesamt ${de(g)} Objekte`),
   ...ach('world', 'Weltenwanderer', '🗺', 'maxWorld', [1, 4, 7, 11, 19, 29, 39, 49], [100, 800, 4000, 20000, 100000, 400000, 1500000, 5000000], g => `Erreiche Welt ${g + 1}`),
   ...ach('combo', 'Kombo-König', '⛓', 'bestCombo', [20, 50, 100, 200], [200, 1500, 8000, 40000], g => `Schaffe eine ${g}er-Kombo`),
   ...ach('golden', 'Goldjäger', '✨', 'golden', [10, 100, 1000], [300, 3000, 30000], g => `Zerstöre ${de(g)} goldene Objekte`),
@@ -770,9 +786,9 @@ export const ACHIEVEMENTS = [
   ...ach('berserk', 'Berserker', '😡', 'berserks', [10, 100, 1000], [300, 3000, 30000], g => `Zünde ${de(g)}-mal den Berserker`),
   ...ach('skills', 'Spezialist', '🎯', 'skills', [25, 250, 2500], [300, 3000, 30000], g => `Setze ${de(g)}-mal einen Monster-Skill (F) ein`),
   ...ach('quests', 'Auftragskiller', '📜', 'quests', [10, 100, 1000], [300, 3000, 30000], g => `Erfülle ${de(g)} Aufträge`),
-  ...ach('runs', 'Dauerwüter', '🔁', 'runs', [10, 100, 1000], [200, 2000, 20000], g => `Spiele ${de(g)} Runs`),
-  ...ach('bang', 'Urknall', '💥', 'prestiges', [1, 5, 20, 50], [1000, 10000, 100000, 1000000], g => `Löse ${g}-mal den Urknall aus`),
-  ...ach('monsters', 'Monstersammler', '👹', 'monsters', [3, 6, 11], [2000, 50000, 2000000], g => `Besitze ${g} Monster`),
+  ...ach('runs', 'Dauerwüter', '🔁', 'runs', [10, 100, 250], [200, 2000, 20000], g => `Spiele ${de(g)} Runs`),
+  ...ach('bang', 'Urknall', '💥', 'prestiges', [1, 3, 8, 15], [1000, 10000, 100000, 1000000], g => `Löse ${g}-mal den Urknall aus`),
+  ...ach('monsters', 'Monstersammler', '👹', 'monsters', [3, 6, 10], [2000, 50000, 2000000], g => `Besitze ${g} Monster`),
   ...ach('rich', 'Neureich', '🥈', 'bestTier', [1, 2, 3, 4], [20000, 500000, 5000000, 50000000], g => `Erreiche ${['', 'Platin', 'Diamant', 'Plasma', 'Sternenstaub'][g]}`),
   ...ach('evo', 'Evolutionär', '🧬', 'evos', [1, 3, 6], [5000, 100000, 2000000], g => `Entwickle ${g} Fähigkeit${g === 1 ? '' : 'en'} weiter`),
   { id: 'maps1', group: 'maps', name: 'Kartograf', icon: '🌍', stat: 'maps', goal: 3, reward: 50000, desc: 'Spiele auf allen 3 Karten' },

@@ -1,7 +1,7 @@
 // =====================================================================
 //  RAGEVERSE – Spiel-Logik (Simulation, keine Grafik)
 // =====================================================================
-import * as C from './config.js?v=0.5.0';
+import * as C from './config.js?v=0.5.1';
 
 const TAU = Math.PI * 2;
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -60,19 +60,20 @@ export function computeStats(save, muts = [], charId = save.selectedChar) {
   // Wirkung eines Upgrades: multiplikativ (1+per)^L oder linear 1+per·L
   const U = id => { const u = upgradeDef(id); return u.mult ? Math.pow(1 + u.per, L(id)) : 1 + u.per * L(id); };
   const has = id => muts.includes(id);
+  const cnt = id => muts.reduce((n, m) => n + (m === id ? 1 : 0), 0); // stapelbare Verstärkungen
   const k = charDef(charId).perks || {};
   const pk = (name, def = 1) => (k[name] ?? def);
   // Böser Masterplan: liefert den Zusatz (Faktor − 1)
   const dm = id => { const d = dmDef(id), l = dmLevel(save, id); return d.mult ? Math.pow(1 + d.per, l) - 1 : l * d.per; };
   return {
     startRadius: P.startRadius * U('size') * pk('size') * (1 + dm('dm_start')),
-    rageMax: P.rageMax * U('rage') * pk('rage') * (1 + dm('dm_rage')),
+    rageMax: P.rageMax * U('rage') * pk('rage') * (1 + dm('dm_rage')) * Math.pow(1.1, cnt('b_rage')),
     rageDrain: P.rageDrain * Math.pow(1 - per('calm'), L('calm')) * (has('zen') ? 0.7 : 1),
-    damage: P.damage * U('dmg') * (has('spikes') ? 1.6 : 1) * pk('damage') * (1 + dm('dm_power')),
+    damage: P.damage * U('dmg') * (has('spikes') ? 1.6 : 1) * pk('damage') * (1 + dm('dm_power')) * Math.pow(1.1, cnt('b_dmg')),
     breakRatio: P.breakRatio + per('hard') * L('hard') + (has('hardhead') ? 0.2 : 0),
     speed: P.speed * (1 + per('speed') * L('speed')) * (has('turbo') ? 1.3 : 1) * pk('speed'),
-    absorb: P.absorb * U('absorb') * (has('glutton') ? 1.4 : 1) * pk('absorb') * (1 + dm('dm_growth')),
-    scrapMult: U('scrap') * (has('greed') ? 1.6 : 1) * C.SCRAP_SCALE * pk('scrap') * (1 + dm('dm_scrap')),
+    absorb: P.absorb * U('absorb') * (has('glutton') ? 1.4 : 1) * pk('absorb') * (1 + dm('dm_growth')) * Math.pow(1.08, cnt('b_grow')),
+    scrapMult: U('scrap') * (has('greed') ? 1.6 : 1) * C.SCRAP_SCALE * pk('scrap') * (1 + dm('dm_scrap')) * Math.pow(1.15, cnt('b_scrap')),
     chaosMult: U('chaosup') * (1 + dm('dm_chaos')),
     crateMult: 1 + per('crates') * L('crates'),
     questMult: 1 + per('quest') * L('quest'),
@@ -795,6 +796,16 @@ export class Game {
         break;
       }
       case 'phoenixdash': p.phoenixT = 1; break;
+      case 'urfaust': { // Urzorn: Druckwelle über den ganzen Bildschirm
+        const vr = this.viewRadius();
+        this.explosionQueue.push({ x: p.x, y: p.y, r: vr, dmg: hit * 4, big: true, maxSize: lim * 1.3, noStop: true });
+        this.processExplosions();
+        if (this.boss) this.bossHurt(4 * S.damage / this.bossDamageNeed());
+        this.addBerserk(0.15, true);
+        this.rings.push({ x: p.x, y: p.y, r: vr, life: 0.9, max: 0.9, color: '#b06bff' }, { x: p.x, y: p.y, r: vr * 0.6, life: 0.7, max: 0.7, color: '#ffd23f' });
+        this.flash = 0.7; this.shake = 1.4;
+        break;
+      }
       case 'hellfire':
         for (let i = 0; i < 3; i++) this.blasts.push({ t: i * 0.22, r: p.r * (2.5 + i * 2) });
         break;
@@ -1082,6 +1093,9 @@ export class Game {
     const pool = C.MUTATIONS.filter(m => !this.muts.includes(m.id));
     const out = [];
     while (out.length < 3 && pool.length) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    // alle Mutationen vergeben: mit stapelbaren Verstärkungen auffüllen (nie eine leere Auswahl)
+    const boosts = C.BOOSTS.slice();
+    while (out.length < 3 && boosts.length) out.push(boosts.splice(Math.floor(Math.random() * boosts.length), 1)[0]);
     return out;
   }
 

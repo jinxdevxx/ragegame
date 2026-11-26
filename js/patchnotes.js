@@ -6,6 +6,19 @@
 
 export const PATCH_NOTES = [
   {
+    version: '0.5.1',
+    date: '2026-11-26',
+    title: 'Kein Stillstand',
+    summary: 'Wichtiger Fix: Der Run blieb in hohen Welten bei der Mutations-Auswahl hängen. Dazu ein geheimes Monster und ein Sonder-Skin für den ZORNOS-Sieg.',
+    changes: [
+      'FIX: Ab ca. Welt 12–15 waren alle 14 Mutationen vergeben – die Auswahl war leer und der Run hing fest (z. B. „Pilz-Kosmos erreicht“). Jetzt gibt es dann stapelbare Verstärkungen (💪 Wucht, 🍖 Hunger, 💰 Beute, 🔥 Zorn).',
+      'Neu: Nach 10 Sekunden wird automatisch eine Mutation gewählt, der Run läuft weiter.',
+      'Geheimes Monster: Wer ALLE Erfolge schafft (der letzte ist der Sieg über ZORNOS), schaltet ein verborgenes Ur-Monster frei – mit eigenem, sehr starkem Skill.',
+      'Sonder-Skin „🔥 Höllenbezwinger“: Obsidian mit Lava-Adern, Flammenkrone und Glut – für alle Monster, sobald du ZORNOS besiegt hast. Nicht käuflich.',
+      'Erfolge so angepasst, dass alle bis zum Ende der Hölle (Welt 50) erreichbar sind (z. B. 250 statt 1.000 Runs, 15 statt 50 Urknalle).',
+    ],
+  },
+  {
     version: '0.5.0',
     date: '2026-11-26',
     title: 'Glanz & Gloria',

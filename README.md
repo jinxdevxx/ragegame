@@ -7,7 +7,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.5.0 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.5.1 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -63,6 +63,9 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 
 - **Eigene Gestalt je Monster** (js/monster.js): Grumpf (Klassiker), Stachelkönig (Igel), Flitzer (Sprint-Gecko), Magma-Golem (Felsblock), Goldzahn (Drache), Void (schwebendes Sternenwesen), Frostbeule (Yeti), Kraken (Oktopus), Mecha-Rex (Roboter), Phönix (Feuervogel), Infernus (Dämon). Vorschau aller Monster: `tools/sheet.html`, `tools/sheet-big.html?skin=gold`.
 - **Premium-Skins** je Monster, Stufe für Stufe mit Schrott: 🥈 Silber (500 Mio.) → 🥇 Gold (100 Bio.) → 💠 Platin (10²²) → 👑 Gott (10³³). Rein optisch: Metallglanz, Glanzstreifen, Funkeln, Aura; Platin/Gott schillern, Gott mit Heiligenschein.
+- **Geheimes Monster Urzorn** (Easter Egg): erscheint als „???“ und wird freigeschaltet, wenn **alle** Erfolge geschafft sind. Skill Urknall-Faust (zerstört alles Zerstörbare in Sicht). Die Erfolge sind so eingestellt, dass der letzte der ZORNOS-Sieg ist.
+- **Sonder-Skin 🔥 Höllenbezwinger:** für alle Monster nach dem ZORNOS-Sieg, nicht käuflich.
+- **Mutationen ausgeschöpft?** Dann gibt es stapelbare Verstärkungen (+10 % Schaden, +8 % Wachstum, +15 % Schrott, +10 % Wut-Tank). Nach 10 s wird automatisch gewählt.
 - **🏆 Erfolge & 📊 Statistik** (Hauptmenü): 55 Erfolge mit ☠-Belohnung und Fortschrittsbalken, dazu alle Gesamtzahlen (zerstört, Runs, beste Kombo, längster Run, Boss-Siege …).
 - **Lebendige Welt:** Tiere und Passanten fliehen, Autos und Züge fahren. **Hindernisse** (Dornenbusch, Rasenmäher, Polizei, Panzer, Hubschrauber, Tornado, UFO, Sheriff, Zahnarzt …) ziehen Wut ab, solange sie zu groß für dich sind. Erkennbar am roten ⚠.
 - **Aufträge** links oben, z. B. „Zerstöre 8× Gartenzwerg“, zeigen Fortschritt und Belohnung (🎁 ⚙ · ☠ · 🔥 Wut · 😡 Berserker). Ein gelber Pfeil zeigt zum nächsten passenden Objekt.
@@ -177,6 +180,10 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.5.1 Kein Stillstand
+- **Spielbrechender Bug (Meldung vom Kollegen, „Pilz-Kosmos erreicht“, keine Karten):** Es gibt 14 Mutationen, jede nur einmal; mit Genlabor-Startmutationen sind sie ab ~Welt 12–15 aufgebraucht → leere Auswahl, `state = 'mutation'` ohne Ausweg. Der Balance-Bot hat das nicht gemerkt, weil er bei leerer Auswahl einfach weiterlief. Fix: stapelbare Verstärkungen füllen die Auswahl auf, Sicherheitsnetz bei leerer Auswahl, 10-s-Autowahl. Tests: skill-test (Auswahl nie leer, Stapeln, Aufstieg mit allen Mutationen) und browser-test (Karten sichtbar, Autowahl, Run läuft weiter).
+- **Geheimes Monster Urzorn + Sonder-Skin Höllenbezwinger.** Erfolgs-Ziele aufs Spielende abgestimmt (Runs 1.000 → 250, Urknalle 50 → 15, Kills 1 Mio. → 500.000, Monster 11 → 10).
+
 ### 2026-11-26: v0.5.0 Glanz & Gloria
 - **Monster neu:** Bisher waren alle Monster dieselbe Figur in anderen Farben. Jetzt hat jedes eine eigene Zeichenfunktion mit eigener Silhouette. Gemeinsam sind nur Augen, Maul und Schlag-Arm (einheitlicher Stil). Grumpf blieb unverändert (Nutzer mochte ihn).
 - **Premium-Skins:** Monster wird in ein Offscreen-Bild gezeichnet, darauf per `source-atop` Metallverlauf, wandernder Glanzstreifen und (Platin/Gott) Regenbogen-Schimmer – nur auf dem Monster, nicht auf dem Boden. Dazu Aura, Funkeln, bei Gott Strahlen + Heiligenschein.
@@ -259,6 +266,10 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.5.1: Kein Stillstand (2026-11-26)
+- Fix: Run hing bei leerer Mutations-Auswahl; jetzt Verstärkungen + 10-s-Autowahl
+- Geheimes Monster (alle Erfolge), Sonder-Skin für den ZORNOS-Sieg
 
 ### v0.5.0: Glanz & Gloria (2026-11-26)
 - Alle Monster mit eigener Gestalt, Premium-Skins Silber/Gold/Platin/Gott

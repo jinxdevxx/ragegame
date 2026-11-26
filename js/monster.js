@@ -8,8 +8,8 @@
 //  Sternenstaub und Aura dazu. Premium-Skins (Silber, Gold, Platin, Gott)
 //  färben das Monster metallisch und legen Glanz, Funkeln und Aura darüber.
 // =====================================================================
-import * as C from './config.js?v=0.5.0';
-import { shadeHex as sh } from './game.js?v=0.5.0';
+import * as C from './config.js?v=0.5.1';
+import { shadeHex as sh } from './game.js?v=0.5.1';
 
 const TAU = Math.PI * 2;
 const OUT = '#1f1212';
@@ -495,8 +495,30 @@ D.mecha = (c, R, s, col, body, L) => {
   punchArm(c, R, s, R * 0.68, -R * 1.05, dark, { thick: 0.22, fist: 0.18, square: true, claws: false, fistCol: col.belly });
 };
 
+// Urzorn – das geheime Ur-Monster: kosmischer Grumpf mit Krone, drittem Auge und Runenring
+D.urzorn = (c, R, s, col, body, L) => {
+  const t = s.time;
+  // Runenring hinten
+  c.save(); c.strokeStyle = 'rgba(255,210,63,0.55)'; c.lineWidth = Math.max(1.5, R * 0.05);
+  c.beginPath(); c.ellipse(0, -R * 1.1, R * 1.45, R * 0.42, Math.sin(t * 0.7) * 0.15, Math.PI, TAU); c.stroke(); c.restore(); lw(c, R);
+  // Körper wie Grumpf, aber immer mit Sternenstaub und goldenen Adern
+  D.monster(c, R, { ...s, stage: Math.max(s.stage, 5) }, col, body, L);
+  // Krone
+  const cy = -R * 2.0;
+  c.beginPath(); c.moveTo(-R * 0.35, cy + R * 0.12); c.lineTo(-R * 0.4, cy - R * 0.22); c.lineTo(-R * 0.2, cy - R * 0.05); c.lineTo(R * 0.05, cy - R * 0.35); c.lineTo(R * 0.25, cy - R * 0.05); c.lineTo(R * 0.48, cy - R * 0.22); c.lineTo(R * 0.42, cy + R * 0.12); c.closePath(); P(c, '#ffd23f');
+  for (const [x, y, k] of [[-R * 0.4, cy - R * 0.22, '#ff3b5c'], [R * 0.05, cy - R * 0.35, '#5ad0ff'], [R * 0.48, cy - R * 0.22, '#7dff8a']]) { c.beginPath(); c.arc(x, y, R * 0.06, 0, TAU); P(c, k); }
+  // drittes Auge auf der Stirn
+  eyes(c, R, s, [[R * 0.28, -R * 1.78, R * 0.13]], { white: '#ffe9a0', pupil: '#5a0a8a', glow: '#b06bff', slit: true });
+  // Runenring vorne mit kreisenden Runen
+  c.save(); c.strokeStyle = 'rgba(255,210,63,0.75)'; c.lineWidth = Math.max(1.5, R * 0.05);
+  c.beginPath(); c.ellipse(0, -R * 1.1, R * 1.45, R * 0.42, Math.sin(t * 0.7) * 0.15, 0, Math.PI); c.stroke();
+  c.fillStyle = '#ffe9a0'; c.font = `bold ${Math.max(6, R * 0.2)}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  for (let i = 0; i < 5; i++) { const a = t * 1.2 + i * TAU / 5; if (Math.sin(a) < 0) continue; c.fillText('ᚱᚨᚷᛖ'[i % 4], Math.cos(a) * R * 1.45, -R * 1.1 + Math.sin(a) * R * 0.42); }
+  c.restore(); lw(c, R);
+};
+
 // Monster-ID → Design (einzelne Monster können über char.design abweichen)
-const DESIGN_OF = { grumpf: 'monster', stachel: 'spiky', flitzer: 'lizard', golem: 'golem', goldzahn: 'dragon', void: 'alien', frost: 'yeti', kraken: 'kraken', mecha: 'mecha', phoenix: 'phoenix', infernus: 'demon' };
+const DESIGN_OF = { grumpf: 'monster', stachel: 'spiky', flitzer: 'lizard', golem: 'golem', goldzahn: 'dragon', void: 'alien', frost: 'yeti', kraken: 'kraken', mecha: 'mecha', phoenix: 'phoenix', infernus: 'demon', urzorn: 'urzorn' };
 
 // ---------------------------------------------------------------------
 // Premium-Skins
@@ -505,6 +527,7 @@ export const SKIN_PALETTES = {
   silver:   { body: '#b9c3cf', belly: '#eef2f7', horn: '#ffffff', dark: '#3e4652', wing: '#8a95a4', glow: 'rgba(220,235,255,', shine: 0.55 },
   gold:     { body: '#f2b822', belly: '#fff0a0', horn: '#fff8dc', dark: '#6a4200', wing: '#d08f10', glow: 'rgba(255,205,60,', shine: 0.7 },
   platinum: { body: '#cfe6f5', belly: '#ffffff', horn: '#9ff0ff', dark: '#2a4a6a', wing: '#9fc4dc', glow: 'rgba(160,240,255,', shine: 0.8 },
+  hell:     { body: '#1c0a0a', belly: '#ff5a1a', horn: '#ffd23f', dark: '#000000', wing: '#3a0808', glow: 'rgba(255,90,20,', shine: 0.5, sweep: '255,160,60' },
   god:      { body: '#fff8ea', belly: '#ffe28a', horn: '#ffd23f', dark: '#9a6a00', wing: '#fff0c0', glow: 'rgba(255,230,140,', shine: 0.9 },
 };
 let skinCanvas = null;
@@ -576,8 +599,12 @@ function drawSkinned(c, X, Y, R, s, skin) {
   const sx = ox - R * 1.6 + sweep * R * 3.2;
   o.save(); o.translate(sx, oy - R); o.rotate(0.35);
   const sg = o.createLinearGradient(-R * 0.4, 0, R * 0.4, 0);
-  sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.5, `rgba(255,255,255,${skin.shine})`); sg.addColorStop(1, 'rgba(255,255,255,0)');
+  sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.5, `rgba(${skin.sweep || '255,255,255'},${skin.shine})`); sg.addColorStop(1, 'rgba(255,255,255,0)');
   o.fillStyle = sg; o.fillRect(-R * 0.4, -R * 2.5, R * 0.8, R * 5); o.restore();
+  if (id === 'hell') { // Lava-Adern glühen pulsierend über den ganzen Körper
+    o.strokeStyle = `rgba(255,${120 + Math.sin(t * 5) * 60},30,0.85)`; o.lineWidth = Math.max(1.5, R * 0.05);
+    for (let i = 0; i < 6; i++) { o.beginPath(); let x = ox + (Math.sin(i * 2.7) * 0.7) * R, y = oy - R * (0.4 + (i % 3) * 0.55); o.moveTo(x, y); for (let k = 0; k < 3; k++) { x += Math.sin(i * 5 + k * 3) * R * 0.22; y -= R * 0.18; o.lineTo(x, y); } o.stroke(); }
+  }
   if (id === 'platinum' || id === 'god') {
     const hue = (t * 60) % 360, rg = o.createLinearGradient(ox - R, oy - R * 2.2, ox + R, oy);
     rg.addColorStop(0, `hsla(${hue},90%,70%,0.22)`); rg.addColorStop(0.5, `hsla(${(hue + 120) % 360},90%,70%,0.16)`); rg.addColorStop(1, `hsla(${(hue + 240) % 360},90%,70%,0.22)`);
@@ -585,11 +612,17 @@ function drawSkinned(c, X, Y, R, s, skin) {
   }
   o.globalCompositeOperation = 'source-over';
   c.drawImage(skinCanvas, 0, 0, W, H, X - ox, Y - oy, W, H);
-  const n = id === 'silver' ? 3 : id === 'gold' ? 5 : 7;
+  const n = id === 'silver' ? 3 : id === 'gold' ? 5 : id === 'hell' ? 0 : 7;
   for (let i = 0; i < n; i++) {
     const cyc = t * 0.7 + i / n, ph = cyc % 1, k = Math.floor(cyc), a = Math.sin(ph * Math.PI);
     const px = X + Math.sin(i * 4.7 + k * 2.3) * R * 0.9, py = Y - R * (0.4 + ((i * 0.37 + k * 0.61) % 1) * 1.8);
     c.fillStyle = `rgba(255,255,255,${a})`; star4(c, px, py, R * 0.05 * (0.5 + a));
+  }
+  if (id === 'hell') { // Glut steigt auf, Flammenkrone
+    for (let i = 0; i < 8; i++) { const ph = (t * 0.9 + i / 8) % 1; c.fillStyle = `rgba(255,${150 + (i % 3) * 40},40,${1 - ph})`; c.beginPath(); c.arc(X + Math.sin(i * 3.3 + t) * R * 0.9, Y - R * (0.3 + ph * 2.4), R * 0.06 * (1 - ph * 0.6), 0, TAU); c.fill(); }
+    for (let i = 0; i < 5; i++) { const x = X + s.face * R * 0.15 + (i - 2) * R * 0.16, h = R * (0.35 + Math.sin(t * 9 + i * 1.7) * 0.08 + (i === 2 ? 0.12 : 0)), y = Y - R * 2.2;
+      const fg = c.createLinearGradient(x, y, x, y - h); fg.addColorStop(0, 'rgba(255,90,20,0.95)'); fg.addColorStop(1, 'rgba(255,230,120,0.2)');
+      c.fillStyle = fg; c.beginPath(); c.moveTo(x - R * 0.08, y); c.quadraticCurveTo(x - R * 0.06, y - h * 0.6, x, y - h); c.quadraticCurveTo(x + R * 0.06, y - h * 0.6, x + R * 0.08, y); c.fill(); }
   }
   if (id === 'god') {
     c.save(); c.strokeStyle = `rgba(255,220,90,${0.8 + 0.2 * Math.sin(t * 4)})`; c.lineWidth = Math.max(2, R * 0.09); c.shadowColor = '#ffd23f'; c.shadowBlur = R * 0.4;

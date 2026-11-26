@@ -3,9 +3,9 @@
 //  Reihenfolge: Boden → Trümmer-Flecken → Schatten/Objekte/Monster
 //  (nach Tiefe sortiert) → Trümmer → Münzen → Effekte → Overlays
 // =====================================================================
-import { SPRITES, OUT } from './sprites.js?v=0.5.0';
-import { drawMonster } from './monster.js?v=0.5.0';
-import { shadeHex as sh, shadeHex } from './game.js?v=0.5.0';
+import { SPRITES, OUT } from './sprites.js?v=0.5.1';
+import { drawMonster } from './monster.js?v=0.5.1';
+import { shadeHex as sh, shadeHex } from './game.js?v=0.5.1';
 
 const TAU = Math.PI * 2;
 const STARS = Array.from({ length: 220 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() * 1.8 + 0.4, p: Math.random() * 0.6 + 0.1, tw: Math.random() * 6 }));

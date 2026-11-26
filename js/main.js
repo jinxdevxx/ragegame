@@ -1,12 +1,12 @@
 // =====================================================================
 //  RAGEVERSE – Einstieg: Game-Loop, Steuerung, Menüs, Shop, Updates
 // =====================================================================
-import * as C from './config.js?v=0.5.0';
-import { Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.5.0';
-import { render, drawMonsterPreview } from './render.js?v=0.5.0';
-import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.5.0';
-import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.5.0';
-import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.5.0';
+import * as C from './config.js?v=0.5.1';
+import { Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.5.1';
+import { render, drawMonsterPreview } from './render.js?v=0.5.1';
+import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.5.1';
+import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.5.1';
+import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.5.1';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -260,18 +260,26 @@ function statValue(stat) {
     default: return st[stat] || 0;
   }
 }
+function achDone() { return C.ACHIEVEMENTS.filter(a => save.achievements[a.id]).length; }
 function checkAchievements() {
   const got = [];
   for (const a of C.ACHIEVEMENTS) {
     if (save.achievements[a.id] || statValue(a.stat) < a.goal) continue;
     save.achievements[a.id] = Date.now(); save.chaos += a.reward; save.totalChaos = (save.totalChaos || 0) + a.reward; got.push(a);
   }
+  // Geheimes Monster: alle Erfolge geschafft
+  const secret = C.CHARACTERS.find(c => c.secret);
+  if (secret && !save.unlockedChars.includes(secret.id) && achDone() >= C.ACHIEVEMENTS.length) {
+    save.unlockedChars.push(secret.id); got.push({ icon: '🌌', name: 'GEHEIMES MONSTER: ' + secret.name.toUpperCase(), reward: 0, secret: true });
+  }
   if (got.length) { writeSave(save); got.forEach((a, i) => setTimeout(() => achToast(a), i * 700)); }
   return got;
 }
 function achToast(a) {
   const el = document.createElement('div'); el.className = 'ach-toast';
-  el.innerHTML = `<div class="ai">${a.icon}</div><div><small>ERFOLG FREIGESCHALTET</small><b>${esc(a.name)}</b><span>+${fmt(a.reward)} ☠ Chaos</span></div>`;
+  el.innerHTML = a.secret ? `<div class="ai">${a.icon}</div><div><small>ALLE ERFOLGE GESCHAFFT!</small><b>${esc(a.name)}</b><span>Schau in die Monster-Auswahl</span></div>`
+    : `<div class="ai">${a.icon}</div><div><small>ERFOLG FREIGESCHALTET</small><b>${esc(a.name)}</b><span>+${fmt(a.reward)} ☠ Chaos</span></div>`;
+  if (a.secret) { el.classList.add('secret'); setTimeout(() => sfx('unlock'), 300); }
   $('ach-toasts').appendChild(el); sfx('quest'); setTimeout(() => el.remove(), 4100);
 }
 let achTab = 'ach';
@@ -451,6 +459,7 @@ function reqMet(req) {
   if (!req) return true;
   if (req.kills && (save.totalKills || 0) < req.kills) return false;
   if (req.boss && !(save.bossKills > 0)) return false;
+  if (req.allAch && achDone() < C.ACHIEVEMENTS.length) return false;
   if (req.world !== undefined && bestWorldAny() < req.world) return false;
   return true;
 }
@@ -459,6 +468,7 @@ function reqProgress(req) {
   if (req.kills) return `${fmt(Math.min(save.totalKills || 0, req.kills))} / ${fmt(req.kills)}`;
   if (req.world !== undefined) return reqMet(req) ? 'erreicht' : `bisher: ${C.WORLDS[bestWorldAny()].name}`;
   if (req.boss) return reqMet(req) ? 'besiegt' : 'noch nicht besiegt';
+  if (req.allAch) return `${achDone()} / ${C.ACHIEVEMENTS.length}`;
   return '';
 }
 
@@ -654,6 +664,13 @@ function openChars() {
     else if (owned) btn = `<button class="btn primary" data-sel="${ch.id}">Wählen</button>`;
     else if (!met) btn = `<button class="btn" disabled>🔒 ${esc(ch.req.label)}</button>`;
     else btn = `<button class="btn ${afford ? 'primary' : ''}" data-buychar="${ch.id}" ${afford ? '' : 'disabled'}>☠ ${fmt(ch.cost)} freischalten</button>`;
+    if (ch.secret && !owned) return `<div class="char locked secret">
+      <canvas width="240" height="200" data-prev="${ch.id}"></canvas>
+      <div class="char-name">??? <small>Geheimes Monster</small></div>
+      <div class="char-desc">Irgendwo wartet ein Monster, das stärker ist als alle anderen. Nur wer wirklich alles geschafft hat, wird es sehen.</div>
+      <div class="char-req">🔒 Alle Erfolge <span>${reqProgress(ch.req)}</span></div>
+      <button class="btn" disabled>🔒 Geheim</button>
+    </div>`;
     return `<div class="char ${sel ? 'sel' : ''} ${owned ? '' : 'locked'}">
       <canvas width="240" height="200" data-prev="${ch.id}"></canvas>
       <div class="char-name">${esc(ch.name)} <small>${esc(ch.title)}</small></div>
@@ -669,9 +686,11 @@ function openChars() {
 }
 // Skin-Leiste je Monster: Normal + 4 Premium-Stufen (nacheinander kaufbar)
 function skinRow(ch) {
-  const owned = save.skins[ch.id] || [], cur = save.skinSel[ch.id] || '';
+  const owned = (save.skins[ch.id] || []).slice(), cur = save.skinSel[ch.id] || '';
+  if (save.bossKills > 0) owned.push('hell'); // Sonder-Skin: ZORNOS besiegt → für alle Monster
   const chips = [`<button class="skin-chip ${cur ? '' : 'on'}" data-skin="" data-skinchar="${ch.id}" title="Normal">🎨<small>Normal</small></button>`];
   C.SKINS.forEach((k, i) => {
+    if (k.special) { const has = owned.includes(k.id); chips.push(`<button class="skin-chip ${has ? (cur === k.id ? 'on' : '') : 'locked'} sk-${k.id}" data-skin="${k.id}" data-skinchar="${ch.id}" title="${esc(k.desc)}">${k.icon}<small>${has ? esc(k.name) : '😈 ZORNOS'}</small></button>`); return; }
     const has = owned.includes(k.id), prevOk = i === 0 || owned.includes(C.SKINS[i - 1].id), afford = save.scrap >= k.cost;
     const cls = has ? (cur === k.id ? 'on' : '') : (prevOk && afford ? 'buy' : 'locked');
     const label = has ? k.name : prevOk ? money(k.cost) : '🔒';
@@ -683,6 +702,8 @@ $('char-grid').addEventListener('click', e => {
   const sk = e.target.closest('[data-skinchar]');
   if (sk) {
     const cid = sk.dataset.skinchar, id = sk.dataset.skin, owned = save.skins[cid] || (save.skins[cid] = []);
+    const spec = C.SKINS.find(k => k.id === id && k.special);
+    if (spec) { if (save.bossKills > 0) { save.skinSel[cid] = id; writeSave(save); sfx('unlock'); openChars(); } else sfx('deny'); return; }
     if (!id || owned.includes(id)) { save.skinSel[cid] = id; writeSave(save); sfx('click'); openChars(); return; }
     const i = C.SKINS.findIndex(k => k.id === id), k = C.SKINS[i];
     if ((i > 0 && !owned.includes(C.SKINS[i - 1].id)) || save.scrap < k.cost) { sfx('deny'); return; }
@@ -781,7 +802,7 @@ function showResults(s) {
   writeSave(save);
   setIntensity(0);
   const mins = Math.floor(s.time / 60), secs = Math.floor(s.time % 60);
-  const mutNames = s.muts.map(id => { const m = C.MUTATIONS.find(x => x.id === id); return m ? m.icon + ' ' + m.name : id; });
+  const mutNames = s.muts.map(id => { const m = C.MUTATIONS.find(x => x.id === id) || C.BOOSTS.find(x => x.id === id); return m ? m.icon + ' ' + m.name : id; });
   const worlds = mapDef(s.map).worlds;
   // Neu freischaltbar?
   const unlockables = C.CHARACTERS.filter(c => !save.unlockedChars.includes(c.id) && reqMet(c.req) && save.chaos >= c.cost);
@@ -836,11 +857,24 @@ function showMutation(w, choices) {
   $('mut-title').textContent = game.worlds[w].name.toUpperCase() + ' ERREICHT!';
   const evo = game.char.colors ? `${game.char.name} wird stärker!` : `Grumpf evolviert zum ${C.EVOLUTION[Math.min(w, 7)].name}!`;
   $('mut-evo').textContent = '🧬 ' + evo;
+  // Sicherheitsnetz: nie ohne Auswahl hängen bleiben
+  if (!choices || !choices.length) { game.chooseMutation(null); lastT = performance.now(); showBanner(game.worlds[game.world].name.toUpperCase()); return; }
   $('mut-cards').innerHTML = choices.map(m => `<button class="mut-card" data-mut="${m.id}"><div class="ic">${m.icon}</div><b>${m.name}</b><span>${m.desc}</span></button>`).join('');
   show('screen-mutation');
+  // nach 10 s automatisch eine zufällige Karte wählen
+  clearInterval(showMutation.timer);
+  let left = 10;
+  const tick = () => { const el = $('mut-auto'); if (el) el.textContent = `Automatische Wahl in ${left} s`; };
+  tick();
+  showMutation.timer = setInterval(() => {
+    if (current !== 'screen-mutation' || game.state !== 'mutation') { clearInterval(showMutation.timer); return; }
+    left--; tick();
+    if (left <= 0) { clearInterval(showMutation.timer); const cards = $('mut-cards').querySelectorAll('[data-mut]'); cards[Math.floor(Math.random() * cards.length)].click(); }
+  }, 1000);
 }
 $('mut-cards').addEventListener('click', e => {
   const b = e.target.closest('[data-mut]'); if (!b) return;
+  clearInterval(showMutation.timer);
   sfx('buy');
   game.chooseMutation(b.dataset.mut);
   renderMuts();
@@ -849,7 +883,10 @@ $('mut-cards').addEventListener('click', e => {
   showBanner(game.worlds[game.world].name.toUpperCase());
 });
 function renderMuts() {
-  $('hud-muts').innerHTML = game.muts.map(id => { const m = C.MUTATIONS.find(x => x.id === id); return `<span title="${esc(m.name)}: ${esc(m.desc)}">${m.icon}</span>`; }).join('');
+  // Mutationen einzeln, stapelbare Verstärkungen zusammengefasst (×N)
+  const seen = {};
+  for (const id of game.muts) seen[id] = (seen[id] || 0) + 1;
+  $('hud-muts').innerHTML = Object.entries(seen).map(([id, n]) => { const m = C.MUTATIONS.find(x => x.id === id) || C.BOOSTS.find(x => x.id === id); if (!m) return ''; return `<span title="${esc(m.name)}: ${esc(m.desc)}">${m.icon}${n > 1 ? '<small>×' + n + '</small>' : ''}</span>`; }).join('');
 }
 function showBanner(text) {
   const b = $('banner');
