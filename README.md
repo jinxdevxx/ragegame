@@ -8,7 +8,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Cheat-/Testversion:** https://jinxdevxx.github.io/ragegame-cheat/ (getrennter Speicher, Cheat-Menü per 🛠 oder Taste ^)
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.8.8 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.8.9 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -186,6 +186,12 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.8.9 Direkt zu ZORNOS
+- **Nutzer:** Wer ZORNOS einmal gesehen hat (Welt 50 erreicht, aber verloren), soll ihn schneller wieder probieren können, ohne durch alle Karten zu rushen.
+- **Umsetzung:** `game.start({ bossRush: true })` startet in Welt 50 (Radius = Mindestgröße ×1,02) mit 49 zufälligen Mutationen (wie Auto-Wahl auf dem Weg). Freischaltung: `bestWorld ≥ 49` oder Boss besiegt, nur auf 50-Welten-Karten. Knopf im Hauptmenü und im Ergebnis; „Nochmal!“ wiederholt den letzten Modus.
+- **Balance:** `tools/boss-check.js … rush`: Profil 80 % ~50 s (3/4 Siege), 90 % ~30 s, max ~34 s – gleich wie nach normalem Weg (60 / 35 / 30 s). Gegen Farmen: ◆ ×0,4 (`C.BOSS.rush.dmMult`), kein Einfluss auf `cycleBest` (Urknall-Bonus, sonst nach Urknall mit schwachen Upgrades ausnutzbar), Monster-EP ohne Welt-Anteil.
+- **Tests:** 6 neue Logik-Checks + Browser-Test (Knopf versteckt → nach Welt 50 sichtbar → startet Bosskampf); Menü passt bei 1280×720, 1440×900, 390×844, 844×390 ohne Scrollen.
+
 ### 2026-11-26: v0.8.8 Flüssig durch alle Welten
 - **Nutzer:** Performance im normalen Spiel verbessern (Hänger beim Wachsen/Welt-Wechsel).
 - **Messwerkzeug korrigiert:** `tools/perf420.cjs` wählte Mutationen direkt im Code – dabei blieb das Mutationsfenster (Unschärfe-Hintergrund) über dem Spiel stehen und verfälschte alle Hauptkarten-Messungen (scheinbar 22–35 FPS). Jetzt mit 🎲 Auto-Mutation; zeigt zusätzlich sichtbare Fenster, Auflösungsstufe und jedes lange Bild mit Welt.
@@ -344,6 +350,9 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.8.9: Direkt zu ZORNOS (2026-11-26)
+- Nach Welt 50 einmal erreicht: Boss direkt nochmal herausfordern
 
 ### v0.8.8: Flüssig durch alle Welten (2026-11-26)
 - Hänger beim Welt-Wechsel (Banner) und beim Wachsen (Boden) beseitigt

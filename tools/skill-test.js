@@ -447,5 +447,23 @@ console.log('\nEndboss ZORNOS (Welt 50):');
   check('Sieg gibt Dunkle Materie', save.darkMatter >= C.BOSS.rewardDM);
 }
 
+console.log('\nAbkürzung „Direkt zu ZORNOS“:');
+{
+  const save = defaultSave(); C.UPGRADES.forEach(u => save.upgrades[u.id] = Math.min(u.max, 200)); save.bestWorld = C.BOSS.world; save.cycleBest = 3;
+  const g = new Game(save, {}); g.vw = 1280; g.vh = 720;
+  g.start({ bossRush: true });
+  check('Start direkt in Welt 50', g.world === C.BOSS.world, g.worlds[g.world].name);
+  check('49 Mutationen wie auf dem normalen Weg', g.muts.length >= C.BOSS.world, `${g.muts.length}`);
+  for (let t = 0; t < 0.2; t += DT) g.update(DT, input());
+  check('ZORNOS erscheint sofort', !!g.boss);
+  g.bossHurt(1e9); const dm0 = save.darkMatter || 0;
+  g.p.rage = 0; g.die(); g.dyingT = 0; g.update(DT, input());
+  const dm = (save.darkMatter || 0) - dm0;
+  check('Sieg über Abkürzung: weniger ◆ (kein Farm-Exploit)', dm === Math.round(C.BOSS.rewardDM * C.BOSS.rush.dmMult), `+${dm} ◆`);
+  check('Abkürzung zählt nicht für den Urknall-Bonus', save.cycleBest === 3, `cycleBest ${save.cycleBest}`);
+  const g2 = new Game(save, {}); g2.vw = 1280; g2.vh = 720; save.selectedMap = '420'; g2.start({ bossRush: true });
+  check('Auf Karte 420 keine Abkürzung', !g2.bossRush); save.selectedMap = 'suburb';
+}
+
 console.log(`\n${passes} bestanden, ${fails} fehlgeschlagen`);
 process.exit(fails ? 1 : 0);

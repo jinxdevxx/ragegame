@@ -1,10 +1,10 @@
 // Boss-Analyse: Bot kämpft gegen ZORNOS (Welt 50) und protokolliert Schaden, Größe, Treffer.
-// Aufruf: node tools/boss-check.js [profil: low|mid|end] [runs] [eatFirst=1: erst Objekte fressen]
+// Aufruf: node tools/boss-check.js [profil: low|mid|end|0..1] [runs] [1=erst fressen | nat=normaler Run bis Welt 50 | rush=Abkürzung „Direkt zu ZORNOS“]
 import * as C from '../js/config.js';
 import { Game } from '../js/game.js';
 import { defaultSave } from '../js/save.js';
 import { bot } from './balance-sim.js';
-const prof = process.argv[2] || 'mid', N = Number(process.argv[3] || 3), EAT = process.argv[4] === '1', NAT = process.argv[4] === 'nat', SKILL = Number(process.env.SKILL ?? 1);
+const prof = process.argv[2] || 'mid', N = Number(process.argv[3] || 3), EAT = process.argv[4] === '1', NAT = process.argv[4] === 'nat', RUSH = process.argv[4] === 'rush', SKILL = Number(process.env.SKILL ?? 1);
 const DT = 1 / 30;
 function mkSave() {
   const s = defaultSave(); s.selectedChar = 'grumpf';
@@ -33,7 +33,7 @@ for (let i = 0; i < N; i++) {
   let res = null;
   const g = new Game(mkSave(), { onWorld: (w, ch) => g.chooseMutation(ch[0] && ch[0].id), onEnd: s => { res = s; } });
   g.vw = 1280; g.vh = 720;
-  if (NAT) g.start(); else g.start({ radius: C.MAPS[0].worlds[49].minRadius * 1.02 });
+  if (RUSH) g.start({ bossRush: true }); else if (NAT) g.start(); else g.start({ radius: C.MAPS[0].worlds[49].minRadius * 1.02 });
   g.eatUntil = 40;
   let lost = 0, lastRage = g.p.rage, t0 = null, log = [], maxHit = 0, nObj = 0, samples = 0;
   for (let s = 0; s < 30 * 600 && !res; s++) {

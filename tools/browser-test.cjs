@@ -203,6 +203,17 @@ const OUT = process.argv[2] || '/tmp';
   await p.screenshot({ path: OUT + '/boss.png' });
   await p.close();
 
+  // 😈 Direkt zu ZORNOS: erst sichtbar, wenn Welt 50 erreicht wurde; startet direkt den Bosskampf
+  p = await page('?slot=1');
+  const br0 = await p.evaluate(() => document.getElementById('btn-bossrush').hidden);
+  await p.evaluate(() => { const s = window.__rv.save; s.bestWorld = 49; s.runs = Math.max(1, s.runs || 0); document.getElementById('btn-maps').click(); });
+  await p.waitForTimeout(300); await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+  const br1 = await p.evaluate(() => !document.getElementById('btn-bossrush').hidden);
+  await click(p, '#btn-bossrush'); await p.waitForTimeout(1500);
+  const br2 = await p.evaluate(() => ({ w: window.__rv.game.world, boss: !!window.__rv.game.boss, bar: !document.getElementById('boss-bar').hidden }));
+  log('😈 Direkt zu ZORNOS: versteckt → nach Welt 50 sichtbar → startet Bosskampf', br0 && br1 && br2.w === 49 && br2.boss && br2.bar, JSON.stringify(br2));
+  await p.close();
+
   // Monster-Auswahl zeigt Skills
   p = await page('?slot=1&unlock=1');
   await click(p, '#btn-chars'); await p.waitForTimeout(800);
