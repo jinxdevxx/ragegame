@@ -5,7 +5,7 @@
 // =====================================================================
 import { SPRITES, OUT } from './sprites.js?v=0.3.0';
 import { drawMonster } from './monster.js?v=0.3.0';
-import { shadeHex as sh } from './game.js?v=0.3.0';
+import { shadeHex as sh, shadeHex } from './game.js?v=0.3.0';
 
 const TAU = Math.PI * 2;
 const STARS = Array.from({ length: 220 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() * 1.8 + 0.4, p: Math.random() * 0.6 + 0.1, tw: Math.random() * 6 }));
@@ -313,6 +313,31 @@ const GROUNDS = {
         for (let i = 0; i < 5; i++) { const a = i * 1.3; c.moveTo(sx(x) + dx + Math.cos(a) * r * 0.7 + r * 0.55, sy(y) + dy + Math.sin(a) * r * 0.3); c.arc(sx(x) + dx + Math.cos(a) * r * 0.7, sy(y) + dy + Math.sin(a) * r * 0.3, r * 0.55, 0, TAU); }
         c.fill();
       }
+    });
+  },
+
+  // ---------------- Dimensionen: fremde Landschaften in den Farben der Welt, mit Sternen
+  dimension(k) {
+    const { c, sx, sy, z, v, S, world, time } = k, pal = world.pal || [world.bg, world.bg2, world.accent, world.bg2, world.accent, '#ffffff'];
+    drawSpace(c, k.g, k.W, k.H, z, world, time);
+    cached(k, 'dim', kk => {
+      terrain(kk, S * 10, 70 + (world.minRadius % 97), [
+        { t: 0.46, color: pal[3], rim: shadeHex(pal[3], -0.35) },
+        { t: 0.58, color: pal[4], rim: shadeHex(pal[4], -0.35) },
+        { t: 0.7, color: pal[5], rim: shadeHex(pal[5], -0.3) },
+        { t: 0.0, t2: 0.22, color: shadeHex(pal[2], -0.2), rim: shadeHex(pal[2], -0.5) },
+      ]);
+      // schwebende Splitter auf den Inseln
+      const C = S * 2.2;
+      if (C * kk.z > 12) cells(kk.v, C, (ix, iy) => {
+        if (hash(ix, iy, 77) > 0.18) return;
+        const x = (ix + hash(ix, iy, 78)) * C, y = (iy + hash(iy, ix, 79)) * C;
+        if (fbm(x / (S * 10), y / (S * 10), 70 + (world.minRadius % 97)) < 0.5) return;
+        const X = kk.sx(x), Y = kk.sy(y), u = S * kk.z * 0.35;
+        kk.c.fillStyle = 'rgba(0,0,0,0.2)'; kk.c.beginPath(); kk.c.ellipse(X + u * 0.3, Y + u * 0.5, u * 0.8, u * 0.4, 0, 0, TAU); kk.c.fill();
+        kk.c.fillStyle = pal[2]; kk.c.beginPath(); kk.c.moveTo(X, Y - u * 1.4); kk.c.lineTo(X + u * 0.5, Y); kk.c.lineTo(X, Y + u * 0.4); kk.c.lineTo(X - u * 0.5, Y); kk.c.closePath(); kk.c.fill();
+        kk.c.fillStyle = 'rgba(255,255,255,0.45)'; kk.c.beginPath(); kk.c.moveTo(X, Y - u * 1.4); kk.c.lineTo(X - u * 0.5, Y); kk.c.lineTo(X, Y); kk.c.closePath(); kk.c.fill();
+      });
     });
   },
 

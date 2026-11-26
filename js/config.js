@@ -17,6 +17,7 @@ export const PLAYER = {
   breakRatio: 1.05,       // Objekte bis zu (Radius × breakRatio) sind zerstörbar
   crumbRatio: 0.35,       // Objekte unter (Radius × crumbRatio) zerbröseln sofort bei Berührung
   absorb: 0.17,           // Anteil der Objekt-Masse, die man beim Zerstören aufnimmt
+  maxGrowPerKill: 0.05,   // höchstens so viel Masse-Zuwachs pro Zerstörung (verhindert „alles wird babyklein“)
   rageMax: 100,
   rageDrain: 8,           // Wut-Verlust pro Sekunde
   rageDrainGrowth: 0.03,  // Drain steigt pro Sekunde Laufzeit um diesen Anteil (Druck steigt)
@@ -45,6 +46,7 @@ export const BERSERK = {
   breakBoost: 1.6,     // zerstört bis 160 % der eigenen Größe
   damageMult: 3,
   speedMult: 1.2,
+  cooldown: 8,         // Sekunden nach dem Berserker, in denen sich die Leiste nicht füllt
 };
 
 export const GOLDEN_CHANCE = 0.025;  // Chance auf goldenes Objekt
@@ -55,9 +57,12 @@ export const SCRAP_SCALE = 0.12;      // globaler Schrott-Faktor
 
 // Jede Welt ist härter als die davor (Faktor pro Welt-Stufe):
 export const WORLD_SCALING = {
-  hp: 2.5,         // Objekte halten mehr aus  → Wucht-Upgrades werden wichtig
-  absorb: 0.62,    // man wächst langsamer     → Hunger-Upgrades werden wichtig
-  rageDrain: 1.14, // Wut sinkt schneller      → Wut-Upgrades werden wichtig
+  // frühe Welten (bis Galaxie) steigen stärker an, danach gleichmäßig bis Welt 50+
+  early: 8,
+  hp: 1.95,        hpEarly: 2.6,       // Objekte halten mehr aus  → Wucht-Upgrades werden wichtig
+  absorb: 0.8,     absorbEarly: 0.7,   // man wächst langsamer     → Hunger-Upgrades werden wichtig
+  rageDrain: 1.08, rageDrainEarly: 1.12, // Wut sinkt schneller    → Wut-Upgrades werden wichtig
+  lateRunAfter: 150, // ab so vielen Sekunden steigt der Wut-Verlust immer schneller (Runs bleiben kurz)
 };
 
 // ☠ Chaos: zweite Währung, nur durch Zerstörung – schaltet Monster frei
@@ -275,16 +280,149 @@ export const WORLDS = [
 ];
 
 // ---------------------------------------------------------------------
+// DIMENSIONEN: Welt 12–50, nach dem Multiversum geht es weiter.
+// Jede Dimension: Name, Farben (bg, bg2, accent, 3 Geländefarben), Boden,
+// Evolutionsname und 8 Objekte (Name, Form, Farbe). Größen & Werte werden
+// automatisch passend zur Welt berechnet.
+//   * = explodiert, ! = Hindernis (wandert), ~ = flieht
+// ---------------------------------------------------------------------
+const DIMENSIONS = [
+  ['Kristallreich', ['#0d1a3a', '#1a3a6a', '#7fffff', '#2a5a9a', '#5ad0ff', '#d0ffff'], 'dimension', 'Kristallfresser',
+    [['Kristallsplitter', 'crystal', '#7fffff'], ['Glitzerkomet', 'comet', '#d0ffff'], ['~Kristallwurm', 'crystal', '#b06bff'], ['Kristallmond', 'planet', '#a0e0ff'], ['*Prismabombe', 'star', '#ffffff'], ['!Kristallwächter', 'eye', '#7fffff'], ['Kristallsonne', 'crystal', '#5ad0ff'], ['Diamantplanet', 'ringplanet', '#e0ffff']]],
+  ['Lavadimension', ['#2a0a06', '#5a1408', '#ff8a2a', '#7a2a10', '#ff5a1f', '#ffd23f'], 'dimension', 'Magmakönig',
+    [['Glutbrocken', 'rock', '#ff6a1f'], ['Feuerkomet', 'comet', '#ffb13d'], ['~Lavageist', 'nebula', '#ff5a1f'], ['Magmaplanet', 'planet', '#e0642a'], ['*Lavasonne', 'star', '#ff8a2a'], ['!Flammenauge', 'eye', '#ff3b2f'], ['Feuerportal', 'portal', '#ff8a2a'], ['Höllenstern', 'star', '#ff3b2f']]],
+  ['Eiswüste der Ewigkeit', ['#0a1a2a', '#2a4a6a', '#e0f4ff', '#6a9aba', '#bfe4ff', '#ffffff'], 'dimension', 'Frostgigant',
+    [['Eisbrocken', 'rock', '#cfeaf7'], ['Frostkomet', 'comet', '#e0f4ff'], ['~Schneegeist', 'nebula', '#ffffff'], ['Eismond', 'planet', '#9fe3ff'], ['*Kältebombe', 'star', '#bfe4ff'], ['!Frostwächter', 'eye', '#9fe3ff'], ['Gletscherwelt', 'ringplanet', '#cfeaf7'], ['Eiskristall', 'crystal', '#ffffff']]],
+  ['Pilz-Kosmos', ['#1a0a2a', '#3a1a4a', '#ff6fa8', '#5a2a6a', '#a04aa0', '#ffd23f'], 'dimension', 'Sporenschlund',
+    [['Sporenwolke', 'nebula', '#c38bff'], ['Leuchtpilz', 'mushroom', '#ff6fa8'], ['~Pilzling', 'gummy', '#ffb3d9'], ['Pilzplanet', 'planet', '#a04aa0'], ['*Sporenbombe', 'star', '#a0f04a'], ['!Riesenpilz-Auge', 'eye', '#ff6fa8'], ['Myzelnetz', 'cluster', '#ffd23f'], ['Pilzgalaxie', 'galaxy', '#ff6fa8']]],
+  ['Neon-Matrix', ['#05050f', '#0a1a2a', '#00ffcc', '#0a3a3a', '#00aaff', '#ff00aa'], 'dimension', 'Netzfresser',
+    [['Datenwürfel', 'crate', '#00ffcc'], ['Pixelkomet', 'comet', '#00aaff'], ['~Virus', 'ufo', '#ff00aa'], ['Serverplanet', 'station', '#00ffcc'], ['*Logikbombe', 'star', '#ff00aa'], ['!Firewall-Auge', 'eye', '#00aaff'], ['Neon-Portal', 'portal', '#00ffcc'], ['Datenstern', 'star', '#00aaff']]],
+  ['Schattenreich', ['#05030a', '#140a1a', '#8a4aff', '#1a0f2a', '#2a1a4a', '#5a3a8a'], 'dimension', 'Schattenfürst',
+    [['Schattenfetzen', 'nebula', '#3a2a5a'], ['Dunkler Komet', 'comet', '#5a3a8a'], ['~Schemen', 'ufo', '#8a4aff'], ['Nachtplanet', 'planet', '#2a1a4a'], ['*Leerenbombe', 'blackhole', '#000000'], ['!Schattenauge', 'eye', '#8a4aff'], ['Schattentor', 'portal', '#5a3a8a'], ['Schwarze Sonne', 'blackhole', '#000000']]],
+  ['Uhrwerk-Dimension', ['#2a1a0a', '#4a3010', '#ffd23f', '#6a4a1a', '#b8860b', '#e0c070'], 'dimension', 'Zahnradtitan',
+    [['Zahnrad', 'station', '#b8860b'], ['Messingkomet', 'comet', '#e0c070'], ['~Uhrwerkkäfer', 'ufo', '#ffd23f'], ['Uhrenplanet', 'ringplanet', '#e0c070'], ['*Dampfkessel', 'gastank', '#b8860b'], ['!Pendelauge', 'eye', '#ffd23f'], ['Zeitportal', 'portal', '#e0c070'], ['Großes Uhrwerk', 'galaxy', '#ffd23f']]],
+  ['Zuckerkosmos', ['#2a0a1a', '#5a1a3a', '#ff9ad0', '#8a3a6a', '#ff8ad0', '#ffffff'], 'dimension', 'Zuckerschock',
+    [['Sternbonbon', 'candy', '#7fd3ff'], ['Lolli-Komet', 'comet', '#ff9ad0'], ['~Gummigalaxie', 'gummy', '#ff4a5a'], ['Donutplanet', 'donut', '#ff8ad0'], ['*Brausestern', 'star', '#a0f04a'], ['!Zuckerauge', 'eye', '#ff9ad0'], ['Tortenwelt', 'cake', '#ffd6ea'], ['Zuckergalaxie', 'galaxy', '#ff9ad0']]],
+  ['Drachenhort', ['#1a0a0a', '#3a1414', '#ffd23f', '#5a2a1a', '#8a4a2a', '#ffb13d'], 'dimension', 'Drachenkaiser',
+    [['Goldschatz', 'crate', '#ffd23f'], ['Drachenei', 'planet', '#c96f3a'], ['~Jungdrache', 'ufo', '#e8432e'], ['Hortplanet', 'ringplanet', '#ffd23f'], ['*Feueratem', 'star', '#ff6a1f'], ['!Drachenauge', 'eye', '#ffd23f'], ['Drachenportal', 'portal', '#ff6a1f'], ['Goldberg', 'mountain', '#ffd23f']]],
+  ['Sternenschmiede', ['#0a0a1a', '#1a1a3a', '#ffb13d', '#3a2a1a', '#ff8a2a', '#ffd23f'], 'space', 'Sternenschmied',
+    [['Sternenamboss', 'station', '#8a8d96'], ['Funkenkomet', 'comet', '#ffd23f'], ['~Schmiedegeist', 'nebula', '#ffb13d'], ['Rohstern', 'star', '#ff8a2a'], ['*Supernova', 'star', '#ffffff'], ['!Hammerwächter', 'eye', '#ffb13d'], ['Sternenesse', 'portal', '#ff6a1f'], ['Neugeborene Galaxie', 'galaxy', '#ffd23f']]],
+  ['Gedankenmeer', ['#0a1a2a', '#1a2a4a', '#c38bff', '#2a3a6a', '#6a6adf', '#e0d0ff'], 'dimension', 'Gedankenfresser',
+    [['Gedankenblase', 'planet', '#c38bff'], ['Ideenkomet', 'comet', '#e0d0ff'], ['~Erinnerung', 'nebula', '#6a6adf'], ['Traumplanet', 'ringplanet', '#c38bff'], ['*Geistesblitz', 'star', '#ffffff'], ['!Allsehendes Auge', 'eye', '#c38bff'], ['Bewusstseinsportal', 'portal', '#e0d0ff'], ['Gedankengalaxie', 'galaxy', '#c38bff']]],
+  ['Kristallkern', ['#050f1a', '#0a2a3a', '#7fffe0', '#1a4a5a', '#3ad9b0', '#e0fff8'], 'dimension', 'Kernbrecher',
+    [['Kernsplitter', 'crystal', '#3ad9b0'], ['Kristallregen', 'comet', '#7fffe0'], ['~Kristallgeist', 'nebula', '#7fffe0'], ['Kernplanet', 'planet', '#3ad9b0'], ['*Kristallnova', 'star', '#e0fff8'], ['!Kernwächter', 'eye', '#3ad9b0'], ['Kristallportal', 'portal', '#7fffe0'], ['Kristallherz', 'crystal', '#e0fff8']]],
+  ['Glitch-Zone', ['#0a0a0a', '#1a0a1a', '#ff00ff', '#2a0a2a', '#00ffff', '#ffff00'], 'dimension', 'Fehlerkönig',
+    [['Glitch-Block', 'crate', '#ff00ff'], ['Bug-Komet', 'comet', '#00ffff'], ['~Fehlerpixel', 'ufo', '#ffff00'], ['Absturzplanet', 'planet', '#ff00ff'], ['*Systemabsturz', 'star', '#00ffff'], ['!Debug-Auge', 'eye', '#ff00ff'], ['Fehlerportal', 'portal', '#ffff00'], ['Bluescreen-Galaxie', 'galaxy', '#3a5aff']]],
+  ['Dunkle Sonne', ['#0a0505', '#2a0a0a', '#ff3b2f', '#3a0a0a', '#8a1a1a', '#ff6a3d'], 'space', 'Sonnenverschlinger',
+    [['Schattenflamme', 'nebula', '#8a1a1a'], ['Glutkomet', 'comet', '#ff6a3d'], ['~Sonnengeist', 'ufo', '#ff3b2f'], ['Rotglutplanet', 'planet', '#8a1a1a'], ['*Sonnenausbruch', 'star', '#ff3b2f'], ['!Korona-Auge', 'eye', '#ff6a3d'], ['Sonnentor', 'portal', '#ff3b2f'], ['Dunkle Sonne', 'blackhole', '#000000']]],
+  ['Götterberg', ['#1a1a2a', '#3a3a5a', '#ffd23f', '#6a6a8a', '#b8b8d8', '#ffffff'], 'dimension', 'Götterstürmer',
+    [['Tempelsäule', 'tower', '#e0d6c4'], ['Goldkomet', 'comet', '#ffd23f'], ['~Halbgott', 'ufo', '#ffd23f'], ['Olymp', 'mountain', '#b8b8d8'], ['*Blitzschlag', 'star', '#ffffff'], ['!Götterauge', 'eye', '#ffd23f'], ['Himmelstor', 'portal', '#ffffff'], ['Götterthron', 'ringplanet', '#ffd23f']]],
+  ['Ätherfeld', ['#0a1a1a', '#1a3a3a', '#a0ffe0', '#2a5a5a', '#5ab0a0', '#e0fff0'], 'dimension', 'Äthertänzer',
+    [['Ätherblase', 'planet', '#a0ffe0'], ['Ätherkomet', 'comet', '#e0fff0'], ['~Irrlicht', 'nebula', '#a0ffe0'], ['Schwebewelt', 'island', '#5ab0a0'], ['*Ätherfunke', 'star', '#ffffff'], ['!Ätherauge', 'eye', '#a0ffe0'], ['Ätherportal', 'portal', '#5ab0a0'], ['Äthergalaxie', 'galaxy', '#a0ffe0']]],
+  ['Weltenbaum', ['#0a1a0a', '#1a3a1a', '#7fe07f', '#2a5a2a', '#4f9e4a', '#c9f0a0'], 'dimension', 'Wurzelreißer',
+    [['Weltenblatt', 'flower', '#7fe07f'], ['Samenkomet', 'comet', '#c9f0a0'], ['~Waldgeist', 'nebula', '#4f9e4a'], ['Fruchtplanet', 'planet', '#ff6a3d'], ['*Saftbombe', 'star', '#c9f0a0'], ['!Baumauge', 'eye', '#7fe07f'], ['Astportal', 'portal', '#4f9e4a'], ['Weltenbaum', 'forest', '#2a7a44']]],
+  ['Plasmaozean', ['#05051a', '#0a1a4a', '#5ad0ff', '#1a3a8a', '#3a6aff', '#c0f0ff'], 'dimension', 'Plasmahai',
+    [['Plasmatropfen', 'planet', '#5ad0ff'], ['Plasmawelle', 'comet', '#c0f0ff'], ['~Plasmaqualle', 'nebula', '#3a6aff'], ['Plasmainsel', 'island', '#5ad0ff'], ['*Plasmaentladung', 'star', '#c0f0ff'], ['!Tiefseeauge', 'eye', '#5ad0ff'], ['Strudelportal', 'portal', '#3a6aff'], ['Plasmagalaxie', 'galaxy', '#5ad0ff']]],
+  ['Zeitwirbel', ['#1a1505', '#3a2a0a', '#ffe07f', '#5a4a1a', '#b8a050', '#fff0c0'], 'dimension', 'Zeitfresser',
+    [['Zeitsplitter', 'crystal', '#ffe07f'], ['Sanduhr-Komet', 'comet', '#fff0c0'], ['~Gestern', 'nebula', '#b8a050'], ['Morgenplanet', 'planet', '#ffe07f'], ['*Zeitbombe', 'dynamite', '#ff3b2f'], ['!Chronos-Auge', 'eye', '#ffe07f'], ['Zeittor', 'portal', '#fff0c0'], ['Ewigkeitsspirale', 'galaxy', '#ffe07f']]],
+  ['Traumebene', ['#1a0a2a', '#3a1a5a', '#ffb3f0', '#5a3a8a', '#a06adf', '#ffe0ff'], 'dimension', 'Albtraum',
+    [['Traumwolke', 'cotton', '#ffb3f0'], ['Sternschnuppe', 'comet', '#ffe0ff'], ['~Schäfchen', 'goat', '#ffffff'], ['Traumplanet', 'ringplanet', '#ffb3f0'], ['*Albtraumbombe', 'star', '#a06adf'], ['!Traumfänger-Auge', 'eye', '#ffb3f0'], ['Schlafportal', 'portal', '#a06adf'], ['Traumgalaxie', 'galaxy', '#ffb3f0']]],
+  ['Chaoskern', ['#1a0505', '#3a0a14', '#ff3b2f', '#5a1a2a', '#c38bff', '#ffd23f'], 'dimension', 'Chaosherz',
+    [['Chaossplitter', 'crystal', '#ff3b2f'], ['Wirbelkomet', 'comet', '#c38bff'], ['~Chaosgeist', 'ufo', '#ffd23f'], ['Chaosplanet', 'planet', '#c38bff'], ['*Chaosbombe', 'star', '#ff3b2f'], ['!Chaosauge', 'eye', '#ff3b2f'], ['Chaostor', 'portal', '#c38bff'], ['Chaosgalaxie', 'galaxy', '#ff3b2f']]],
+  ['Spiegelwelt', ['#0f0f1a', '#2a2a3a', '#e0e8ff', '#4a4a6a', '#9aa0c0', '#ffffff'], 'dimension', 'Spiegelbrecher',
+    [['Spiegelscherbe', 'crystal', '#e0e8ff'], ['Lichtkomet', 'comet', '#ffffff'], ['~Spiegelbild', 'ufo', '#9aa0c0'], ['Spiegelplanet', 'planet', '#e0e8ff'], ['*Lichtblitz', 'star', '#ffffff'], ['!Spiegelauge', 'eye', '#e0e8ff'], ['Spiegeltor', 'portal', '#9aa0c0'], ['Spiegelgalaxie', 'galaxy', '#e0e8ff']]],
+  ['Schwarzer Garten', ['#050a05', '#0a1a0a', '#a0ff7f', '#1a2a1a', '#2a4a2a', '#5a8a3a'], 'dimension', 'Unkrautgott',
+    [['Dornenranke', 'bush', '#2a4a2a'], ['Sporenkomet', 'comet', '#a0ff7f'], ['~Giftfalter', 'ufo', '#a0ff7f'], ['Fleischblume', 'flower', '#8a1a3a'], ['*Giftbombe', 'star', '#a0ff7f'], ['!Dornenauge', 'eye', '#5a8a3a'], ['Wurzeltor', 'portal', '#2a4a2a'], ['Schwarze Rose', 'flower', '#1a0a14']]],
+  ['Prismenwüste', ['#1a1a0a', '#3a3a1a', '#ff9a3d', '#6a5a2a', '#e0c070', '#ffffff'], 'dimension', 'Prismenfresser',
+    [['Prisma', 'crystal', '#ff9a3d'], ['Regenbogenkomet', 'comet', '#7fd3ff'], ['~Lichtwurm', 'snake', '#ffd23f'], ['Sanddüne', 'island', '#e0c070'], ['*Lichtbombe', 'star', '#ffffff'], ['!Prismenauge', 'eye', '#ff9a3d'], ['Lichttor', 'portal', '#7fd3ff'], ['Prismenstern', 'star', '#ff9a3d']]],
+  ['Titanenschmiede', ['#1a0f0a', '#3a1f14', '#ff6a1f', '#5a3a2a', '#8a8d96', '#ffb13d'], 'dimension', 'Titanenbrecher',
+    [['Titanbolzen', 'rock', '#8a8d96'], ['Schlackekomet', 'comet', '#ffb13d'], ['~Golemschmied', 'ufo', '#ff6a1f'], ['Ambossplanet', 'planet', '#5a5d66'], ['*Schmelzofen', 'gastank', '#ff6a1f'], ['!Titanenauge', 'eye', '#ff6a1f'], ['Schmiedetor', 'portal', '#ffb13d'], ['Titanenrüstung', 'station', '#8a8d96']]],
+  ['Leere zwischen den Welten', ['#000000', '#05050a', '#ffffff', '#0a0a14', '#14141f', '#2a2a3a'], 'space', 'Leerenwandler',
+    [['Nichts-Splitter', 'crystal', '#2a2a3a'], ['Geisterkomet', 'comet', '#ffffff'], ['~Leerengeist', 'nebula', '#14141f'], ['Verlorene Welt', 'planet', '#3a3a4a'], ['*Leerenriss', 'blackhole', '#000000'], ['!Auge der Leere', 'eye', '#ffffff'], ['Weltenriss', 'portal', '#2a2a3a'], ['Vergessene Galaxie', 'galaxy', '#3a3a4a']]],
+  ['Feuerhimmel', ['#2a0a00', '#5a1a00', '#ffd23f', '#8a3a0a', '#ff8a2a', '#ffe07f'], 'dimension', 'Himmelsbrand',
+    [['Feuerwolke', 'cotton', '#ff8a2a'], ['Phönixfeder', 'comet', '#ffd23f'], ['~Feuervogel', 'bird', '#ff6a1f'], ['Brennender Mond', 'planet', '#ff8a2a'], ['*Himmelsfeuer', 'star', '#ffe07f'], ['!Glutauge', 'eye', '#ffd23f'], ['Flammentor', 'portal', '#ff6a1f'], ['Feuergalaxie', 'galaxy', '#ff8a2a']]],
+  ['Engelsruine', ['#1a1a1f', '#3a3a44', '#fff8d0', '#6a6a7a', '#c0c0d0', '#ffffff'], 'dimension', 'Gefallener',
+    [['Säulenrest', 'tower', '#e0e0e8'], ['Federkomet', 'comet', '#ffffff'], ['~Engelsfunke', 'nebula', '#fff8d0'], ['Ruinenplanet', 'planet', '#c0c0d0'], ['*Heiligenschein', 'ringplanet', '#ffd23f'], ['!Wächterauge', 'eye', '#fff8d0'], ['Himmelspforte', 'portal', '#ffffff'], ['Engelsgalaxie', 'galaxy', '#fff8d0']]],
+  ['Höllentor', ['#1a0000', '#3a0505', '#ff3b2f', '#5a0a0a', '#8a1a0a', '#ff8a2a'], 'dimension', 'Höllenfürst',
+    [['Höllenstein', 'rock', '#5a1a1a'], ['Schwefelkomet', 'comet', '#ffd23f'], ['~Teufelchen', 'gummy', '#e8262b'], ['Höllenplanet', 'planet', '#8a1a0a'], ['*Schwefelbombe', 'star', '#ffd23f'], ['!Höllenauge', 'eye', '#ff3b2f'], ['Höllentor', 'portal', '#ff3b2f'], ['Inferno', 'star', '#ff3b2f']]],
+  ['Ursuppe', ['#0a1a0f', '#1a3a20', '#a0f04a', '#2a5a2a', '#6ab04a', '#e0ff9a'], 'dimension', 'Urzeitfresser',
+    [['Urzelle', 'planet', '#a0f04a'], ['Blubberkomet', 'comet', '#e0ff9a'], ['~Ur-Amöbe', 'nebula', '#6ab04a'], ['Ursuppen-Insel', 'island', '#6ab04a'], ['*Faulgasblase', 'star', '#a0f04a'], ['!Urauge', 'eye', '#a0f04a'], ['Lebensquelle', 'portal', '#e0ff9a'], ['Urgalaxie', 'galaxy', '#a0f04a']]],
+  ['Quantenschaum', ['#050a14', '#0a1a2a', '#7fd3ff', '#1a2a4a', '#4a6aaa', '#ffffff'], 'space', 'Quantenfresser',
+    [['Quantenblase', 'planet', '#7fd3ff'], ['Teilchenstrahl', 'comet', '#ffffff'], ['~Schrödingers Katze', 'cat', '#7fd3ff'], ['Quantenwelt', 'ringplanet', '#4a6aaa'], ['*Quantenkollaps', 'star', '#ffffff'], ['!Beobachter-Auge', 'eye', '#7fd3ff'], ['Wurmloch', 'portal', '#4a6aaa'], ['Quantengalaxie', 'galaxy', '#7fd3ff']]],
+  ['Sternengrab', ['#050505', '#141418', '#9aa0c0', '#1f1f28', '#3a3a4a', '#6a6a7a'], 'space', 'Totengräber',
+    [['Sternenasche', 'nebula', '#3a3a4a'], ['Grabkomet', 'comet', '#9aa0c0'], ['~Sternengeist', 'ufo', '#9aa0c0'], ['Tote Welt', 'planet', '#3a3a4a'], ['*Letzte Nova', 'star', '#9aa0c0'], ['!Totenauge', 'eye', '#9aa0c0'], ['Grabpforte', 'portal', '#6a6a7a'], ['Sternenfriedhof', 'cluster', '#9aa0c0']]],
+  ['Omega-Nebel', ['#0a051a', '#2a0a4a', '#ff4ab0', '#4a1a6a', '#8a3aaa', '#ffb0f0'], 'space', 'Omega',
+    [['Omega-Splitter', 'crystal', '#ff4ab0'], ['Omega-Komet', 'comet', '#ffb0f0'], ['~Nebelwesen', 'nebula', '#8a3aaa'], ['Omega-Planet', 'ringplanet', '#ff4ab0'], ['*Omega-Nova', 'star', '#ffb0f0'], ['!Omega-Auge', 'eye', '#ff4ab0'], ['Omega-Tor', 'portal', '#8a3aaa'], ['Omega-Galaxie', 'galaxy', '#ff4ab0']]],
+  ['Unendlichkeitsmeer', ['#00050f', '#001a3a', '#5ad0ff', '#002a5a', '#1a5aaa', '#c0f0ff'], 'dimension', 'Ozeanverschlinger',
+    [['Sternenperle', 'planet', '#c0f0ff'], ['Wellenkomet', 'comet', '#5ad0ff'], ['~Kosmos-Wal', 'ufo', '#1a5aaa'], ['Inselwelt', 'island', '#5ad0ff'], ['*Strudelbombe', 'blackhole', '#000000'], ['!Leviathan-Auge', 'eye', '#5ad0ff'], ['Meeresportal', 'portal', '#1a5aaa'], ['Meeresgalaxie', 'galaxy', '#5ad0ff']]],
+  ['Der Rand', ['#000000', '#0a0a0a', '#ffd23f', '#141414', '#2a2a2a', '#ffd23f'], 'space', 'Grenzbrecher',
+    [['Randsplitter', 'crystal', '#ffd23f'], ['Randkomet', 'comet', '#ffd23f'], ['~Grenzgänger', 'ufo', '#ffd23f'], ['Letzte Insel', 'island', '#2a2a2a'], ['*Randexplosion', 'star', '#ffd23f'], ['!Grenzwächter', 'eye', '#ffd23f'], ['Grenztor', 'portal', '#ffd23f'], ['Rand des Seins', 'blackhole', '#000000']]],
+  ['Jenseits', ['#f0f0ff', '#d0d0f0', '#8a6bff', '#b8b8e0', '#a0a0d0', '#ffffff'], 'dimension', 'Jenseitswandler',
+    [['Lichtsplitter', 'crystal', '#8a6bff'], ['Seelenkomet', 'comet', '#ffffff'], ['~Seele', 'nebula', '#8a6bff'], ['Jenseitsplanet', 'planet', '#d0d0f0'], ['*Erlösung', 'star', '#ffffff'], ['!Auge des Jenseits', 'eye', '#8a6bff'], ['Lichtpforte', 'portal', '#ffffff'], ['Jenseitsgalaxie', 'galaxy', '#8a6bff']]],
+  ['Schöpfungsquelle', ['#fff8e0', '#f0e0b0', '#ff8a2a', '#e0c080', '#d0a060', '#ffffff'], 'dimension', 'Schöpfungsdieb',
+    [['Urfunke', 'star', '#ffd23f'], ['Schöpfungskomet', 'comet', '#ff8a2a'], ['~Ur-Idee', 'nebula', '#ff8a2a'], ['Erste Welt', 'earth', '#3d8bd9'], ['*Big Bang', 'star', '#ffffff'], ['!Auge des Schöpfers', 'eye', '#ff8a2a'], ['Schöpfungstor', 'portal', '#ffd23f'], ['Ur-Galaxie', 'galaxy', '#ff8a2a']]],
+  ['Das Letzte Licht', ['#0a0a0a', '#1a1a14', '#fff8d0', '#2a2a20', '#4a4a3a', '#fff8d0'], 'space', 'Lichtlöscher',
+    [['Lichtrest', 'star', '#fff8d0'], ['Letzter Komet', 'comet', '#fff8d0'], ['~Glühwürmchen', 'nebula', '#fff8d0'], ['Erloschene Welt', 'planet', '#4a4a3a'], ['*Letzter Funke', 'star', '#ffffff'], ['!Letztes Auge', 'eye', '#fff8d0'], ['Ausgang', 'portal', '#fff8d0'], ['Die letzte Sonne', 'star', '#ffd23f']]],
+  ['Höllenschlund', ['#140000', '#3a0300', '#ff4a1f', '#5a0a00', '#c42a0a', '#ffb13d'], 'dimension', 'RAGE-GOTT',
+    [['Höllenglut', 'rock', '#ff4a1f'], ['Seelenkomet', 'comet', '#ffb13d'], ['~Verdammte Seele', 'nebula', '#ff6a3d'], ['Lavamond', 'planet', '#c42a0a'], ['*Schwefelsonne', 'star', '#ffd23f'], ['!Höllenwächter', 'eye', '#ff3b2f'], ['Höllentor', 'portal', '#ff4a1f'], ['Lavavulkan', 'volcano', '#3a0a05']]],
+];
+const DIM_SIZES = [0.22, 0.35, 0.55, 0.8, 1.1, 1.6, 2.4, 3.6];
+const DIM_VALUES = [1, 2, 3, 5, 7, 10, 15, 24];
+DIMENSIONS.forEach(([name, pal, ground, evo, objs], i) => {
+  const idx = 11 + i, M = 10 * Math.pow(4, idx);
+  WORLDS.push({
+    id: 'dim' + idx, name, minRadius: M, scrapMult: Math.pow(3, idx), ground,
+    bg: pal[0], bg2: pal[1], accent: pal[2], pal, evo,
+    objects: objs.map(([n, shape, color], k) => {
+      const o = { name: n.replace(/^[*!~]/, ''), size: M * DIM_SIZES[k], shape, color, value: DIM_VALUES[k] };
+      if (n[0] === '*') o.explosive = true;
+      if (n[0] === '!') { o.move = 'wander'; o.speed = 1.4; o.hazard = 22; }
+      if (n[0] === '~') { o.move = 'flee'; o.speed = 2.6; }
+      return o;
+    }),
+  });
+  // 4 zusätzliche Objekte je Dimension (Trümmer, Irrläufer, Splitter, Goldader)
+  const W = WORLDS[WORLDS.length - 1];
+  W.objects.push(
+    { name: 'Trümmerfeld', size: M * 0.28, shape: 'cluster', color: pal[4], value: 1 },
+    { name: 'Irrläufer-Mond', size: M * 0.7, shape: 'planet', color: pal[3], value: 4, move: 'drive', speed: 1.1 },
+    { name: 'Splitterkomet', size: M * 0.45, shape: 'comet', color: pal[5], value: 3, move: 'drive', speed: 2.2 },
+    { name: 'Goldader', size: M * 1.3, shape: 'crystal', color: '#ffd23f', value: 14 },
+  );
+  EVOLUTION.push({ name: evo, body: pal[2], belly: pal[5], horn: pal[4] === pal[2] ? '#ffffff' : pal[4], dark: pal[0] });
+});
+
+// ---------------------------------------------------------------------
 // Spawning
 // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// ENDBOSS in der letzten Welt (Welt 50)
+// ---------------------------------------------------------------------
+export const BOSS = {
+  world: 49,               // Index der Welt (49 = Welt 50, Höllenschlund)
+  name: 'ZORNOS',
+  title: 'der Höllenfürst',
+  sizeMult: 2.4,           // immer so viel größer als du
+  hp: 70,                  // Lebenspunkte in "Welt-Treffern" (× Welt-Härte); Ansturm/Berserker helfen enorm
+  speed: 0.45,             // Verfolgungs-Tempo relativ zu deinem Tempo
+  attackEvery: [3.2, 4.5], // Sekunden zwischen Angriffen (unter 30 % Leben 40 % schneller)
+  ringDamage: 16,          // % Wut bei Treffer durch Feuerring
+  meteorDamage: 12,        // % Wut bei Meteortreffer
+  chargeDamage: 20,        // % Wut beim Sturmangriff
+  rewardScrap: 3000,       // × Welt-Schrott-Multiplikator
+  rewardChaos: 250000,
+  rewardDM: 250,           // ◆ Dunkle Materie
+  unlock: 'infernus',
+};
+
 export const SPAWN = {
   density: 85,          // Anzahl relevanter Objekte im Umkreis
   areaViews: 1.5,       // Spawn-Radius in "Bildschirm-Halbdiagonalen"
   despawnViews: 2.6,
-  minRel: 0.16,         // kleinste Objekte relativ zum Spieler
+  minRel: 0.22,         // kleinste Objekte relativ zum Spieler
   maxRel: 3.2,          // größte Objekte relativ zum Spieler
   nextWorldPeek: 0.25,  // Chance-Gewicht für Objekte aus der nächsten Welt
-  sweetSpot: 0.55,      // häufigste Objektgröße relativ zum Spieler
+  sweetSpot: 0.65,      // häufigste Objektgröße relativ zum Spieler
 };
 
 // ---------------------------------------------------------------------
@@ -307,24 +445,25 @@ export const UPGRADE_CATS = [
   { id: 'combat', name: 'Kampf',  icon: '👊', desc: 'Mehr Schaden und stärkere Fähigkeiten.' },
   { id: 'loot',   name: 'Beute',  icon: '💰', desc: 'Mehr Schrott, Chaos und Glück.' },
 ];
+// mult: true = Wirkung pro Stufe multiplikativ (z. B. 1,12^Stufe) – skaliert endlos mit
 export const UPGRADES = [
-  { id: 'size',    cat: 'body',   name: 'Startgröße',     icon: '🦖', desc: 'Du startest größer.',                                   base: 75,  growth: 2.05, max: 40, per: 0.12 },
-  { id: 'rage',    cat: 'body',   name: 'Wut-Tank',       icon: '🔥', desc: 'Mehr maximale Wut = längere Runs.',                       base: 45,  growth: 1.95, max: 40, per: 0.12 },
-  { id: 'calm',    cat: 'body',   name: 'Dauerwut',       icon: '⏳', desc: 'Wut sinkt langsamer.',                                     base: 90,  growth: 2.1,  max: 25, per: 0.05 },
-  { id: 'absorb',  cat: 'body',   name: 'Hunger',         icon: '🍖', desc: 'Wachse schneller durch Zerstörung.',                       base: 105, growth: 2.15, max: 30, per: 0.08 },
-  { id: 'speed',   cat: 'body',   name: 'Tempo',          icon: '💨', desc: 'Schneller stampfen.',                                      base: 45,  growth: 1.95, max: 30, per: 0.06 },
-  { id: 'dmg',     cat: 'combat', name: 'Wucht',          icon: '👊', desc: 'Mehr Schaden pro Schlag.',                                 base: 60,  growth: 2.0,  max: 40, per: 0.15 },
-  { id: 'hard',    cat: 'combat', name: 'Härte',          icon: '🪨', desc: 'Zerstöre Objekte, die größer sind als du.',               base: 150, growth: 2.2,  max: 15, per: 0.06 },
-  { id: 'dash',    cat: 'combat', name: 'Ansturm',        icon: '⚡', desc: 'Ansturm (Leertaste) lädt schneller auf.',                  base: 90,  growth: 2.1,  max: 20, per: 0.06 },
-  { id: 'slam',    cat: 'combat', name: 'Erdbeben',       icon: '💥', desc: 'Stampfer (E): größerer Radius, kürzere Abklingzeit.',      base: 120, growth: 2.15, max: 20, per: 0.06 },
-  { id: 'berserk', cat: 'combat', name: 'Berserker',      icon: '😡', desc: 'Berserker (R) lädt sich schneller auf.',                   base: 135, growth: 2.15, max: 20, per: 0.1 },
-  { id: 'combo',   cat: 'combat', name: 'Kettenreaktion', icon: '⛓', desc: 'Längeres Kombo-Fenster und höherer Kombo-Bonus.',          base: 110, growth: 2.1,  max: 15, per: 0.08 },
-  { id: 'scrap',   cat: 'loot',   name: 'Schrottgier',    icon: '⚙', desc: 'Mehr Schrott pro Objekt.',                                 base: 90,  growth: 2.05, max: 40, per: 0.15 },
-  { id: 'magnet',  cat: 'loot',   name: 'Magnet',         icon: '🧲', desc: 'Zieht Schrott und kleine Krümel aus der Ferne an.',       base: 105, growth: 2.1,  max: 20, per: 0.6 },
-  { id: 'chaosup', cat: 'loot',   name: 'Chaos-Rausch',   icon: '☠', desc: 'Mehr ☠ Chaos pro Zerstörung.',                            base: 120, growth: 2.1,  max: 20, per: 0.1 },
-  { id: 'luck',    cat: 'loot',   name: 'Gold-Riecher',   icon: '✨', desc: 'Goldene Objekte (×6 Schrott) tauchen öfter auf.',         base: 140, growth: 2.15, max: 15, per: 0.15 },
-  { id: 'crates',  cat: 'loot',   name: 'Kistenfinder',   icon: '📦', desc: 'Schrottkisten tauchen öfter auf.',                        base: 140, growth: 2.15, max: 15, per: 0.15 },
-  { id: 'quest',   cat: 'loot',   name: 'Auftragskiller', icon: '📜', desc: 'Aufträge bringen mehr Schrott und Chaos.',                base: 100, growth: 2.1,  max: 10, per: 0.25 },
+  { id: 'size',    cat: 'body',   name: 'Startgröße',     icon: '🦖', desc: 'Du startest größer (überspringt frühe Welten schneller).', base: 60,  growth: 1.8,  max: 80,  per: 0.08, mult: true },
+  { id: 'rage',    cat: 'body',   name: 'Wut-Tank',       icon: '🔥', desc: 'Mehr maximale Wut = längere Runs.',                       base: 40,  growth: 1.6,  max: 40,  per: 0.05, mult: true },
+  { id: 'calm',    cat: 'body',   name: 'Dauerwut',       icon: '⏳', desc: 'Wut sinkt langsamer.',                                     base: 90,  growth: 1.9,  max: 25,  per: 0.05 },
+  { id: 'absorb',  cat: 'body',   name: 'Hunger',         icon: '🍖', desc: 'Wachse schneller durch Zerstörung.',                       base: 80,  growth: 1.7, max: 200, per: 0.055, mult: true },
+  { id: 'speed',   cat: 'body',   name: 'Tempo',          icon: '💨', desc: 'Schneller stampfen.',                                      base: 45,  growth: 1.9,  max: 30,  per: 0.06 },
+  { id: 'dmg',     cat: 'combat', name: 'Wucht',          icon: '👊', desc: 'Mehr Schaden pro Schlag.',                                 base: 50,  growth: 1.65,  max: 300, per: 0.11, mult: true },
+  { id: 'hard',    cat: 'combat', name: 'Härte',          icon: '🪨', desc: 'Zerstöre Objekte, die größer sind als du.',               base: 150, growth: 2.2,  max: 15,  per: 0.06 },
+  { id: 'dash',    cat: 'combat', name: 'Ansturm',        icon: '⚡', desc: 'Ansturm (Leertaste) lädt schneller auf.',                  base: 90,  growth: 2.0,  max: 20,  per: 0.06 },
+  { id: 'slam',    cat: 'combat', name: 'Erdbeben',       icon: '💥', desc: 'Stampfer (E): größerer Radius, kürzere Abklingzeit.',      base: 120, growth: 2.0,  max: 20,  per: 0.06 },
+  { id: 'berserk', cat: 'combat', name: 'Berserker',      icon: '😡', desc: 'Berserker (R) lädt sich schneller auf.',                   base: 135, growth: 2.0,  max: 20,  per: 0.1 },
+  { id: 'combo',   cat: 'combat', name: 'Kettenreaktion', icon: '⛓', desc: 'Längeres Kombo-Fenster und höherer Kombo-Bonus.',          base: 110, growth: 2.0,  max: 15,  per: 0.08 },
+  { id: 'scrap',   cat: 'loot',   name: 'Schrottgier',    icon: '⚙', desc: 'Mehr Schrott pro Objekt.',                                 base: 70,  growth: 1.75, max: 300, per: 0.1, mult: true },
+  { id: 'magnet',  cat: 'loot',   name: 'Magnet',         icon: '🧲', desc: 'Zieht Schrott und kleine Krümel aus der Ferne an.',       base: 105, growth: 2.0,  max: 20,  per: 0.6 },
+  { id: 'chaosup', cat: 'loot',   name: 'Chaos-Rausch',   icon: '☠', desc: 'Mehr ☠ Chaos pro Zerstörung.',                            base: 100, growth: 1.7,  max: 150, per: 0.06, mult: true },
+  { id: 'luck',    cat: 'loot',   name: 'Gold-Riecher',   icon: '✨', desc: 'Goldene Objekte (×6 Schrott) tauchen öfter auf.',         base: 140, growth: 2.1,  max: 15,  per: 0.15 },
+  { id: 'crates',  cat: 'loot',   name: 'Kistenfinder',   icon: '📦', desc: 'Schrottkisten tauchen öfter auf.',                        base: 140, growth: 2.1,  max: 15,  per: 0.15 },
+  { id: 'quest',   cat: 'loot',   name: 'Auftragskiller', icon: '📜', desc: 'Aufträge bringen mehr Schrott und Chaos.',                base: 100, growth: 2.0,  max: 10,  per: 0.25 },
 ];
 
 // ---------------------------------------------------------------------
@@ -398,6 +537,10 @@ export const CHARACTERS = [
     desc: '+60 % Schrott, goldene Objekte 2,5× so häufig, Münzen fliegen ihm von selbst zu.',
     colors: { body: '#e8a72a', belly: '#fff0b0', horn: '#fffaf0', dark: '#6a3a00' },
     perks: { scrap: 1.6, golden: 2.5, magnet: 2 }, cost: 35000, req: { world: 4, label: 'Erreiche den Kontinent' } },
+  { id: 'infernus', name: 'Infernus', type: 'dragon', title: 'Bezwinger der Hölle',
+    desc: 'Die Belohnung für den Sieg über ZORNOS. ×2,5 Schaden, ×1,4 Wachstum, +40 % Wut, Explosionen ×1,5, doppelter Schrott, Berserker +4 s. Gebaut für das, was nach Welt 50 kommt.',
+    colors: { body: '#2a0505', belly: '#ff6a1f', horn: '#ffd23f', dark: '#000000' },
+    perks: { damage: 2.5, absorb: 1.4, rage: 1.4, boom: 1.5, scrap: 2, berserkTime: 4 }, cost: 0, req: { boss: true, label: 'Besiege ZORNOS in Welt 50' }, bossOnly: true },
   { id: 'void', name: 'Void', type: 'alien', title: 'Wesen aus dem Nichts',
     desc: 'Berserker lädt 70 % schneller und hält 3 s länger. Startet 25 % größer.',
     colors: { body: '#2a1a5a', belly: '#b06bff', horn: '#7fffe0', dark: '#0a0520' },
@@ -535,18 +678,18 @@ export const MAPS = [
 export const PRESTIGE = {
   minWorld: 4,          // ab welcher Welt (in diesem Durchgang) der Urknall möglich ist (4 = Kontinent)
   logBase: 5,           // ◆ = floor( (log10(Schrott seit letztem Urknall) − logBase)² × Weltbonus )
-  worldBonus: 0.5,      // +50 % ◆ pro Welt über minWorld
+  worldBonus: 0.15,     // +15 % ◆ pro Welt über minWorld
   // Was bleibt: Chaos, Monster, Karten, Rekorde. Was weg ist: Schrott und Upgrades.
 };
 
 // Der Böse Masterplan – permanente Boni, gekauft mit ◆ Dunkler Materie
 export const DM_PERKS = [
-  { id: 'dm_scrap',  name: 'Schwarzgeld',     icon: '💸', desc: '+50 % Schrott pro Stufe (für immer).',                base: 1, growth: 1.6, max: 25, per: 0.5 },
-  { id: 'dm_power',  name: 'Wutkern',         icon: '❤️‍🔥', desc: '+20 % Schaden pro Stufe.',                         base: 1, growth: 1.6, max: 20, per: 0.2 },
-  { id: 'dm_growth', name: 'Mutagen',         icon: '🧪', desc: '+8 % Wachstum pro Stufe.',                           base: 2, growth: 1.7, max: 15, per: 0.08 },
-  { id: 'dm_rage',   name: 'Ewiger Zorn',     icon: '🌋', desc: '+15 % Wut-Tank pro Stufe.',                          base: 1, growth: 1.6, max: 15, per: 0.15 },
-  { id: 'dm_start',  name: 'Frühstart',       icon: '🚀', desc: '+15 % Startgröße pro Stufe.',                        base: 2, growth: 1.7, max: 15, per: 0.15 },
-  { id: 'dm_chaos',  name: 'Chaostheorie',    icon: '🌀', desc: '+25 % ☠ Chaos pro Stufe.',                           base: 1, growth: 1.6, max: 15, per: 0.25 },
-  { id: 'dm_mut',    name: 'Genlabor',        icon: '🧬', desc: 'Starte jeden Run mit einer zufälligen Mutation (pro Stufe eine mehr).', base: 5, growth: 3, max: 3, per: 1 },
-  { id: 'dm_keep',   name: 'Schurken-Erbe',   icon: '👑', desc: 'Nach dem Urknall behältst du 10 % deiner Upgrade-Stufen pro Stufe.', base: 4, growth: 2.2, max: 5, per: 0.1 },
+  { id: 'dm_scrap',  name: 'Schwarzgeld',   icon: '💸', desc: '+25 % Schrott pro Stufe (multiplikativ, für immer).', base: 1, growth: 1.22, max: 200, per: 0.25, mult: true },
+  { id: 'dm_power',  name: 'Wutkern',       icon: '❤️‍🔥', desc: '+12 % Schaden pro Stufe (multiplikativ).',          base: 1, growth: 1.22, max: 200, per: 0.12, mult: true },
+  { id: 'dm_growth', name: 'Mutagen',       icon: '🧪', desc: '+5 % Wachstum pro Stufe (multiplikativ).',            base: 2, growth: 1.24, max: 150, per: 0.05, mult: true },
+  { id: 'dm_rage',   name: 'Ewiger Zorn',   icon: '🌋', desc: '+5 % Wut-Tank pro Stufe (multiplikativ).',            base: 1, growth: 1.35, max: 30,  per: 0.05, mult: true },
+  { id: 'dm_start',  name: 'Frühstart',     icon: '🚀', desc: '+10 % Startgröße pro Stufe (multiplikativ).',         base: 2, growth: 1.3,  max: 60,  per: 0.1, mult: true },
+  { id: 'dm_chaos',  name: 'Chaostheorie',  icon: '🌀', desc: '+10 % ☠ Chaos pro Stufe (multiplikativ).',            base: 1, growth: 1.24, max: 150, per: 0.1, mult: true },
+  { id: 'dm_mut',    name: 'Genlabor',      icon: '🧬', desc: 'Starte jeden Run mit einer zufälligen Mutation (pro Stufe eine mehr).', base: 5, growth: 3, max: 3, per: 1 },
+  { id: 'dm_keep',   name: 'Schurken-Erbe', icon: '👑', desc: 'Nach dem Urknall behältst du 10 % deiner Upgrade-Stufen pro Stufe.', base: 4, growth: 2.2, max: 5, per: 0.1 },
 ];

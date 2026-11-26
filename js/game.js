@@ -8,6 +8,12 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
+// Schwierigkeit pro Welt: frühe Welten mit eigenem (stärkerem) Faktor
+export function scaleOf(key, level) {
+  const W = C.WORLD_SCALING, e = Math.min(level, W.early), l = Math.max(0, level - W.early);
+  return Math.pow(W[key + 'Early'], e) * Math.pow(W[key], l);
+}
+
 export function upgradeLevel(save, id) { return (save.upgrades && save.upgrades[id]) || 0; }
 export function upgradeDef(id) { return C.UPGRADES.find(u => u.id === id); }
 export function upgradeCost(u, level) { return Math.ceil(u.base * Math.pow(u.growth, level)); }
@@ -51,20 +57,23 @@ export function computeStats(save, muts = [], charId = save.selectedChar) {
   const P = C.PLAYER, A = C.ABILITIES;
   const L = id => upgradeLevel(save, id);
   const per = id => upgradeDef(id).per;
+  // Wirkung eines Upgrades: multiplikativ (1+per)^L oder linear 1+per·L
+  const U = id => { const u = upgradeDef(id); return u.mult ? Math.pow(1 + u.per, L(id)) : 1 + u.per * L(id); };
   const has = id => muts.includes(id);
   const k = charDef(charId).perks || {};
   const pk = (name, def = 1) => (k[name] ?? def);
-  const dm = id => dmLevel(save, id) * dmDef(id).per; // Böser Masterplan
+  // Böser Masterplan: liefert den Zusatz (Faktor − 1)
+  const dm = id => { const d = dmDef(id), l = dmLevel(save, id); return d.mult ? Math.pow(1 + d.per, l) - 1 : l * d.per; };
   return {
-    startRadius: P.startRadius * (1 + per('size') * L('size')) * pk('size') * (1 + dm('dm_start')),
-    rageMax: P.rageMax * (1 + per('rage') * L('rage')) * pk('rage') * (1 + dm('dm_rage')),
+    startRadius: P.startRadius * U('size') * pk('size') * (1 + dm('dm_start')),
+    rageMax: P.rageMax * U('rage') * pk('rage') * (1 + dm('dm_rage')),
     rageDrain: P.rageDrain * Math.pow(1 - per('calm'), L('calm')) * (has('zen') ? 0.7 : 1),
-    damage: P.damage * (1 + per('dmg') * L('dmg')) * (has('spikes') ? 1.6 : 1) * pk('damage') * (1 + dm('dm_power')),
+    damage: P.damage * U('dmg') * (has('spikes') ? 1.6 : 1) * pk('damage') * (1 + dm('dm_power')),
     breakRatio: P.breakRatio + per('hard') * L('hard') + (has('hardhead') ? 0.2 : 0),
     speed: P.speed * (1 + per('speed') * L('speed')) * (has('turbo') ? 1.3 : 1) * pk('speed'),
-    absorb: P.absorb * (1 + per('absorb') * L('absorb')) * (has('glutton') ? 1.4 : 1) * pk('absorb') * (1 + dm('dm_growth')),
-    scrapMult: (1 + per('scrap') * L('scrap')) * (has('greed') ? 1.6 : 1) * C.SCRAP_SCALE * pk('scrap') * (1 + dm('dm_scrap')),
-    chaosMult: (1 + per('chaosup') * L('chaosup')) * (1 + dm('dm_chaos')),
+    absorb: P.absorb * U('absorb') * (has('glutton') ? 1.4 : 1) * pk('absorb') * (1 + dm('dm_growth')),
+    scrapMult: U('scrap') * (has('greed') ? 1.6 : 1) * C.SCRAP_SCALE * pk('scrap') * (1 + dm('dm_scrap')),
+    chaosMult: U('chaosup') * (1 + dm('dm_chaos')),
     crateMult: 1 + per('crates') * L('crates'),
     questMult: 1 + per('quest') * L('quest'),
     comboMax: C.COMBO.max + per('combo') * L('combo') * 2.5,
@@ -118,6 +127,7 @@ export class Game {
     this.world = worldIndexFor(r);
     this.startWorld = this.world;
     this.clear();
+    this.bossKilled = false;
     this.time = 0; this.combo = 0; this.comboT = 0; this.bestCombo = 0; this.calloutIdx = 0;
     this.runScrap = 0; this.runChaos = 0; this.kills = 0; this.maxRadius = r;
     this.event = null; this.eventT = 0; this.nextEventAt = C.EVENTS.firstAfter;
@@ -125,6 +135,7 @@ export class Game {
     this.hitStop = 0; this.flash = 0; this.coinChain = 0; this.coinChainT = 0;
     this.quest = null; this.questT = C.QUESTS.firstAfter; this.questsDone = 0;
     this.pendingWorlds = 0;
+    this.boss = null; this.bossDone = false; this.bossShots = [];
     this.cam.x = 0; this.cam.y = 0; this.cam.zoom = this.targetZoom();
     // Genlabor: mit zufälligen Mutationen starten
     for (let i = 0; i < this.stats.startMuts; i++) { const ch = this.mutationChoices(); if (ch.length) this.muts.push(ch[0].id); }
@@ -133,6 +144,9 @@ export class Game {
     this.state = 'play';
   }
 
+  // Je länger ein Run dauert (ab ~2,5 min), desto weniger Wut gibt es zurück
+  lateFactor() { return 1 + Math.pow(Math.max(0, this.time - C.WORLD_SCALING.lateRunAfter) / 60, 1.5); }
+
   // Nach der letzten Welt geht es endlos weiter: alle ×4 Größe zählt wie eine neue Welt
   endless() {
     const last = this.worlds.length - 1;
@@ -140,7 +154,7 @@ export class Game {
     return Math.max(0, Math.log(this.p.r / this.worlds[last].minRadius) / Math.log(4));
   }
   level(world) { return world + (world === this.worlds.length - 1 ? this.endless() : 0); }
-  hpScale(world) { return Math.pow(C.WORLD_SCALING.hp, this.level(world)) * this.map.hpMult; }
+  hpScale(world) { return scaleOf('hp', this.level(world)) * this.map.hpMult; }
 
   // effektiver Radius (Berserker macht größer)
   hr() { return this.p.r * (this.p.berserkT > 0 ? C.BERSERK.sizeBoost : 1); }
@@ -148,7 +162,7 @@ export class Game {
     const glass = this.event && this.event.id === 'glass';
     return this.p.r * this.stats.breakRatio * (glass ? 1.4 : 1) * (this.p.berserkT > 0 ? C.BERSERK.breakBoost : 1);
   }
-  targetZoom() { return (Math.min(this.vw, this.vh) * 0.05) / this.p.r; }
+  targetZoom() { return (Math.min(this.vw, this.vh) * 0.06) / this.p.r; }
   viewRadius() { return Math.hypot(this.vw, this.vh) / 2 / this.cam.zoom; }
 
   // ------------------------------------------------------------------
@@ -183,6 +197,7 @@ export class Game {
     }
     input.dash = false;
     p.slamCd = Math.max(0, p.slamCd - dt);
+    p.berserkCd = Math.max(0, (p.berserkCd || 0) - dt);
     p.slamT = Math.max(0, p.slamT - dt);
     if (input.slam && p.slamCd <= 0) this.slam();
     input.slam = false;
@@ -216,12 +231,12 @@ export class Game {
     if (berserk) {
       p.berserkT -= dt;
       if (Math.random() < 0.5) this.particle(p.x + rand(-1, 1) * p.r, p.y - rand(0, 1.5) * p.r, Math.random() < 0.5 ? '#ff6a1f' : '#ffd23f', p.r * rand(0.12, 0.25), 0.5, 0, -p.r * 3, 'flame');
-      if (p.berserkT <= 0) { p.berserkT = 0; p.berserk = 0; this.hook('onBerserk', false); }
+      if (p.berserkT <= 0) { p.berserkT = 0; p.berserk = 0; p.berserkCd = C.BERSERK.cooldown; this.hook('onBerserk', false); }
     }
 
     // --- Wut
     const frenzy = this.event && this.event.id === 'frenzy';
-    if (!frenzy && p.berserkT <= 0) p.rage -= S.rageDrain * this.map.drainMult * Math.pow(C.WORLD_SCALING.rageDrain, this.level(this.world)) * (1 + C.PLAYER.rageDrainGrowth * this.time) * dt;
+    if (!frenzy && p.berserkT <= 0) p.rage -= S.rageDrain * this.map.drainMult * scaleOf('rageDrain', this.level(this.world)) * (1 + C.PLAYER.rageDrainGrowth * this.time + Math.pow(Math.max(0, this.time - C.WORLD_SCALING.lateRunAfter) / 60, 2)) * dt;
     p.rage = Math.min(p.rage, S.rageMax);
     if (p.rage <= 0) { p.rage = 0; this.die(); return; }
 
@@ -259,12 +274,16 @@ export class Game {
     }
     if (this.pendingWorlds > 0) {
       this.pendingWorlds--;
-      p.rage = Math.min(S.rageMax, p.rage + S.rageMax * 0.5);
+      p.rage = Math.min(S.rageMax, p.rage + S.rageMax * 0.5 / this.lateFactor());
       this.flash = 1;
       this.sfx('levelup');
       this.state = 'mutation';
       this.hook('onWorld', this.world, this.mutationChoices());
     }
+
+    // --- Endboss
+    if (this.world === C.BOSS.world && !this.boss && !this.bossDone && this.worlds.length - 1 === C.BOSS.world) this.spawnBoss();
+    if (this.boss) { this.updateBoss(dt); if (this.state !== 'play') return; }
 
     // --- Spawning
     this.spawnT -= dt;
@@ -340,7 +359,7 @@ export class Game {
   completeQuest() {
     const p = this.p, S = this.stats, q = this.quest;
     this.quest = null; this.questT = C.QUESTS.pause; this.questsDone++;
-    p.rage = Math.min(S.rageMax, p.rage + S.rageMax * C.QUESTS.rageReward);
+    p.rage = Math.min(S.rageMax, p.rage + S.rageMax * C.QUESTS.rageReward / this.lateFactor());
     this.addBerserk(C.QUESTS.berserkReward);
     const value = C.QUESTS.scrapReward * this.worlds[this.world].scrapMult * this.map.scrapMult * S.scrapMult * S.questMult * (1 + this.questsDone * 0.2);
     this.runChaos += C.CHAOS.questBonus * this.map.chaosMult * S.chaosMult * S.questMult;
@@ -454,11 +473,13 @@ export class Game {
     this.kills++;
     const rel = o.size / p.r;
     // Wachstum
-    p.mass += o.size * o.size * S.absorb * Math.pow(C.WORLD_SCALING.absorb, this.level(this.world));
+    p.mass += Math.min(o.size * o.size * S.absorb * scaleOf('absorb', this.level(this.world)), p.mass * C.PLAYER.maxGrowPerKill);
     p.r = Math.sqrt(p.mass);
     if (p.r > this.maxRadius) this.maxRadius = p.r;
     // Wut
-    p.rage = Math.min(S.rageMax, p.rage + C.PLAYER.ragePerKill * clamp(Math.pow(rel, 0.7) * 1.6, 0.15, 3) + (o.crate ? S.rageMax * 0.15 : 0));
+    const late = this.lateFactor(); // lange Runs: weniger Wut pro Treffer
+    const worldRage = scaleOf('rageDrain', this.level(this.world)) * this.map.drainMult; // Wut pro Treffer wächst mit der Welt mit
+    p.rage = Math.min(S.rageMax, p.rage + (C.PLAYER.ragePerKill * worldRage * clamp(Math.pow(rel, 0.7) * 1.6, 0.15, 3) + (o.crate ? S.rageMax * 0.15 : 0)) / late);
     // Berserker
     if (p.berserkT <= 0) this.addBerserk(C.BERSERK.perKill * clamp(rel * 1.5, 0.25, 2));
     // Kombo
@@ -510,11 +531,139 @@ export class Game {
     }
   }
 
+  // ------------------------------------------------------------------
+  // ENDBOSS
+  // ------------------------------------------------------------------
+  spawnBoss() {
+    const p = this.p, B = C.BOSS;
+    const a = Math.random() * TAU;
+    this.boss = { x: p.x + Math.cos(a) * p.r * 9, y: p.y + Math.sin(a) * p.r * 9, size: p.r * B.sizeMult, hp: 1, attackT: 4, hitCd: 0, hitAnim: 0, flash: 0,
+      face: 1, walk: 0, vx: 0, vy: 0, charge: 0, chargeX: 0, chargeY: 0, punchT: 0, intro: 2.5 };
+    this.bossShots = [];
+    this.hook('onBoss', 'spawn', this.boss);
+    this.sfx('berserk'); this.shake = 1.5; this.flash = 0.6;
+  }
+
+  bossHurt(amountHits) {
+    const b = this.boss; if (!b) return;
+    const hp = C.BOSS.hp * (this.map.hpMult || 1);
+    b.hp -= amountHits / hp; b.hitAnim = 1; b.flash = 1;
+    this.addBerserk(0.01);
+    if (b.hp <= 0) this.bossDefeated();
+  }
+
+  bossDefeated() {
+    const b = this.boss, p = this.p, S = this.stats, B = C.BOSS;
+    this.boss = null; this.bossDone = true; this.bossShots = [];
+    const W = this.worlds[this.world];
+    const scrap = B.rewardScrap * W.scrapMult * this.map.scrapMult * S.scrapMult;
+    this.coinBurst(b.x, b.y, scrap, 40, true);
+    this.runChaos += B.rewardChaos * this.map.chaosMult * S.chaosMult;
+    this.bossKilled = true;
+    for (let i = 0; i < 8; i++) this.explosionQueue.push({ x: b.x + rand(-1, 1) * b.size, y: b.y + rand(-1, 1) * b.size, r: b.size * 1.2, dmg: 0, big: true });
+    this.processExplosions();
+    for (let i = 0; i < 40; i++) { const a = Math.random() * TAU, v = rand(1, 5) * b.size; this.chunks.push({ x: b.x, y: b.y, z: b.size, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.7, vz: b.size * rand(3, 8), g: b.size * 20, size: b.size * rand(0.1, 0.25), color: i % 2 ? '#2a0505' : '#ff6a1f', rot: 0, vr: rand(-10, 10), life: 2, max: 2, sides: 4 }); }
+    p.rage = S.rageMax; this.hitStop = 0.4; this.flash = 1; this.shake = 2;
+    this.sfx('unlock');
+    this.hook('onBoss', 'dead', b);
+  }
+
+  updateBoss(dt) {
+    const b = this.boss, p = this.p, S = this.stats, B = C.BOSS;
+    b.size = Math.max(b.size, p.r * B.sizeMult);
+    b.hitCd = Math.max(0, b.hitCd - dt); b.hitAnim = Math.max(0, b.hitAnim - dt * 5); b.flash = Math.max(0, b.flash - dt * 8); b.punchT = Math.max(0, b.punchT - dt);
+    const enraged = b.hp < 0.3;
+    const dx = p.x - b.x, dy = p.y - b.y, d = Math.hypot(dx, dy) || 1;
+    if (b.intro > 0) { b.intro -= dt; }
+    // Bewegung: verfolgen oder Sturmangriff
+    const maxV = S.speed * p.r;
+    if (b.charge > 0) {
+      b.charge -= dt; b.x += b.chargeX * maxV * 2.6 * dt; b.y += b.chargeY * maxV * 2.6 * dt;
+      if (Math.random() < 0.8) this.puff(b.x, b.y + b.size * 0.4, b.size * 0.3, '#5a2a1a');
+    } else if (b.intro <= 0) {
+      const v = maxV * B.speed * (enraged ? 1.4 : 1);
+      b.vx += (dx / d * v - b.vx) * Math.min(1, dt * 3); b.vy += (dy / d * v - b.vy) * Math.min(1, dt * 3);
+      b.x += b.vx * dt; b.y += b.vy * dt;
+    }
+    b.walk += Math.hypot(b.vx, b.vy) / b.size * dt * 2; if (Math.abs(dx) > 1e-6) b.face = dx > 0 ? 1 : -1;
+    if (Math.random() < 0.6) this.particle(b.x + rand(-1, 1) * b.size * 0.7, b.y - rand(0.5, 2) * b.size, Math.random() < 0.5 ? '#ff6a1f' : '#ffd23f', b.size * 0.08, 0.6, 0, -b.size * 2, 'flame');
+    // Angriffe
+    if (b.intro <= 0) b.attackT -= dt * (enraged ? 1.4 : 1);
+    if (b.attackT <= 0) {
+      b.attackT = rand(...B.attackEvery);
+      const r = Math.random();
+      b.punchT = 0.5;
+      if (r < 0.32) { this.bossShots.push({ kind: 'ring', x: b.x, y: b.y, r: b.size * 0.8, speed: maxV * 1.3, max: b.size * 7, hit: false }); this.sfx('slam'); }
+      else if (r < 0.6) { for (let i = 0; i < (enraged ? 8 : 5); i++) { const a = Math.random() * TAU, dd = Math.random() * p.r * 4; this.bossShots.push({ kind: 'meteor', x: p.x + p.vx * 0.8 + Math.cos(a) * dd, y: p.y + p.vy * 0.8 + Math.sin(a) * dd, r: p.r * 1.6, t: 1.1 + i * 0.12 }); } this.sfx('event'); }
+      else if (r < 0.8) { b.charge = 0.9; b.chargeX = dx / d; b.chargeY = dy / d; this.sfx('dash'); this.text(b.x, b.y - b.size * 2, 'STURMANGRIFF!', '#ff3b2f', 1, p.r, true); }
+      else { // Diener rufen
+        for (let i = 0; i < 3; i++) { const a = Math.random() * TAU; this.spawnMinion(b.x + Math.cos(a) * b.size * 2, b.y + Math.sin(a) * b.size * 2); }
+        this.text(b.x, b.y - b.size * 2, 'DIENER!', '#ffb13d', 1, p.r, true);
+      }
+    }
+    // Geschosse
+    const hurt = (pct, nx, ny) => {
+      if (p.hurtCd > 0 || p.berserkT > 0) return;
+      p.rage -= S.rageMax * pct / 100 * S.hazardMult; p.hurtT = 0.45; p.hurtCd = 0.8; this.shake = Math.min(1.5, this.shake + 0.7);
+      p.vx = nx * maxV * 2.4; p.vy = ny * maxV * 2.4; this.sfx('hurt');
+      this.text(p.x, p.y - p.r * 2.2, 'AUA! −' + Math.round(pct * S.hazardMult) + '% Wut', '#ff5a5a', 1, p.r * 0.8, true);
+    };
+    for (const sh of this.bossShots) {
+      if (sh.kind === 'ring') {
+        sh.r += sh.speed * dt;
+        const pd = Math.hypot(p.x - sh.x, p.y - sh.y);
+        if (!sh.hit && Math.abs(pd - sh.r) < p.r * 0.7 && p.dashT <= 0) { sh.hit = true; hurt(B.ringDamage, (p.x - sh.x) / (pd || 1), (p.y - sh.y) / (pd || 1)); }
+        sh.dead = sh.r > sh.max;
+      } else if (sh.kind === 'meteor') {
+        sh.t -= dt;
+        if (sh.t <= 0) {
+          sh.dead = true;
+          this.rings.push({ x: sh.x, y: sh.y, r: sh.r, life: 0.4, max: 0.4, color: '#ff6a1f', ground: true });
+          for (let i = 0; i < 5; i++) this.puff(sh.x + rand(-0.5, 0.5) * sh.r, sh.y + rand(-0.3, 0.3) * sh.r, sh.r * 0.4, '#5a2a1a');
+          this.sfx('boom', 0.6); this.shake = Math.min(1.5, this.shake + 0.3);
+          const pd = Math.hypot(p.x - sh.x, p.y - sh.y);
+          if (pd < sh.r + p.r * 0.5) hurt(B.meteorDamage, (p.x - sh.x) / (pd || 1), (p.y - sh.y) / (pd || 1));
+        }
+      }
+    }
+    this.bossShots = this.bossShots.filter(s => !s.dead);
+    // Kontakt mit dem Boss
+    const R = this.hr(), minD = R + b.size * 0.75;
+    if (d < minD) {
+      const nx = -dx / d, ny = -dy / d; // vom Spieler zum Boss
+      if (b.charge > 0) { hurt(B.chargeDamage, -nx, -ny); b.charge = 0; }
+      if (b.hitCd <= 0) {
+        const approach = Math.max(0, p.vx * nx + p.vy * ny);
+        let hits = clamp(approach / (S.speed * p.r), 0.45, 1.3) * S.damage / this.bossDamageNeed();
+        if (p.dashT > 0) hits *= 2.5 * S.dashDamage;
+        if (p.berserkT > 0) hits *= C.BERSERK.damageMult;
+        b.hitCd = 0.18; p.punchT = 0.16; p.punchX = nx; p.punchY = ny;
+        this.sfx('hit', 1); this.text(b.x, b.y - b.size * 1.8, '-' + (hits / (C.BOSS.hp * (this.map.hpMult || 1)) * 100).toFixed(1) + '%', '#ffd23f', 0.6, p.r * 0.6);
+        for (let i = 0; i < 6; i++) { const a = Math.random() * TAU, v = rand(2, 5) * p.r; this.particle(b.x - nx * b.size * 0.7, b.y - ny * b.size * 0.7 - b.size * 0.5, i % 2 ? '#ffd23f' : '#ff3b2f', p.r * 0.15, 0.4, Math.cos(a) * v, Math.sin(a) * v, 'spark'); }
+        p.rage = Math.min(S.rageMax, p.rage + C.PLAYER.ragePerKill * scaleOf('rageDrain', this.level(this.world)) * 0.6);
+        this.bossHurt(hits);
+        if (!this.boss) return;
+      }
+      const overlap = minD - d; p.x += nx * -overlap; p.y += ny * -overlap;
+      const vn = p.vx * nx + p.vy * ny; if (vn > 0) { p.vx -= vn * nx; p.vy -= vn * ny; }
+      if (p.dashT > 0) p.dashT = 0;
+    }
+  }
+
+  // Wie viel "Schaden" ein normaler Treffer in dieser Welt braucht (Boss-HP sind in Treffern gemessen)
+  bossDamageNeed() { return this.hpScale(this.world) / 1.6; }
+
+  spawnMinion(x, y) {
+    const p = this.p, size = p.r * 0.9, hp = Math.pow(size, 1.5) * this.hpScale(this.world);
+    this.objects.push({ x, y, size, name: 'Höllenwächter', shape: 'eye', color: '#ff3b2f', value: 10, world: this.world, explosive: false, golden: false, crate: false,
+      hp, maxHp: hp, hitCd: 0, hitAnim: 0, flash: 0, bonusMult: 1, move: 'wander', speed: 1.6, hazard: 15, vx: 0, vy: 0, heading: Math.random() * TAU, wanderT: 0, anim: 0, face: 1, seed: Math.random(), scared: 0, pop: 1 });
+  }
+
   addBerserk(amount) {
     const p = this.p;
-    if (p.berserkT > 0) return;
+    if (p.berserkT > 0 || p.berserkCd > 0) return;
     const was = p.berserk;
-    p.berserk = Math.min(1, p.berserk + amount * this.stats.berserkGain);
+    p.berserk = Math.min(1, p.berserk + amount * this.stats.berserkGain / this.lateFactor());
     if (was < 1 && p.berserk >= 1) { this.sfx('ready'); this.hook('onBerserkReady'); }
   }
 
@@ -541,6 +690,7 @@ export class Game {
     const dmg = Math.pow(p.r, 1.5) * S.slamDamage * S.damage * (p.berserkT > 0 ? C.BERSERK.damageMult : 1);
     this.explosionQueue.push({ x: p.x, y: p.y, r: R, dmg, big: false, maxSize: this.breakLimit(), silent: true });
     this.processExplosions();
+    if (this.boss && Math.hypot(this.boss.x - p.x, this.boss.y - p.y) < R + this.boss.size) this.bossHurt(3 * S.slamDamage * S.damage / this.bossDamageNeed() * (p.berserkT > 0 ? C.BERSERK.damageMult : 1));
   }
 
   coinBurst(x, y, value, n, golden) {
@@ -810,6 +960,11 @@ export class Game {
     s.chaos = (s.chaos || 0) + chaos; s.totalChaos = (s.totalChaos || 0) + chaos;
     s.totalKills = (s.totalKills || 0) + this.kills;
     s.cycleScrap = (s.cycleScrap || 0) + earned;
+    if (this.bossKilled) {
+      s.bossKills = (s.bossKills || 0) + 1;
+      s.darkMatter = (s.darkMatter || 0) + C.BOSS.rewardDM; s.totalDarkMatter = (s.totalDarkMatter || 0) + C.BOSS.rewardDM;
+      if (!s.unlockedChars.includes(C.BOSS.unlock)) s.unlockedChars.push(C.BOSS.unlock);
+    }
     s.cycleBest = Math.max(s.cycleBest || 0, this.world);
     s.mapBest = s.mapBest || {};
     s.mapBest[this.map.id] = Math.max(s.mapBest[this.map.id] || 0, this.world);
@@ -817,7 +972,7 @@ export class Game {
     s.bestRadius = Math.max(s.bestRadius || 0, this.maxRadius);
     this.hook('onEnd', {
       earned, chaos, kills: this.kills, map: this.map.id, time: this.time, world: this.world, maxRadius: this.maxRadius,
-      bestCombo: this.bestCombo, muts: this.muts.slice(), quests: this.questsDone, ...rec,
+      bestCombo: this.bestCombo, muts: this.muts.slice(), quests: this.questsDone, bossKilled: !!this.bossKilled, ...rec,
     });
   }
 

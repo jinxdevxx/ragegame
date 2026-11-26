@@ -62,7 +62,8 @@ if (isMain) {
   console.log(`\nKarte: ${MAP}`);
   console.log('\n=== Profil: alle Upgrades auf Stufe L ===');
   console.log('Stufe | Dauer  | Welt (Ø / max)          | Schrott Ø  | Chaos Ø | Leerlauf');
-  for (const L of [0, 3, 6, 10, 15, 20]) {
+  const PROFILE = (process.env.PROFILE || '0,3,6,10,15,20').split(',').map(Number);
+  for (const L of PROFILE) {
     const save = freshSave();
     C.UPGRADES.forEach(u => save.upgrades[u.id] = Math.min(u.max, L));
     let t = 0, w = 0, wmax = 0, s = 0, ch = 0, e = 0;
@@ -73,6 +74,7 @@ if (isMain) {
     console.log(`${String(L).padStart(5)} | ${(t / RUNS).toFixed(0).padStart(4)} s | ${(w / RUNS).toFixed(1).padStart(4)} / ${worlds[wmax].name.padEnd(16)} | ${fmt(s / RUNS).padStart(9)} | ${fmt(ch / RUNS).padStart(7)} | ${(e / t * 100).toFixed(1)} %`);
   }
 
+  if (process.env.NOPROG) process.exit(0);
   console.log('\n=== Progression mit Urknall: Bot kauft günstigste Upgrades, sprengt, wenn er 6 Runs nicht weiterkommt ===');
   const save = freshSave();
   let bestWorld = -1, stuck = 0, cycleStart = 1;

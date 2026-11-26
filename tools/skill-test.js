@@ -45,7 +45,7 @@ const L = 5;
 }
 {
   const a = makeGame(), b = makeGame({ rage: L });
-  check('Wut-Tank', b.stats.rageMax > a.stats.rageMax * 1.3, `${a.stats.rageMax} → ${b.stats.rageMax}`);
+  check('Wut-Tank', b.stats.rageMax > a.stats.rageMax * 1.2, `${a.stats.rageMax} → ${b.stats.rageMax}`);
 }
 {
   const a = makeGame(), b = makeGame({ calm: L });

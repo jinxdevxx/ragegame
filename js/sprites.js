@@ -557,6 +557,48 @@ export const SPRITES = {
     circ(c, 0, 0, 0.18, '#fff6d0', true);
   },
 
+  // ---------------- Dimensionen ----------------
+  crystal(c, o) {
+    const t = o.anim || 0;
+    const g = c.createRadialGradient(0, 0, 0.1, 0, 0, 1.3); g.addColorStop(0, o.color + '66'); g.addColorStop(1, o.color + '00');
+    c.fillStyle = g; c.beginPath(); c.arc(0, -0.1, 1.3, 0, TAU); c.fill();
+    for (const [x, h, w, r] of [[-0.5, 0.9, 0.32, -0.35], [0.45, 1.05, 0.34, 0.3], [0, 1.6, 0.42, 0]]) {
+      c.save(); c.translate(x, 0.85); c.rotate(r);
+      poly(c, [-w, 0, -w, -h * 0.75, 0, -h, w, -h * 0.75, w, 0], o.color);
+      poly(c, [-w, -h * 0.75, 0, -h, 0, 0, -w, 0], sh(o.color, 0.35), true);
+      line(c, 0, -h, 0, 0, 0.03, sh(o.color, -0.3));
+      c.restore();
+    }
+    circ(c, 0.1, -0.55 + Math.sin(t * 3) * 0.05, 0.06, '#ffffff', true);
+  },
+  portal(c, o) {
+    const t = o.anim || 0;
+    ell(c, 0, 0, 0.95, 0.95, sh(o.color, -0.5));
+    c.save(); c.beginPath(); c.arc(0, 0, 0.82, 0, TAU); c.clip();
+    const g = c.createRadialGradient(0, 0, 0.05, 0, 0, 0.85); g.addColorStop(0, '#ffffff'); g.addColorStop(0.35, o.color); g.addColorStop(1, '#05030a');
+    c.fillStyle = g; c.fillRect(-1, -1, 2, 2);
+    c.strokeStyle = 'rgba(255,255,255,0.45)'; c.lineWidth = 0.06;
+    for (let i = 0; i < 4; i++) { c.beginPath(); for (let k = 0; k < 30; k++) { const a = k * 0.25 + t * 2 + i * Math.PI / 2, r = k / 30 * 0.8; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.stroke(); }
+    c.restore(); c.lineWidth = Math.max(c.lineWidth, 0.04); c.strokeStyle = OUT;
+    c.beginPath(); c.arc(0, 0, 0.9, 0, TAU); c.lineWidth = 0.12; c.strokeStyle = o.color; c.stroke(); c.lineWidth = 0.05; c.strokeStyle = OUT;
+    for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + t; circ(c, Math.cos(a) * 0.9, Math.sin(a) * 0.9, 0.07, '#ffffff', true); }
+  },
+  eye(c, o) {
+    const t = o.anim || 0, blink = (Math.sin(t * 0.7 + o.seed * 9) > 0.97) ? 0.15 : 1;
+    // Tentakel
+    for (let i = 0; i < 6; i++) { const a = Math.PI * (0.15 + i * 0.14), w = Math.sin(t * 3 + i) * 0.15; c.beginPath(); c.moveTo(Math.cos(a) * 0.6, Math.sin(a) * 0.6); c.quadraticCurveTo(Math.cos(a) * 1 + w, Math.sin(a) * 1, Math.cos(a) * 1.15 - w, Math.sin(a) * 1.15); const lw = c.lineWidth; c.lineWidth = 0.14; c.strokeStyle = sh(o.color, -0.4); c.stroke(); c.lineWidth = lw; c.strokeStyle = OUT; }
+    ell(c, 0, 0, 0.82, 0.82 * blink, '#fff6ee');
+    if (blink > 0.5) {
+      c.strokeStyle = 'rgba(200,40,40,0.5)'; c.lineWidth = 0.03;
+      for (let i = 0; i < 7; i++) { const a = i * 0.9; c.beginPath(); c.moveTo(Math.cos(a) * 0.78, Math.sin(a) * 0.78); c.lineTo(Math.cos(a + 0.2) * 0.45, Math.sin(a + 0.2) * 0.45); c.stroke(); }
+      c.strokeStyle = OUT; c.lineWidth = 0.05;
+      const lx = Math.sin(t * 0.9) * 0.18, ly = Math.cos(t * 1.3) * 0.12;
+      circ(c, lx, ly, 0.38, o.color);
+      circ(c, lx, ly, 0.18, '#05030a', true);
+      circ(c, lx - 0.1, ly - 0.12, 0.07, '#ffffff', true);
+    }
+  },
+
   // ---------------- Wilder Westen ----------------
   cactus(c, o) {
     rr(c, -0.22, -0.95, 0.44, 1.9, 0.22, o.color);
