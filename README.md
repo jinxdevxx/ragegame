@@ -8,7 +8,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Cheat-/Testversion:** https://jinxdevxx.github.io/ragegame-cheat/ (getrennter Speicher, Cheat-Menü per 🛠 oder Taste ^)
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.8.2 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.8.3 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -100,6 +100,7 @@ tools/skill-test.js   Prüft automatisch, ob jedes Upgrade, jede Fähigkeit, Mut
 tools/control-test.cjs Browser-Test: Steuerung (Tastatur/Maus/hängende Maustaste), Esc-Menü, Einstellungen
 tools/browser-test.cjs Browser-Test: Erfolge, Statistik, Evolution, Aufträge, 🏁, Boss, Monster, Hölle-FPS
 tools/build-cheat.sh  Baut die Cheat-/Testversion ins Repo ragegame-cheat (Kopie + Patches: eigener Speicher rageverse_cheat_*, Cheat-Menü tools/cheat/cheat.js). Hauptspiel bleibt unverändert.
+tools/perf420.cjs     Performance auf Karte 420 mit komplett ausgemaxtem Spielstand
 tools/check420.js     Bot-Test der Easter-Egg-Karte 420 mit Endgame-Spielstand
 tools/real-perf.cjs   Browser-Test: echte WASD-Steuerung, misst FPS, Ruckler und Zeichenzeit je Bereich
 tools/growth-perf.cjs Browser-Test: schnelles Wachstum durch die Welten, protokolliert Ruckler
@@ -184,6 +185,10 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 ---
 
 ## Dev-Log
+
+### 2026-11-26: v0.8.3 Plantage im Abendlicht
+- **Nutzer:** 420 laggt ausgemaxt (Dev-Build), Design soll neu. Messung (`tools/perf420.cjs`, alles maximal): Boden 26 ms pro Frame, Spitzen bis 1,3 s – beim schnellen Wachsen wurde der aufwendige Pflanzenboden (hunderte Formen je Pflanze) ständig neu gebaut.
+- **Lösung:** `draw420` malt die Landschaft einmal als nahtlose 1024-px-Kachel (Gras, Erdwege, Pflanzenreihen) und legt sie als Muster (`createPattern` + `setTransform`) – zwei Größenstufen, Überblendung nur kurz vor dem Größensprung. Dazu Abendlicht-Verlauf, vorgefertigte Rauchwolken-Bilder und Glühwürmchen. Ergebnis: Boden 0,2 ms/Frame, ~50 statt 23 FPS, keine Spitzen mehr (einmalig ~200 ms beim ersten Aufbau).
 
 ### 2026-11-26: v0.8.2 Grow-Räume
 - Karte 420 weiter verschönert (Wunsch): Indoor-Grow-Räume (zweites Rauschen, dunkle Fliesen, lila Licht, Topfpflanzen), ziehende Rauchschwaden (pro Frame, wenige weiche Wolken), Leucht-Schein um goldene Blätter.
@@ -313,6 +318,9 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.8.3: Plantage im Abendlicht (2026-11-26)
+- Karte 420 neu gestaltet und flüssig auch ausgemaxt
 
 ### v0.8.2: Grow-Räume (2026-11-26)
 - Karte 420: Grow-Räume, ziehender Rauch, leuchtende goldene Blätter
