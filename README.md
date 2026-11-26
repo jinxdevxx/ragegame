@@ -7,7 +7,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.4.1 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.5.0 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -42,7 +42,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 **Einstellungen (Esc, ⚙ im Menü oder in der Pause):** Steuerung, Lautstärke Soundeffekte/Musik, Bildschirmwackeln, Effekt-Menge (für schwache Geräte), Tipps an/aus, Pause mit P/Esc. Im Spiel erklärt das **❓ Hilfe**-Fenster alles mit den aktuellen Werten.
 
 ### Damit es nicht monoton wird
-- **50 Welten (Vorstadt):** Garten → Straße → Stadt → Gebirge → Kontinent → Planetar → Sonnensystem → Galaxie → Galaxienhaufen → Kosmisches Netz → Multiversum, danach 39 Dimensionen (je ×4 Größe, ×3 Schrott, eigene Farben, eigener Boden, 12 eigene Objekte inkl. explosiver, flüchtender und gefährlicher). Welt 50: **Höllenschlund**, danach endlos.
+- **50 Welten (Vorstadt):** Garten → Straße → Stadt → Gebirge → Kontinent → Erdorbit → Sonnensystem → Milchstraße → Galaxienhaufen → Kosmisches Netz → Multiversum (jede Weltraum-Welt mit eigenem Motiv), danach 39 Dimensionen (je ×4 Größe, ×3 Schrott, eigene Farben, eigener Boden, 12 eigene Objekte inkl. explosiver, flüchtender und gefährlicher). Welt 50: **Höllenschlund**, danach endlos.
 - **Endboss ZORNOS (Welt 50):** Beim Betreten wird deine aktuelle Wut zu deinem Leben (Lebensbalken oben). Er greift mit Feuerringen, Meteoren, Feuerbällen, Sturmangriffen (mit Warnlinie) und Dämonen-Dienern an, du musst ausweichen. Schaden machst du per Ansturm, Stampfer, Skills und Berserker. Belohnung: ⚙, ☠ 250K, ◆ 250 und das Monster **Infernus**.
 - **2 Zusatzkarten:** **Wilder Westen** (×6 Schrott, ×2 Chaos, zäher, ab Gebirge) und **Zuckerland** (×36 Schrott, ×4 Chaos, deutlich zäher, ab Planetar).
 - **11 Monster, jedes mit eigenem Skill (F):**
@@ -61,6 +61,8 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
   | Phönix | 🔥 Feuerflug + einmal pro Run Wiedergeburt | ☠ 25M + Welt 29 |
   | Infernus | 😈 Höllenfeuer | ZORNOS besiegen |
 
+- **Eigene Gestalt je Monster** (js/monster.js): Grumpf (Klassiker), Stachelkönig (Igel), Flitzer (Sprint-Gecko), Magma-Golem (Felsblock), Goldzahn (Drache), Void (schwebendes Sternenwesen), Frostbeule (Yeti), Kraken (Oktopus), Mecha-Rex (Roboter), Phönix (Feuervogel), Infernus (Dämon). Vorschau aller Monster: `tools/sheet.html`, `tools/sheet-big.html?skin=gold`.
+- **Premium-Skins** je Monster, Stufe für Stufe mit Schrott: 🥈 Silber (500 Mio.) → 🥇 Gold (100 Bio.) → 💠 Platin (10²²) → 👑 Gott (10³³). Rein optisch: Metallglanz, Glanzstreifen, Funkeln, Aura; Platin/Gott schillern, Gott mit Heiligenschein.
 - **🏆 Erfolge & 📊 Statistik** (Hauptmenü): 55 Erfolge mit ☠-Belohnung und Fortschrittsbalken, dazu alle Gesamtzahlen (zerstört, Runs, beste Kombo, längster Run, Boss-Siege …).
 - **Lebendige Welt:** Tiere und Passanten fliehen, Autos und Züge fahren. **Hindernisse** (Dornenbusch, Rasenmäher, Polizei, Panzer, Hubschrauber, Tornado, UFO, Sheriff, Zahnarzt …) ziehen Wut ab, solange sie zu groß für dich sind. Erkennbar am roten ⚠.
 - **Aufträge** links oben, z. B. „Zerstöre 8× Gartenzwerg“, zeigen Fortschritt und Belohnung (🎁 ⚙ · ☠ · 🔥 Wut · 😡 Berserker). Ein gelber Pfeil zeigt zum nächsten passenden Objekt.
@@ -91,6 +93,11 @@ tools/balance-sim.js  Bot spielt Runs ohne Grafik → prüft das Balancing
 tools/skill-test.js   Prüft automatisch, ob jedes Upgrade, jede Fähigkeit, Mutation und jedes Monster wirkt
 tools/control-test.cjs Browser-Test: Steuerung (Tastatur/Maus/hängende Maustaste), Esc-Menü, Einstellungen
 tools/browser-test.cjs Browser-Test: Erfolge, Statistik, Evolution, Aufträge, 🏁, Boss, Monster, Hölle-FPS
+tools/real-perf.cjs   Browser-Test: echte WASD-Steuerung, misst FPS, Ruckler und Zeichenzeit je Bereich
+tools/growth-perf.cjs Browser-Test: schnelles Wachstum durch die Welten, protokolliert Ruckler
+tools/stutter-check.js Misst Treffer-Stopps (Einfrieren) je Szenario
+tools/berserk-check.js Misst Berserker-Ladezeiten und verlorene Ladung
+tools/monster-sheet.cjs Zeichnet alle Monster auf ein Bild (tools/sheet.html)
 tools/perf-test.cjs   Browser-Test: FPS/Frame-Zeiten in Last-Szenarien (Meteor, Magnet, hohe Welten, Boss)
 tools/prestige-check.js Rechnet den Urknall-Ertrag durch
 tools/bump-version.js Setzt die Version überall (version.json + Datei-Links gegen Browser-Cache)
@@ -170,6 +177,15 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.5.0 Glanz & Gloria
+- **Monster neu:** Bisher waren alle Monster dieselbe Figur in anderen Farben. Jetzt hat jedes eine eigene Zeichenfunktion mit eigener Silhouette. Gemeinsam sind nur Augen, Maul und Schlag-Arm (einheitlicher Stil). Grumpf blieb unverändert (Nutzer mochte ihn).
+- **Premium-Skins:** Monster wird in ein Offscreen-Bild gezeichnet, darauf per `source-atop` Metallverlauf, wandernder Glanzstreifen und (Platin/Gott) Regenbogen-Schimmer – nur auf dem Monster, nicht auf dem Boden. Dazu Aura, Funkeln, bei Gott Strahlen + Heiligenschein.
+- **Berserker-Bug (Meldung vom Kollegen) bestätigt:** In den 8 s Abklingzeit nach dem Berserker wurden Kills ignoriert, im Bot gingen so bis zu 4,6 volle Leisten pro Run verloren, Auftrags-Belohnungen verpufften. Fix: Laden in der Abklingzeit mit 15 % Rate, Abklingzeit am Knopf sichtbar, Auftrags-Ladung wird gutgeschrieben. 15 % gewählt, weil 50 % die Balance messbar verschoben hat (A/B mit je 16 Bot-Runs: alt 5,9/8,6 Welten, neu 5,9/8,8).
+- **Ruckeln analysiert:** (1) Treffer-Stopps froren beim Meteorschauer 24 % der Zeit ein → max. ein Stopp pro 0,8 s, Meteore ohne Stopp (jetzt 3 %). (2) Massen-Zerstörung: Effekt-Budget (~25 volle Effekte/s), der Rest wird zu einer Münzwolke gebündelt – gleiche Belohnung (Krümelflut 36 → 53 fps). (3) Gebirge/Kontinent: Gelände-Neuaufbau 200–350 ms → volle Zellen als Streifen, beim Rauszoomen wird das alte Bild weiterbenutzt, schnelle Neuaufbauten gröber (Spitzen halbiert, Boden-Zeit 5,6 → 3 ms/Frame). (4) Adaptive Auflösung bei Hi-DPI-Bildschirmen.
+- **Urknall-Analyse** (Bot, 160 Runs): ohne Urknall Wand bei Welt 15–17; mit Urknall Welt 42–43. Vorher war häufiges Urknallen übermächtig (Welt 50 nach 120 Runs) → Wutkern +12 → +10 %, Schwarzgeld +25 → +20 %, Kosten-Wachstum 1,22 → 1,25. Jetzt sind „oft“ und „selten urknallen“ etwa gleich gut.
+- **Universum-Wand:** Große Brocken brachten wegen der Wachstums-Abnahme pro Welt kaum Fortschritt → Wachstumsbonus bis ×2 für Ziele ab 60 % der eigenen Größe. Mittlere Upgrades (Stufe 24) kommen jetzt ~1 Welt weiter (7,3 → 8,0), frühes Spiel unverändert.
+- **Weltraum-Welten:** eigene Motive je Welt, Namen klarer (Planetar → Erdorbit, Galaxie → Milchstraße, Universum → Kosmisches Netz).
+
 ### 2026-11-26: v0.4.1 Sicher raus
 - Nutzer-Feedback: Run beenden war zu umständlich (Esc → Esc → Knopf), und in den Esc-Einstellungen stand „Spielstand zurücksetzen“. Jetzt: beschrifteter 🏁-Knopf im HUD, Reset aus den Einstellungen entfernt, Löschen nur noch in der Spielstand-Auswahl mit eigenem Bestätigungsfenster (Löschen-Knopf erst nach 0,7 s klickbar).
 - Neuer Test im browser-test (Einstellungen ohne Reset, Abbrechen behält, Bestätigen löscht). Neues tools/perf-test.cjs misst Frame- und Update-Zeit in Last-Szenarien.
@@ -243,6 +259,10 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.5.0: Glanz & Gloria (2026-11-26)
+- Alle Monster mit eigener Gestalt, Premium-Skins Silber/Gold/Platin/Gott
+- Berserker lädt in der Abklingzeit weiter, Ruckel-Fixes, Weltraum-Welten mit eigenem Look, Balancing
 
 ### v0.4.1: Sicher raus (2026-11-26)
 - 🏁 Run beenden direkt im Spiel, Spielstand löschen nur mit Bestätigung

@@ -6,6 +6,22 @@
 
 export const PATCH_NOTES = [
   {
+    version: '0.5.0',
+    date: '2026-11-26',
+    title: 'Glanz & Gloria',
+    summary: 'Alle Monster neu gezeichnet, Premium-Skins von Silber bis Gott, Berserker-Fix, flüssigeres Spiel und besseres Balancing.',
+    changes: [
+      'Jedes Monster hat jetzt eine eigene Gestalt: Igel-Stachelkönig, Sprint-Gecko Flitzer, Fels-Golem mit Magma-Kern, Drache Goldzahn, schwebender Void, Yeti Frostbeule, Oktopus Kraken, Roboter Mecha-Rex, Feuervogel Phönix und Dämon Infernus. Grumpf bleibt, wie er ist.',
+      'Premium-Skins für jedes Monster (Monster-Bildschirm): 🥈 Silber → 🥇 Gold → 💠 Platin → 👑 Gott. Mit Metallglanz, wanderndem Glanzstreifen, Funkeln und Aura – Gott sogar mit Heiligenschein und Lichtstrahlen. Kosten sehr viel Schrott.',
+      'Berserker-Fix: Nach dem Berserker lädt die Leiste in der Abklingzeit jetzt weiter (langsamer), statt Kills einfach zu ignorieren. Die Abklingzeit steht am Knopf (⏳). Auftrags-Belohnungen gehen nie mehr verloren.',
+      'Weniger Ruckeln: Meteorschauer friert das Spiel nicht mehr dauernd kurz ein, Massen-Zerstörung bündelt Münzen und Effekte (gleiche Belohnung), Gebirge/Kontinent bauen ihr Gelände viel schneller auf, und bei schwacher Leistung senkt das Spiel automatisch die interne Auflösung.',
+      'Weltraum-Welten sehen jetzt alle anders aus: Erdorbit mit Erde, Sonnensystem mit Sonne und Umlaufbahnen, Milchstraße mit Sternenband, Galaxienhaufen, Kosmisches Netz mit Filamenten und Multiversum mit Universums-Blasen.',
+      'Balancing: Große Brocken bringen mehr Wachstum – man hängt nicht mehr so lange im Kosmischen Netz (früher Universum). Der Böse Masterplan ist etwas schwächer, damit ständiges Urknallen nicht übermächtig wird. Der Urknall bleibt nötig und lohnt sich.',
+      'Fix: Der „Run beenden“-Knopf überdeckt nicht mehr die Chaos-Anzeige.',
+      '4 neue Erfolge für Premium-Skins.',
+    ],
+  },
+  {
     version: '0.4.1',
     date: '2026-11-26',
     title: 'Sicher raus',

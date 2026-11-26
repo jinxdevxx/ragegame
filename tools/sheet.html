@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><title>Monster-Blatt</title>
+<body style="margin:0;background:#3c6b3a;font:12px sans-serif;color:#fff">
+<canvas id="c" width="1400" height="1200"></canvas>
+<script type="module">
+import * as C from '../js/config.js';
+import { drawMonster } from '../js/monster.js';
+const c = document.getElementById('c').getContext('2d');
+const stages = [0, 4, 8], cw = 1400 / 5, rh = 1200 / Math.ceil(C.CHARACTERS.length * 1 / 1);
+const skin = new URLSearchParams(location.search).get('skin');
+let t = 1.3;
+function draw() {
+  c.fillStyle = '#4a7d45'; c.fillRect(0, 0, 1400, 1200);
+  C.CHARACTERS.forEach((ch, i) => {
+    const y = 20 + i * 106;
+    c.fillStyle = '#fff'; c.fillText(ch.name + ' (' + ch.type + ')', 6, y + 12);
+    [0, 4, 8, -1].forEach((st, k) => {
+      const X = 200 + k * 240, Y = y + 96;
+      drawMonster(c, X, Y, 38, { char: ch, stage: st < 0 ? 4 : st, face: 1, walk: 0.3, punchT: 0, punchX: 1, punchY: 0, hurtT: 0, berserk: st < 0, squash: 0, time: t, lookX: 0.5, lookY: 0, skin });
+    });
+  });
+}
+draw();
+</script>

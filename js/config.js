@@ -17,7 +17,8 @@ export const PLAYER = {
   breakRatio: 1.05,       // Objekte bis zu (Radius × breakRatio) sind zerstörbar
   crumbRatio: 0.35,       // Objekte unter (Radius × crumbRatio) zerbröseln sofort bei Berührung
   absorb: 0.17,           // Anteil der Objekt-Masse, die man beim Zerstören aufnimmt
-  maxGrowPerKill: 0.05,   // höchstens so viel Masse-Zuwachs pro Zerstörung (verhindert „alles wird babyklein“)
+  maxGrowPerKill: 0.05,
+  bigKillGrowth: 2.5,     // große Brocken (ab 60 % deiner Größe) geben bis zu 2× Wachstum – Fortschritt durch große Ziele   // höchstens so viel Masse-Zuwachs pro Zerstörung (verhindert „alles wird babyklein“)
   rageMax: 100,
   rageDrain: 8,           // Wut-Verlust pro Sekunde
   rageDrainGrowth: 0.03,  // Drain steigt pro Sekunde Laufzeit um diesen Anteil (Druck steigt)
@@ -42,6 +43,7 @@ export const COMBO = {
 export const BERSERK = {
   perKill: 0.02,       // Füllung pro Zerstörung (× Größenfaktor); bei voller Leiste mit R zünden
   duration: 6,         // Sekunden
+  cooldownCharge: 0.15, // Ladung während der Abklingzeit (Viertel-Rate, hält die Balance)
   sizeBoost: 1.3,      // optisch + Trefferzone größer
   breakBoost: 1.6,     // zerstört bis 160 % der eigenen Größe
   damageMult: 3,
@@ -207,7 +209,7 @@ export const WORLDS = [
     ],
   },
   {
-    id: 'planet', name: 'Planetar', minRadius: 10240, scrapMult: 243, ground: 'space',
+    id: 'planet', name: 'Erdorbit', minRadius: 10240, scrapMult: 243, ground: 'space',
     bg: '#161c40', bg2: '#232a5c', accent: '#7fd3ff',
     objects: [
       { name: 'Satellit', size: 2200, shape: 'satellite', color: '#c9d4e6', value: 1, move: 'drive', speed: 1.2 },
@@ -236,7 +238,7 @@ export const WORLDS = [
     ],
   },
   {
-    id: 'galaxy', name: 'Galaxie', minRadius: 163840, scrapMult: 2187, ground: 'space',
+    id: 'galaxy', name: 'Milchstraße', minRadius: 163840, scrapMult: 2187, ground: 'space',
     bg: '#0b0722', bg2: '#26114f', accent: '#b06bff',
     objects: [
       { name: 'Sonnensystem', size: 36000, shape: 'ringplanet', color: '#ffd23f', value: 1 },
@@ -263,7 +265,7 @@ export const WORLDS = [
     ],
   },
   {
-    id: 'universe', name: 'Universum', minRadius: 2621440, scrapMult: 19683, ground: 'space',
+    id: 'universe', name: 'Kosmisches Netz', minRadius: 2621440, scrapMult: 19683, ground: 'space',
     bg: '#14051a', bg2: '#4a0a3a', accent: '#ff4ab0',
     objects: [
       { name: 'Galaxienhaufen', size: 600000, shape: 'cluster', color: '#ffb0f0', value: 1 },
@@ -541,6 +543,14 @@ export const SKILL_EVOS = [
 //   perks: Multiplikatoren auf die Grundwerte
 //   req:   Meilenstein, der zusätzlich erreicht sein muss
 // ---------------------------------------------------------------------
+// Premium-Skins: rein optisch, je Monster einzeln zu kaufen (mit Schrott, Stufe für Stufe)
+export const SKINS = [
+  { id: 'silver',   name: 'Silber', icon: '🥈', cost: 5e8,  desc: 'Poliertes Silber mit Glanz und Funkeln' },
+  { id: 'gold',     name: 'Gold',   icon: '🥇', cost: 1e14, desc: 'Strahlendes Gold mit goldener Aura' },
+  { id: 'platinum', name: 'Platin', icon: '💠', cost: 1e22, desc: 'Eisiges Platin, schillert in allen Farben' },
+  { id: 'god',      name: 'Gott',   icon: '👑', cost: 1e33, desc: 'Göttliches Licht: Heiligenschein, Strahlen, Regenbogen-Schimmer' },
+];
+
 export const CHARACTERS = [
   { id: 'grumpf', name: 'Grumpf', type: 'monster', title: 'Der Klassiker',
     desc: 'Ausgewogen, stur und immer schlecht gelaunt. Evolviert mit jeder Welt.',
@@ -570,7 +580,7 @@ export const CHARACTERS = [
     desc: 'Berserker lädt 70 % schneller und hält 3 s länger. Startet 25 % größer.',
     colors: { body: '#2a1a5a', belly: '#b06bff', horn: '#7fffe0', dark: '#0a0520' },
     skill: { id: 'singularity', name: 'Singularität', icon: '🕳', cd: 18, desc: 'Erschafft 4 s lang ein Schwarzes Loch vor dir, das alles Zerstörbare einsaugt und frisst.' },
-    perks: { berserk: 1.7, berserkTime: 3, size: 1.25 }, cost: 90000, req: { world: 5, label: 'Erreiche Planetar' } },
+    perks: { berserk: 1.7, berserkTime: 3, size: 1.25 }, cost: 90000, req: { world: 5, label: 'Erreiche den Erdorbit' } },
   { id: 'frost', name: 'Frostbeule', type: 'spiky', title: 'Eiskalter Zorn',
     desc: 'Hindernisse tun 40 % weniger weh, +20 % Schaden, +10 % Wut.',
     colors: { body: '#bfe8ff', belly: '#ffffff', horn: '#5ad0ff', dark: '#0a3a5a' },
@@ -720,7 +730,7 @@ export const MAPS = [
     scrapMult: 6, hpMult: 2.2, drainMult: 1.1, chaosMult: 2, req: { world: 3, label: 'Erreiche das Gebirge' } },
   { id: 'candy', name: 'Zuckerland', icon: '🍭', worlds: [...CANDY, ...WORLDS.slice(3)],
     desc: 'Gummibärchen, Torten, Schokoberge. Süß aussehend, brutal schwer – und extrem viel Beute.',
-    scrapMult: 36, hpMult: 5.5, drainMult: 1.2, chaosMult: 4, req: { world: 5, label: 'Erreiche Planetar' } },
+    scrapMult: 36, hpMult: 5.5, drainMult: 1.2, chaosMult: 4, req: { world: 5, label: 'Erreiche den Erdorbit' } },
 ];
 
 // ---------------------------------------------------------------------
@@ -735,8 +745,8 @@ export const PRESTIGE = {
 
 // Der Böse Masterplan – permanente Boni, gekauft mit ◆ Dunkler Materie
 export const DM_PERKS = [
-  { id: 'dm_scrap',  name: 'Schwarzgeld',   icon: '💸', desc: '+25 % Schrott pro Stufe (multiplikativ, für immer).', base: 1, growth: 1.22, max: 200, per: 0.25, mult: true },
-  { id: 'dm_power',  name: 'Wutkern',       icon: '❤️‍🔥', desc: '+12 % Schaden pro Stufe (multiplikativ).',          base: 1, growth: 1.22, max: 200, per: 0.12, mult: true },
+  { id: 'dm_scrap',  name: 'Schwarzgeld',   icon: '💸', desc: '+20 % Schrott pro Stufe (multiplikativ, für immer).', base: 1, growth: 1.25, max: 200, per: 0.2, mult: true },
+  { id: 'dm_power',  name: 'Wutkern',       icon: '❤️‍🔥', desc: '+10 % Schaden pro Stufe (multiplikativ).',          base: 1, growth: 1.25, max: 200, per: 0.1, mult: true },
   { id: 'dm_growth', name: 'Mutagen',       icon: '🧪', desc: '+5 % Wachstum pro Stufe (multiplikativ).',            base: 2, growth: 1.24, max: 150, per: 0.05, mult: true },
   { id: 'dm_rage',   name: 'Ewiger Zorn',   icon: '🌋', desc: '+5 % Wut-Tank pro Stufe (multiplikativ).',            base: 1, growth: 1.35, max: 30,  per: 0.05, mult: true },
   { id: 'dm_start',  name: 'Frühstart',     icon: '🚀', desc: '+10 % Startgröße pro Stufe (multiplikativ).',         base: 2, growth: 1.3,  max: 60,  per: 0.1, mult: true },
@@ -767,5 +777,6 @@ export const ACHIEVEMENTS = [
   ...ach('evo', 'Evolutionär', '🧬', 'evos', [1, 3, 6], [5000, 100000, 2000000], g => `Entwickle ${g} Fähigkeit${g === 1 ? '' : 'en'} weiter`),
   { id: 'maps1', group: 'maps', name: 'Kartograf', icon: '🌍', stat: 'maps', goal: 3, reward: 50000, desc: 'Spiele auf allen 3 Karten' },
   { id: 'long1', group: 'long', name: 'Zähe Wut', icon: '⏱', stat: 'longestRun', goal: 180, reward: 5000, desc: 'Überlebe einen Run 3 Minuten lang' },
+  ...ach('skins', 'Glanzstück', '✨', 'skinTier', [1, 2, 3, 4], [20000, 2000000, 50000000, 500000000], g => `Kaufe einen ${['', 'Silber', 'Gold', 'Platin', 'Gott'][g]}-Skin`),
   { id: 'boss1', group: 'boss', name: 'Höllenbezwinger', icon: '😈', stat: 'bossKills', goal: 1, reward: 10000000, desc: 'Besiege ZORNOS, den Höllenfürsten, in Welt 50' },
 ];

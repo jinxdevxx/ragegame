@@ -1,7 +1,7 @@
 // =====================================================================
 //  RAGEVERSE – Spiel-Logik (Simulation, keine Grafik)
 // =====================================================================
-import * as C from './config.js?v=0.4.1';
+import * as C from './config.js?v=0.5.0';
 
 const TAU = Math.PI * 2;
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -135,7 +135,7 @@ export class Game {
     this.runScrap = 0; this.runChaos = 0; this.kills = 0; this.maxRadius = r;
     this.event = null; this.eventT = 0; this.nextEventAt = C.EVENTS.firstAfter;
     this.shockT = 0; this.meteorT = 0; this.spawnT = 0; this.shake = 0; this.dyingT = 0;
-    this.hitStop = 0; this.flash = 0; this.coinChain = 0; this.coinChainT = 0;
+    this.hitStop = 0; this.hitStopCd = 0; this.flash = 0; this.coinChain = 0; this.coinChainT = 0;
     this.quest = null; this.questT = C.QUESTS.firstAfter; this.questsDone = 0;
     this.pendingWorlds = 0;
     this.boss = null; this.bossDone = false; this.bossShots = [];
@@ -179,6 +179,8 @@ export class Game {
     }
     if (this.state !== 'play') return;
     // Treffer-Stopp: kurzer Freeze bei großen Treffern
+    if (this.hitStopCd > 0) this.hitStopCd -= dt;
+    this.flushCoinPool(); this.fxBudget = Math.min(10, (this.fxBudget ?? 10) + dt * 25); // Effekt-Budget: ~25 volle Zerstör-Effekte/s, der Rest wird gebündelt
     if (this.hitStop > 0) { this.hitStop -= dt; this.updateCamera(dt); return; }
 
     const p = this.p, S = this.stats;
@@ -201,11 +203,14 @@ export class Game {
     }
     input.dash = false;
     p.slamCd = Math.max(0, p.slamCd - dt);
-    p.berserkCd = Math.max(0, (p.berserkCd || 0) - dt);
+    if (p.berserkCd > 0) {
+      p.berserkCd = Math.max(0, p.berserkCd - dt);
+      if (p.berserkCd <= 0 && p.berserk >= 1) { this.sfx('ready'); this.hook('onBerserkReady'); } // war in der Abklingzeit schon voll
+    }
     p.slamT = Math.max(0, p.slamT - dt);
     if (input.slam && p.slamCd <= 0) this.slam();
     input.slam = false;
-    if (input.berserk && p.berserk >= 1 && p.berserkT <= 0) this.startBerserk();
+    if (input.berserk && p.berserk >= 1 && p.berserkT <= 0 && !(p.berserkCd > 0)) this.startBerserk();
     input.berserk = false;
     p.skillCd = Math.max(0, p.skillCd - dt);
     if (input.skill && p.skillCd <= 0 && this.char.skill) this.useSkill();
@@ -251,7 +256,7 @@ export class Game {
     if (berserk) {
       p.berserkT -= dt;
       if (Math.random() < 0.5) this.particle(p.x + rand(-1, 1) * p.r, p.y - rand(0, 1.5) * p.r, Math.random() < 0.5 ? '#ff6a1f' : '#ffd23f', p.r * rand(0.12, 0.25), 0.5, 0, -p.r * 3, 'flame');
-      if (p.berserkT <= 0) { p.berserkT = 0; p.berserk = 0; p.berserkCd = C.BERSERK.cooldown; this.hook('onBerserk', false); }
+      if (p.berserkT <= 0) { p.berserkT = 0; p.berserk = Math.min(1, p.berserkBank || 0); p.berserkBank = 0; p.berserkCd = C.BERSERK.cooldown; this.hook('onBerserk', false); }
     }
 
     // --- Wut
@@ -331,7 +336,7 @@ export class Game {
     }
     for (const m of this.meteors) {
       m.t -= dt;
-      if (m.t <= 0) { this.explode(m.x, m.y, m.r, Math.pow(p.r, 1.5) * 2.2, true); }
+      if (m.t <= 0) { this.explosionQueue.push({ x: m.x, y: m.y, r: m.r, dmg: Math.pow(p.r, 1.5) * 2.2, big: true, noStop: true }); this.processExplosions(); }
     }
     this.meteors = this.meteors.filter(m => m.t > 0);
   }
@@ -391,7 +396,7 @@ export class Game {
     this.quest = null; this.questT = C.QUESTS.pause; this.questsDone++;
     const rw = this.questReward(this.questsDone);
     if (!this.boss) p.rage = Math.min(S.rageMax, p.rage + S.rageMax * C.QUESTS.rageReward / this.lateFactor());
-    this.addBerserk(C.QUESTS.berserkReward);
+    this.addBerserk(C.QUESTS.berserkReward, true);
     const value = rw.scrap;
     this.runChaos += rw.chaos;
     this.coinBurst(p.x, p.y, value, 12, true);
@@ -512,7 +517,8 @@ export class Game {
     if (o.explosive) this.rs.explosions++;
     const rel = o.size / p.r;
     // Wachstum
-    p.mass += Math.min(o.size * o.size * S.absorb * scaleOf('absorb', this.level(this.world)), p.mass * C.PLAYER.maxGrowPerKill);
+    const bigBonus = 1 + Math.max(0, Math.min(rel, 1) - 0.6) * C.PLAYER.bigKillGrowth; // große Brocken treiben den Fortschritt
+    p.mass += Math.min(o.size * o.size * S.absorb * bigBonus * scaleOf('absorb', this.level(this.world)), p.mass * C.PLAYER.maxGrowPerKill * bigBonus);
     p.r = Math.sqrt(p.mass);
     if (p.r > this.maxRadius) this.maxRadius = p.r;
     // Wut
@@ -538,6 +544,16 @@ export class Game {
     const w = this.worlds[o.world];
     this.runChaos += (C.CHAOS.perKill + (rel > 1 ? C.CHAOS.bigBonus * rel : 0)) * this.map.chaosMult * S.chaosMult;
     const value = (p.roarT > 0 ? 2 : 1) * o.value * w.scrapMult * this.map.scrapMult * comboMult * S.scrapMult * (o.golden ? C.GOLDEN_MULT : 1) * (o.bonusMult || 1) * (o.crate ? C.CRATE_MULT : 1);
+    // Viele Kills im selben Frame: Effekte werden gebündelt (gleiche Belohnung, weniger Münzen/Trümmer)
+    const rich = (this.fxBudget === undefined || (this.fxBudget -= 1) >= 0) || rel > 0.5 || o.golden || o.crate;
+    if (!rich) {
+      const cp = this.coinPool || (this.coinPool = { x: 0, y: 0, value: 0, n: 0 });
+      cp.x += o.x; cp.y += o.y; cp.value += value; cp.n++;
+      if (Math.random() < 0.15) this.puff(o.x, o.y, o.size * 0.6, '#efe6d6');
+      if (cause === 'touch' && Math.random() < 0.1) this.sfx('crumb');
+      this.explodeFrom(o, rel, S);
+      return;
+    }
     const n = o.crate ? 14 : clamp(Math.ceil(Math.sqrt(o.value) * (o.golden ? 2 : 1)), 1, 8);
     this.coinBurst(o.x, o.y, value, n, o.golden);
     if ((rel > 0.35 || o.golden || o.crate) && value >= 1) this.text(o.x, o.y - o.size * 1.4, '+' + money(value), o.golden || o.crate ? '#ffd23f' : '#fff3c4', 0.9, p.r * 0.7, rel > 0.8 || o.crate);
@@ -554,15 +570,19 @@ export class Game {
     }
     const maxChunks = this.fx && this.fx.low ? 80 : 260;
     if (this.chunks.length > maxChunks) this.chunks.splice(0, this.chunks.length - maxChunks);
-    for (let i = 0; i < (big ? 6 : 3); i++) this.puff(o.x + rand(-0.6, 0.6) * o.size, o.y + rand(-0.3, 0.3) * o.size, o.size * rand(0.4, 0.8), '#efe6d6');
+    for (let i = 0; i < (big ? 4 : 1); i++) this.puff(o.x + rand(-0.6, 0.6) * o.size, o.y + rand(-0.3, 0.3) * o.size, o.size * rand(0.4, 0.8), '#efe6d6');
     if (rel > 0.25) {
       this.decals.push({ x: o.x, y: o.y, size: o.size * 1.15, color: o.color, life: 14, max: 14, seed: Math.random() });
       if (this.decals.length > 70) this.decals.shift();
     }
-    if (big) { this.shake = Math.min(1.1, this.shake + rel * 0.3); this.hitStop = Math.max(this.hitStop, 0.04); p.squash = 1; }
+    if (big) { this.shake = Math.min(1.1, this.shake + rel * 0.3); if (rel > 0.9) this.freeze(0.04); p.squash = 1; }
     if (cause !== 'touch') { this.sfx(o.crate ? 'crate' : 'break', clamp(rel, 0.2, 1.2)); p.punchT = Math.max(p.punchT, 0.12); }
     else if (Math.random() < 0.3) this.sfx('crumb');
-    // Explosionen
+    this.explodeFrom(o, rel, S);
+  }
+
+  // Explosive Objekte / Mutation „Explosiv“
+  explodeFrom(o, rel, S) {
     if (o.explosive) {
       this.explosionQueue.push({ x: o.x, y: o.y, r: o.size * 3.2 * S.boomMult, dmg: Math.pow(o.size, 1.5) * 2.5 * S.boomMult * this.hpScale(o.world), big: true });
       if (this.quest && this.quest.type === 'boom') this.quest.progress++;
@@ -713,12 +733,15 @@ export class Game {
       hp, maxHp: hp, hitCd: 0, hitAnim: 0, flash: 0, bonusMult: 1, move: 'wander', speed: 1.6, hazard: 15, vx: 0, vy: 0, heading: Math.random() * TAU, wanderT: 0, anim: 0, face: 1, seed: Math.random(), scared: 0, pop: 1 });
   }
 
-  addBerserk(amount) {
+  // Ladung: während der Abklingzeit lädt die Leiste mit halber Rate weiter (zünden geht erst danach).
+  // Feste Belohnungen (Aufträge) gehen nie verloren – im Berserker werden sie gutgeschrieben.
+  addBerserk(amount, reward = false) {
     const p = this.p;
-    if (p.berserkT > 0 || p.berserkCd > 0) return;
+    const add = amount * this.stats.berserkGain / (reward ? 1 : this.lateFactor());
+    if (p.berserkT > 0) { if (reward) p.berserkBank = (p.berserkBank || 0) + add; return; }
     const was = p.berserk;
-    p.berserk = Math.min(1, p.berserk + amount * this.stats.berserkGain / this.lateFactor());
-    if (was < 1 && p.berserk >= 1) { this.sfx('ready'); this.hook('onBerserkReady'); }
+    p.berserk = Math.min(1, p.berserk + add * (p.berserkCd > 0 && !reward ? C.BERSERK.cooldownCharge : 1));
+    if (was < 1 && p.berserk >= 1 && !(p.berserkCd > 0)) { this.sfx('ready'); this.hook('onBerserkReady'); }
   }
 
   startBerserk() {
@@ -851,7 +874,7 @@ export class Game {
     const p = this.p, S = this.stats;
     p.slamCd = S.slamCooldown; p.slamT = 0.35; p.squash = 1; this.rs.slams++;
     const R = p.r * S.slamRadius * (p.berserkT > 0 ? C.BERSERK.sizeBoost : 1);
-    this.hitStop = Math.max(this.hitStop, 0.07);
+    this.freeze(0.06);
     this.shake = Math.min(1.4, this.shake + 1);
     this.rings.push({ x: p.x, y: p.y, r: R, life: 0.5, max: 0.5, color: '#fff3c4', ground: true });
     this.rings.push({ x: p.x, y: p.y, r: R * 0.6, life: 0.35, max: 0.35, color: '#ffb13d', ground: true });
@@ -865,8 +888,15 @@ export class Game {
     if (this.boss && Math.hypot(this.boss.x - p.x, this.boss.y - p.y) < R + this.boss.size) this.bossHurt(3 * S.slamDamage * S.damage / this.bossDamageNeed() * (p.berserkT > 0 ? C.BERSERK.damageMult : 1));
   }
 
+  flushCoinPool() {
+    const cp = this.coinPool; if (!cp || !cp.n) return;
+    this.coinPool = null;
+    this.coinBurst(cp.x / cp.n, cp.y / cp.n, cp.value, clamp(Math.ceil(Math.sqrt(cp.n) * 2), 2, 12), false);
+  }
+
   coinBurst(x, y, value, n, golden) {
     const p = this.p;
+    if (this.coins.length > 120) n = Math.min(n, this.coins.length > 200 ? 1 : 2); // viele Münzen: weniger, dafür wertvollere
     for (let i = 0; i < n; i++) {
       const a = Math.random() * TAU, v = rand(1, 3.2) * p.r;
       this.coins.push({ x, y, z: p.r * 0.5, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.7, vz: p.r * rand(4, 7), g: p.r * 24,
@@ -933,9 +963,8 @@ export class Game {
       const e = this.explosionQueue.shift();
       if (!e.silent) this.rings.push({ x: e.x, y: e.y, r: e.r, life: 0.45, max: 0.45, color: e.big ? '#ffb13d' : '#ffffff' });
       if (e.big) {
-        this.shake = Math.min(1.3, this.shake + 0.6);
-        this.hitStop = Math.max(this.hitStop, 0.06);
-        this.flash = Math.max(this.flash, 0.25);
+        this.shake = Math.min(e.noStop ? 0.5 : 1.3, this.shake + (e.noStop ? 0.25 : 0.6));
+        if (!e.noStop) { this.freeze(0.05); this.flash = Math.max(this.flash, 0.25); }
         this.sfx('boom', 1);
         for (let i = 0; i < 16; i++) {
           const a = Math.random() * TAU, v = rand(1, 4) * e.r;
@@ -1075,6 +1104,7 @@ export class Game {
   }
 
   updateFx(dt) {
+    this.flushCoinPool();
     this.updateCamera(dt);
     for (const q of this.particles) {
       q.life -= dt; q.x += q.vx * dt; q.y += q.vy * dt; q.rot += q.vr * dt;
@@ -1108,13 +1138,18 @@ export class Game {
     this.flash = Math.max(0, this.flash - dt * 3);
   }
 
+  // Treffer-Stopp (kurzer Freeze für Wucht) – höchstens alle 0,8 s, damit Dauer-Action nicht ruckelt
+  freeze(t) {
+    if (this.hitStopCd > 0) return;
+    this.hitStop = Math.max(this.hitStop, t); this.hitStopCd = 0.8;
+  }
   particle(x, y, color, size, life, vx, vy, kind = 'bit') {
     if (this.particles.length > (this.fx && this.fx.low ? 120 : 500)) return;
     if (this.fx && this.fx.low && Math.random() < 0.5) return;
     this.particles.push({ x, y, color, size, life, max: life, vx, vy, rot: Math.random() * TAU, vr: rand(-8, 8), kind });
   }
   puff(x, y, r, color) {
-    if (this.puffs.length > (this.fx && this.fx.low ? 30 : 120)) return;
+    if (this.puffs.length > (this.fx && this.fx.low ? 25 : 70)) return;
     this.puffs.push({ x, y, r, grow: r * rand(1.5, 2.5), life: rand(0.35, 0.6), max: 0.6, color });
   }
   text(x, y, s, color, life, vy, big = false) {

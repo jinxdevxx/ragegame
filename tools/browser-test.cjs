@@ -34,6 +34,20 @@ const OUT = process.argv[2] || '/tmp';
   log('Spielstand löschen: Abfrage, Abbrechen behält, Bestätigen löscht', asked && kept && gone);
   await p.close();
 
+  // Premium-Skins: kaufen (Stufe für Stufe), auswählen, Schrott wird abgezogen
+  p = await page('?slot=1');
+  await p.evaluate(() => { const s = window.__rv.save; s.scrap = 2e14; s.skins = {}; s.skinSel = {}; });
+  await click(p, '#btn-chars'); await p.waitForTimeout(300);
+  await click(p, '[data-skinchar="grumpf"][data-skin="gold"]'); await p.waitForTimeout(100);
+  const noSkip = await p.evaluate(() => !(window.__rv.save.skins.grumpf || []).includes('gold'));
+  await click(p, '[data-skinchar="grumpf"][data-skin="silver"]'); await p.waitForTimeout(100);
+  await click(p, '[data-skinchar="grumpf"][data-skin="gold"]'); await p.waitForTimeout(100);
+  const sk = await p.evaluate(() => ({ s: window.__rv.save.skins.grumpf, sel: window.__rv.save.skinSel.grumpf, scrap: window.__rv.save.scrap }));
+  log('Skins: Gold erst nach Silber, Kauf zieht Schrott ab, wird ausgewählt', noSkip && sk.s.join() === 'silver,gold' && sk.sel === 'gold' && sk.scrap < 1.01e14, `${sk.s.join('+')}, Rest ${sk.scrap.toExponential(2)}`);
+  await click(p, '[data-skinchar="grumpf"][data-skin=""]'); await p.waitForTimeout(100);
+  log('Skins: zurück auf Normal', await p.evaluate(() => window.__rv.save.skinSel.grumpf === ''));
+  await p.close();
+
   // Erfolge + Statistik
   p = await page('?slot=1');
   await p.evaluate(() => { const s = window.__rv.save; s.totalKills = 1500; s.runs = 12; s.stats = { bestCombo: 25, playTime: 3700 }; });

@@ -77,7 +77,8 @@ if (isMain) {
   if (process.env.NOPROG) process.exit(0);
   console.log('\n=== Progression mit Urknall: Bot kauft günstigste Upgrades, sprengt, wenn er 6 Runs nicht weiterkommt ===');
   const save = freshSave();
-  let bestWorld = -1, stuck = 0, cycleStart = 1;
+  let bestWorld = -1, stuck = 0, cycleStart = 1, everBest = -1;
+  const NOPRESTIGE = !!process.env.NOPRESTIGE, STUCK = Number(process.env.STUCK || 6); // Vergleich: ohne Urknall / früher Urknall
   const RUNS_TOTAL = Number(process.env.RUNS_TOTAL || 120);
   const buy = () => {
     for (;;) {
@@ -102,7 +103,9 @@ if (isMain) {
       const lv = Object.values(save.upgrades).reduce((a, b) => a + b, 0);
       console.log(`Run ${String(run).padStart(3)}: ${r.time.toFixed(0).padStart(3)} s, ${worlds[r.world].name.padEnd(14)} +${fmt(r.earned).padStart(7)} ⚙ +${fmt(r.chaos).padStart(6)} ☠ · Upgrades ${lv} · ◆ ${fmt(save.totalDarkMatter || 0)}`);
     }
-    if (stuck >= 6 && prestigeGain(save) > 0) {
+    everBest = Math.max(everBest, r.world);
+    if (run % 10 === 0) console.log(`   ▸ nach ${run} Runs: weiteste Welt ${everBest + 1} (${worlds[everBest].name})`);
+    if (!NOPRESTIGE && stuck >= STUCK && prestigeGain(save) > 0) {
       const g = doPrestige(save); buy();
       console.log(`   💥 URKNALL nach Run ${run} (Durchgang ${save.prestiges} dauerte ${run - cycleStart + 1} Runs): +${g} ◆, Masterplan-Stufen ${Object.values(save.dmPerks).reduce((a, b) => a + b, 0)}`);
       cycleStart = run + 1; bestWorld = -1; stuck = 0;

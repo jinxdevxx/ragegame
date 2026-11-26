@@ -20,7 +20,7 @@ export function defaultSave() {
   return {
     name: '', created: 0, lastPlayed: 0,
     scrap: 0, totalScrap: 0, chaos: 0, totalChaos: 0, totalKills: 0, upgrades: {}, bestWorld: 0, bestRadius: 0, runs: 0,
-    evos: {}, stats: {}, achievements: {}, bossKills: 0, bestTier: 0,
+    evos: {}, stats: {}, achievements: {}, skins: {}, skinSel: {}, bossKills: 0, bestTier: 0,
     darkMatter: 0, totalDarkMatter: 0, dmPerks: {}, prestiges: 0, cycleScrap: 0, cycleBest: 0,
     tutorial: 0, selectedChar: 'grumpf', unlockedChars: ['grumpf'], selectedMap: 'suburb', mapBest: {}, seenMaps: [],
     // globale Werte (werden aus META gespiegelt)
@@ -59,7 +59,7 @@ function normalize(out) {
   if (!Array.isArray(out.unlockedChars)) out.unlockedChars = ['grumpf'];
   if (!out.unlockedChars.includes('grumpf')) out.unlockedChars.push('grumpf');
   out.mapBest = out.mapBest || {};
-  out.dmPerks = out.dmPerks || {}; out.evos = out.evos || {}; out.stats = out.stats || {}; out.achievements = out.achievements || {};
+  out.dmPerks = out.dmPerks || {}; out.evos = out.evos || {}; out.skins = out.skins || {}; out.skinSel = out.skinSel || {}; out.stats = out.stats || {}; out.achievements = out.achievements || {};
   if (!out.cycleBest && !out.prestiges) out.cycleBest = Math.max(out.bestWorld || 0, ...Object.values(out.mapBest), 0);
   if (!out.cycleScrap && !out.prestiges) out.cycleScrap = out.totalScrap || 0;
   if (out.bestWorld && !out.mapBest.suburb) out.mapBest.suburb = out.bestWorld;

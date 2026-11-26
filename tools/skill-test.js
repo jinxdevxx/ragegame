@@ -196,6 +196,17 @@ console.log('\nFähigkeiten:');
   run(g, 1);
   check('Berserker: keine Wut-Abnahme', g.p.rage >= rage0 - 0.01);
   check('Berserker: größere Trefferzone', g.hr() > g.p.r * 1.1);
+  // Ende + Abklingzeit: Kills laden weiter (halbe Rate), Zünden erst nach der Abklingzeit, Auftrags-Ladung geht nie verloren
+  g.addBerserk(C.QUESTS.berserkReward, true); // Auftrag während Berserker
+  run(g, g.p.berserkT + 0.1);
+  const banked = g.p.berserk;
+  check('Berserker: Auftrags-Ladung im Berserker bleibt erhalten', banked > 0.1, `${(banked * 100).toFixed(0)} % nach Ende`);
+  const b0 = g.p.berserk; for (let i = 0; i < 6; i++) { const o = obj(g, g.p.r * 1.2, 0, g.p.r * 0.5); g.kill(o, 'hit'); }
+  check('Berserker: lädt in der Abklingzeit weiter', g.p.berserkCd > 0 && g.p.berserk > b0, `${(b0 * 100).toFixed(0)} → ${(g.p.berserk * 100).toFixed(0)} %`);
+  g.p.berserk = 1; run(g, 0.05, input({ berserk: true }));
+  check('Berserker: zündet nicht während der Abklingzeit', g.p.berserkT === 0);
+  run(g, C.BERSERK.cooldown + 0.1); run(g, 0.05, input({ berserk: true }));
+  check('Berserker: zündet nach der Abklingzeit', g.p.berserkT > 0);
 }
 
 // ---------------------------------------------------------------- Mutationen

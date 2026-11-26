@@ -1,12 +1,12 @@
 // =====================================================================
 //  RAGEVERSE – Einstieg: Game-Loop, Steuerung, Menüs, Shop, Updates
 // =====================================================================
-import * as C from './config.js?v=0.4.1';
-import { Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.4.1';
-import { render, drawMonsterPreview } from './render.js?v=0.4.1';
-import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.4.1';
-import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.4.1';
-import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.4.1';
+import * as C from './config.js?v=0.5.0';
+import { Game, computeStats, upgradeLevel, upgradeCost, fmt, money, tierOf, charDef, mapDef, dmLevel, dmCost, prestigeGain, doPrestige } from './game.js?v=0.5.0';
+import { render, drawMonsterPreview } from './render.js?v=0.5.0';
+import { initAudio, setMuted, setMusic, setIntensity, setVolumes, sfx } from './audio.js?v=0.5.0';
+import { loadSave, writeSave, listSlots, loadSlotInto, createSlot, deleteSlot, getSlot, loadMeta } from './save.js?v=0.5.0';
+import { PATCH_NOTES, VERSION } from './patchnotes.js?v=0.5.0';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -53,8 +53,21 @@ window.__rv = { game, save, C, computeStats, get pointer() { return pointer; }, 
 // Canvas-Größe
 // ------------------------------------------------------------------
 let W = 0, H = 0, DPR = 1;
+// Adaptive Auflösung: ruckelt es, wird intern gröber gerendert (bis 0,8× CSS-Pixel), läuft es flüssig, wieder feiner
+const RES_STEPS = [1, 0.75, 0.62, 0.5, 0.4];
+let resStep = 0, slowT = 0, fastT = 0, emaDt = 16.7;
+function adaptRes(ms) {
+  if (ms > 100) return; // Tab-Wechsel o. Ä. ignorieren
+  emaDt += (ms - emaDt) * 0.05;
+  const baseDpr = Math.min(window.devicePixelRatio || 1, 2);
+  if (emaDt > 22) { slowT += ms; fastT = 0; } else if (emaDt < 17.5) { fastT += ms; slowT = 0; } else { slowT = 0; fastT = 0; }
+  const minScale = 0.8 / baseDpr; // nie unter 0,8 CSS-Pixel
+  if (slowT > 1500 && resStep < RES_STEPS.length - 1 && RES_STEPS[resStep + 1] >= minScale - 1e-6) { resStep++; slowT = 0; emaDt = 16.7; resize(); }
+  else if (fastT > 5000 && resStep > 0) { resStep--; fastT = 0; resize(); }
+}
+window.__res = () => ({ step: resStep, dpr: DPR, ema: emaDt });
 function resize() {
-  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  DPR = Math.min(window.devicePixelRatio || 1, 2) * RES_STEPS[resStep];
   W = window.innerWidth; H = window.innerHeight;
   canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
   game.vw = W; game.vh = H;
@@ -156,6 +169,7 @@ function readInput() {
 let lastT = performance.now(), menuTime = 0;
 function frame(t) {
   let dt = (t - lastT) / 1000; lastT = t;
+  if (!document.hidden) adaptRes(dt * 1000);
   if (dt > 0.05) dt = 0.05;
   const time = t / 1000;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -242,6 +256,7 @@ function statValue(stat) {
     case 'evos': return Object.keys(save.evos || {}).length;
     case 'maps': return Object.keys(save.mapBest || {}).length;
     case 'bossKills': return save.bossKills || 0;
+    case 'skinTier': return Math.max(0, ...Object.values(save.skins || {}).map(l => Math.max(0, ...l.map(id => C.SKINS.findIndex(k => k.id === id) + 1))));
     default: return st[stat] || 0;
   }
 }
@@ -629,6 +644,7 @@ const previews = [];
 function openChars() {
   inRun = false; sfx('click');
   $('chars-chaos').textContent = fmt(save.chaos);
+  if ($('chars-scrap')) $('chars-scrap').textContent = money(save.scrap);
   previews.length = 0;
   $('char-grid').innerHTML = C.CHARACTERS.map(ch => {
     const owned = save.unlockedChars.includes(ch.id), sel = save.selectedChar === ch.id;
@@ -643,6 +659,7 @@ function openChars() {
       <div class="char-name">${esc(ch.name)} <small>${esc(ch.title)}</small></div>
       <div class="char-desc">${esc(ch.desc)}</div>
       <div class="char-skill">${ch.skill.icon} <b>${esc(ch.skill.name)}</b> (F · ${ch.skill.cd} s): ${esc(ch.skill.desc)}</div>
+      ${owned ? skinRow(ch) : ''}
       ${!owned && ch.req ? `<div class="char-req ${met ? 'ok' : ''}">${met ? '✔' : '🔒'} ${esc(ch.req.label)} <span>${reqProgress(ch.req)}</span></div>` : ''}
       ${btn}
     </div>`;
@@ -650,7 +667,28 @@ function openChars() {
   $('char-grid').querySelectorAll('canvas[data-prev]').forEach(cv => previews.push({ cv, char: charDef(cv.dataset.prev), locked: !save.unlockedChars.includes(cv.dataset.prev) }));
   show('screen-chars');
 }
+// Skin-Leiste je Monster: Normal + 4 Premium-Stufen (nacheinander kaufbar)
+function skinRow(ch) {
+  const owned = save.skins[ch.id] || [], cur = save.skinSel[ch.id] || '';
+  const chips = [`<button class="skin-chip ${cur ? '' : 'on'}" data-skin="" data-skinchar="${ch.id}" title="Normal">🎨<small>Normal</small></button>`];
+  C.SKINS.forEach((k, i) => {
+    const has = owned.includes(k.id), prevOk = i === 0 || owned.includes(C.SKINS[i - 1].id), afford = save.scrap >= k.cost;
+    const cls = has ? (cur === k.id ? 'on' : '') : (prevOk && afford ? 'buy' : 'locked');
+    const label = has ? k.name : prevOk ? money(k.cost) : '🔒';
+    chips.push(`<button class="skin-chip ${cls} sk-${k.id}" data-skin="${k.id}" data-skinchar="${ch.id}" title="${esc(k.name)}: ${esc(k.desc)}${has ? '' : prevOk ? ' – kostet ' + money(k.cost, true) : ' – erst ' + C.SKINS[i - 1].name + ' kaufen'}">${k.icon}<small>${esc(label)}</small></button>`);
+  });
+  return `<div class="skin-row">${chips.join('')}</div>`;
+}
 $('char-grid').addEventListener('click', e => {
+  const sk = e.target.closest('[data-skinchar]');
+  if (sk) {
+    const cid = sk.dataset.skinchar, id = sk.dataset.skin, owned = save.skins[cid] || (save.skins[cid] = []);
+    if (!id || owned.includes(id)) { save.skinSel[cid] = id; writeSave(save); sfx('click'); openChars(); return; }
+    const i = C.SKINS.findIndex(k => k.id === id), k = C.SKINS[i];
+    if ((i > 0 && !owned.includes(C.SKINS[i - 1].id)) || save.scrap < k.cost) { sfx('deny'); return; }
+    save.scrap -= k.cost; owned.push(id); save.skinSel[cid] = id; writeSave(save); checkAchievements();
+    sfx('unlock'); openChars(); return;
+  }
   const s = e.target.closest('[data-sel]');
   if (s) { save.selectedChar = s.dataset.sel; writeSave(save); sfx('buy'); openChars(); return; }
   const b = e.target.closest('[data-buychar]');
@@ -665,10 +703,10 @@ let stageCycle = 0;
 function animatePreviews(time) {
   if (current === 'screen-menu') {
     stageCycle = Math.floor(time / 2.5) % (bestWorldAny() + 1);
-    drawMonsterPreview($('menu-monster'), charDef(save.selectedChar), stageCycle, time, false);
+    drawMonsterPreview($('menu-monster'), charDef(save.selectedChar), stageCycle, time, false, save.skinSel[save.selectedChar]);
   }
   if (current === 'screen-slots') for (const p of slotPreviews) drawMonsterPreview(p.cv, p.char, p.stage, time, false);
-  if (current === 'screen-chars') for (const p of previews) drawMonsterPreview(p.cv, p.char, p.locked ? 0 : Math.floor(time / 2) % 8, time, p.locked);
+  if (current === 'screen-chars') for (const p of previews) drawMonsterPreview(p.cv, p.char, p.locked ? 0 : Math.floor(time / 2) % 8, time, p.locked, p.locked ? null : save.skinSel[p.char.id]);
 }
 
 // ------------------------------------------------------------------
@@ -731,7 +769,7 @@ function openHelp(from) {
       <li><b>Goldene Objekte</b> = ×${C.GOLDEN_MULT} Schrott. <b>Schrottkisten</b> platzen wie Piñatas. <b>⚠-Fässer</b> explodieren in Kettenreaktionen.</li>
       <li><b>Neue Karten</b> schaltest du über deine weiteste Welt frei. Sie sind härter, bringen aber deutlich mehr.</li>
       <li><b>💥 Urknall</b> (in der Schurkenhöhle, ab dem Kontinent): Schrott und Upgrades werden gesprengt, dafür gibt es <b>◆ Dunkle Materie</b> für den <b>Bösen Masterplan</b> – Boni für immer. So kommst du in jedem Durchgang schneller und weiter.</li>
-      <li><b>Welten:</b> Nach der Galaxie warten Galaxienhaufen, Universum und Multiversum – und danach geht es endlos weiter.</li>
+      <li><b>Welten:</b> Nach der Milchstraße warten Galaxienhaufen, Kosmisches Netz und Multiversum – und danach geht es endlos weiter.</li>
     </ul>`;
   show('screen-help');
 }
@@ -893,7 +931,8 @@ function updateHud() {
   setAb('ab-skill', p.skillCd / game.char.skill.cd, p.skillCd > 0 ? p.skillCd.toFixed(1) : '', p.skillCd <= 0);
   setAb('ab-dash', p.dashCd / S.dashCooldown, p.dashCd > 0 ? p.dashCd.toFixed(1) : '', p.dashCd <= 0);
   setAb('ab-slam', p.slamCd / S.slamCooldown, p.slamCd > 0 ? p.slamCd.toFixed(1) : '', p.slamCd <= 0);
-  if (p.berserkT > 0) setAb('ab-berserk', 1 - p.berserkT / S.berserkTime, p.berserkT.toFixed(1), false, 'active');
+  if (p.berserkT > 0) setAb('ab-berserk', Math.max(0, 1 - p.berserkT / S.berserkTime), p.berserkT.toFixed(1), false, 'active');
+  else if (p.berserkCd > 0) setAb('ab-berserk', 1 - p.berserk, `${Math.floor(p.berserk * 100)}% ⏳${Math.ceil(p.berserkCd)}`, false, 'cd');
   else setAb('ab-berserk', 1 - p.berserk, p.berserk >= 1 ? 'BEREIT' : Math.floor(p.berserk * 100) + '%', p.berserk >= 1);
 }
 

@@ -3,9 +3,9 @@
 //  Reihenfolge: Boden → Trümmer-Flecken → Schatten/Objekte/Monster
 //  (nach Tiefe sortiert) → Trümmer → Münzen → Effekte → Overlays
 // =====================================================================
-import { SPRITES, OUT } from './sprites.js?v=0.4.1';
-import { drawMonster } from './monster.js?v=0.4.1';
-import { shadeHex as sh, shadeHex } from './game.js?v=0.4.1';
+import { SPRITES, OUT } from './sprites.js?v=0.5.0';
+import { drawMonster } from './monster.js?v=0.5.0';
+import { shadeHex as sh, shadeHex } from './game.js?v=0.5.0';
 
 const TAU = Math.PI * 2;
 const STARS = Array.from({ length: 220 }, () => ({ x: Math.random(), y: Math.random(), s: Math.random() * 1.8 + 0.4, p: Math.random() * 0.6 + 0.1, tw: Math.random() * 6 }));
@@ -53,25 +53,37 @@ function terrain(k, scale, seed, layers) {
   const P = (i, j) => [sx((x0 + i) * C), sy((y0 + j) * C)];
   for (const L of layers) {
     const g = L.t2 !== undefined ? n => L.t2 - n : n => n - L.t;
-    const shapes = [];
-    c.beginPath();
-    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-      const corners = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]];
-      const vs = corners.map(([a, b]) => g(val[b * (nx + 1) + a]));
-      if (vs[0] < 0 && vs[1] < 0 && vs[2] < 0 && vs[3] < 0) continue;
-      const pts = [];
-      for (let e = 0; e < 4; e++) {
-        const a = vs[e], b = vs[(e + 1) % 4], pa = P(...corners[e]), pb = P(...corners[(e + 1) % 4]);
-        if (a >= 0) pts.push(pa);
-        if ((a >= 0) !== (b >= 0)) { const t = a / (a - b); pts.push([pa[0] + (pb[0] - pa[0]) * t, pa[1] + (pb[1] - pa[1]) * t]); }
+    // Volle Zellen werden pro Zeile zu Streifen zusammengefasst (wenige Rechtecke statt tausender Pfade),
+    // nur die Randzellen bekommen die interpolierte Kontur.
+    const runs = [], edges = [];
+    for (let j = 0; j < ny; j++) {
+      let runStart = -1;
+      for (let i = 0; i <= nx; i++) {
+        let full = false, vs = null;
+        if (i < nx) {
+          vs = [g(val[j * (nx + 1) + i]), g(val[j * (nx + 1) + i + 1]), g(val[(j + 1) * (nx + 1) + i + 1]), g(val[(j + 1) * (nx + 1) + i])];
+          full = vs[0] >= 0 && vs[1] >= 0 && vs[2] >= 0 && vs[3] >= 0;
+        }
+        if (full) { if (runStart < 0) runStart = i; continue; }
+        if (runStart >= 0) { runs.push([runStart, i, j]); runStart = -1; }
+        if (!vs || (vs[0] < 0 && vs[1] < 0 && vs[2] < 0 && vs[3] < 0)) continue;
+        const corners = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]], pts = [];
+        for (let e = 0; e < 4; e++) {
+          const a2 = vs[e], b2 = vs[(e + 1) % 4], pa = P(...corners[e]), pb = P(...corners[(e + 1) % 4]);
+          if (a2 >= 0) pts.push(pa);
+          if ((a2 >= 0) !== (b2 >= 0)) { const t = a2 / (a2 - b2); pts.push([pa[0] + (pb[0] - pa[0]) * t, pa[1] + (pb[1] - pa[1]) * t]); }
+        }
+        edges.push(pts);
       }
-      shapes.push(pts);
     }
     const draw = (dx, dy, col) => {
+      c.fillStyle = col; c.strokeStyle = col; c.lineWidth = 1;
       c.beginPath();
-      for (const pts of shapes) { c.moveTo(pts[0][0] + dx, pts[0][1] + dy); for (let q = 1; q < pts.length; q++) c.lineTo(pts[q][0] + dx, pts[q][1] + dy); c.closePath(); }
-      c.fillStyle = col; c.fill();
-      c.strokeStyle = col; c.lineWidth = 1; c.stroke(); // schließt Haarlinien zwischen den Zellen
+      for (const [i0, i1, j] of runs) { const [ax, ay] = P(i0, j), [bx, by] = P(i1, j + 1); c.rect(ax + dx - 0.5, ay + dy - 0.5, bx - ax + 1, by - ay + 1); }
+      c.fill();
+      c.beginPath();
+      for (const pts of edges) { c.moveTo(pts[0][0] + dx, pts[0][1] + dy); for (let q = 1; q < pts.length; q++) c.lineTo(pts[q][0] + dx, pts[q][1] + dy); c.closePath(); }
+      c.fill(); c.stroke(); // schließt Haarlinien zwischen den Randzellen
     };
     if (L.rim) draw(0, Math.max(2, C * z * 0.35), L.rim);
     draw(0, 0, L.color);
@@ -80,20 +92,28 @@ function terrain(k, scale, seed, layers) {
 
 // Teure Landschaften einmal vorzeichnen und wiederverwenden (bis man sich weit bewegt oder stark wächst)
 const groundCache = {};
+let lastGroundBuild = 0;
 function cached(k, key, painter) {
   const { c, z, g, W, H, sx, sy } = k;
-  const cam = g.cam, RES = 0.7;
+  const cam = g.cam;
   key = key + ':' + (g.map ? g.map.id : '') + ':' + g.world;
   let t = groundCache[key];
   const vx0 = cam.x - W / 2 / z, vx1 = cam.x + W / 2 / z, vy0 = cam.y - H / 2 / z, vy1 = cam.y + H / 2 / z;
-  const stale = !t || Math.abs(z / t.z - 1) > 0.2 || vx0 < t.x0 || vx1 > t.x1 || vy0 < t.y0 || vy1 > t.y1;
+  // Rauszoomen (Wachsen): altes Bild wird nur verkleinert – erst neu rechnen, wenn es zu klein wird oder der Rand erreicht ist.
+  // Reinzoomen: ab 25 % neu rechnen, sonst wird es unscharf.
   const now = performance.now();
-  // höchstens alle 0,3 s neu rechnen (bei sehr schnellem Wachstum), dazwischen altes Bild skalieren
-  if (stale && (!t || now - (t.at || 0) > 300 || vx0 < t.x0 - (t.x1 - t.x0) || vy0 < t.y0 - (t.y1 - t.y0))) {
+  // grob gerechnetes Bild nach 1,5 s Ruhe einmal scharf nachrechnen
+  const sharpen = t && t.low && now - t.at > 1500 && now - lastGroundBuild > 1500;
+  const stale = !t || sharpen || z / t.z > 1.25 || z / t.z < 0.45 || vx0 < t.x0 || vx1 > t.x1 || vy0 < t.y0 || vy1 > t.y1;
+  if (stale && (!t || sharpen || now - (t.at || 0) > 300 || vx0 < t.x0 - (t.x1 - t.x0) || vy0 < t.y0 - (t.y1 - t.y0))) {
     for (const k2 of Object.keys(groundCache)) if (k2 !== key) delete groundCache[k2];
-    const mx = W / z * 0.45, my = H / z * 0.45;
+    const fast = !sharpen && now - lastGroundBuild < 2500; // schnelles Wachstum / Weltwechsel: gröber rechnen, dafür flüssig
+    const growing = g.p && g.p.r > (t ? t.r || 0 : 0) * 1.01;
+    // beim Wachsen großzügig im Voraus rechnen (deckt ~1,6× weiteres Rauszoomen ab)
+    const span = growing ? 0.8 : 0.45, mx = W / z * span, my = H / z * span;
+    const RES = fast ? 0.45 : 0.7;
     t = t || { cv: document.createElement('canvas') };
-    t.at = now; t.z = z; t.x0 = vx0 - mx; t.x1 = vx1 + mx; t.y0 = vy0 - my; t.y1 = vy1 + my;
+    t.at = now; t.low = fast; lastGroundBuild = now; t.z = z; t.r = g.p ? g.p.r : 0; t.x0 = vx0 - mx; t.x1 = vx1 + mx; t.y0 = vy0 - my; t.y1 = vy1 + my;
     const zz = z * RES;
     t.cv.width = Math.ceil((t.x1 - t.x0) * zz); t.cv.height = Math.ceil((t.y1 - t.y0) * zz);
     const oc = t.cv.getContext('2d');
@@ -504,6 +524,91 @@ const GROUNDS = {
 GROUNDS.rock = GROUNDS.alpine;
 
 let spaceTex = null;
+// Eigenes Motiv je Weltraum-Welt (einmal in die Hintergrund-Textur gemalt, nahtlos kachelbar)
+function spaceTheme(o, world, w, h) {
+  let seed = 7; for (const ch of world.id) seed = (seed * 31 + ch.charCodeAt(0)) % 9973;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const wrap = (fn) => { for (const dx of [-w, 0, w]) for (const dy of [-h, 0, h]) { o.save(); o.translate(dx, dy); fn(); o.restore(); } };
+  const m = Math.min(w, h);
+  switch (world.id) {
+    case 'planet': { // Erdorbit: großer Erdrand mit Atmosphäre und Wolken
+      wrap(() => {
+        const X = w * 0.18, Y = h * 1.25, R = m * 0.95;
+        const at = o.createRadialGradient(X, Y, R * 0.96, X, Y, R * 1.12); at.addColorStop(0, 'rgba(120,200,255,0.55)'); at.addColorStop(1, 'rgba(120,200,255,0)');
+        o.fillStyle = at; o.beginPath(); o.arc(X, Y, R * 1.12, 0, TAU); o.fill();
+        const gr = o.createRadialGradient(X + R * 0.3, Y - R * 0.6, R * 0.1, X, Y, R); gr.addColorStop(0, '#3a8ad8'); gr.addColorStop(1, '#0d2a5a');
+        o.fillStyle = gr; o.beginPath(); o.arc(X, Y, R, 0, TAU); o.fill();
+        o.save(); o.beginPath(); o.arc(X, Y, R, 0, TAU); o.clip();
+        o.fillStyle = 'rgba(70,150,80,0.75)'; for (let i = 0; i < 6; i++) { o.beginPath(); o.ellipse(X - R * 0.2 + rnd() * R * 0.9, Y - R * (0.75 + rnd() * 0.2), R * (0.06 + rnd() * 0.12), R * (0.03 + rnd() * 0.05), rnd() * 3, 0, TAU); o.fill(); }
+        o.fillStyle = 'rgba(255,255,255,0.35)'; for (let i = 0; i < 8; i++) { o.beginPath(); o.ellipse(X - R * 0.3 + rnd() * R, Y - R * (0.8 + rnd() * 0.18), R * (0.08 + rnd() * 0.1), R * 0.015, rnd() * 0.4, 0, TAU); o.fill(); }
+        o.restore();
+      });
+      break;
+    }
+    case 'solar': { // Sonnensystem: glühende Sonne in der Ecke, Umlaufbahnen
+      wrap(() => {
+        const X = w * 0.85, Y = h * 0.2;
+        const sg = o.createRadialGradient(X, Y, 0, X, Y, m * 0.55); sg.addColorStop(0, 'rgba(255,240,180,0.9)'); sg.addColorStop(0.12, 'rgba(255,190,60,0.75)'); sg.addColorStop(0.4, 'rgba(255,110,30,0.2)'); sg.addColorStop(1, 'rgba(255,80,20,0)');
+        o.fillStyle = sg; o.beginPath(); o.arc(X, Y, m * 0.55, 0, TAU); o.fill();
+        o.strokeStyle = 'rgba(255,210,120,0.14)'; o.lineWidth = 1;
+        for (let i = 1; i < 6; i++) { o.beginPath(); o.ellipse(X, Y, m * 0.18 * i, m * 0.11 * i, -0.3, 0, TAU); o.stroke(); }
+        o.fillStyle = 'rgba(200,170,140,0.5)'; for (let i = 0; i < 70; i++) { const a = rnd() * TAU, r = m * (0.6 + rnd() * 0.08); o.fillRect(X + Math.cos(a - 0.3) * r, Y + Math.sin(a) * r * 0.61, 1.2, 1.2); }
+      });
+      break;
+    }
+    case 'galaxy': { // Milchstraße: helles, diagonales Sternenband mit Staubwolken
+      wrap(() => {
+        o.save(); o.translate(w / 2, h / 2); o.rotate(-0.45);
+        const bg = o.createLinearGradient(0, -m * 0.3, 0, m * 0.3); bg.addColorStop(0, 'rgba(176,107,255,0)'); bg.addColorStop(0.5, 'rgba(230,200,255,0.35)'); bg.addColorStop(1, 'rgba(176,107,255,0)');
+        o.fillStyle = bg; o.fillRect(-w, -m * 0.3, w * 2, m * 0.6);
+        o.fillStyle = 'rgba(255,255,255,0.8)'; for (let i = 0; i < 260; i++) { const y = (rnd() + rnd() + rnd() - 1.5) * m * 0.16; o.fillRect((rnd() - 0.5) * w * 2, y, rnd() < 0.1 ? 1.6 : 0.8, rnd() < 0.1 ? 1.6 : 0.8); }
+        o.fillStyle = 'rgba(40,10,60,0.45)'; for (let i = 0; i < 10; i++) { o.beginPath(); o.ellipse((rnd() - 0.5) * w * 1.6, (rnd() - 0.5) * m * 0.12, m * (0.08 + rnd() * 0.12), m * 0.02, 0, 0, TAU); o.fill(); }
+        o.restore();
+      });
+      break;
+    }
+    case 'supercluster': { // Galaxienhaufen: viele kleine Spiralgalaxien
+      for (let i = 0; i < 26; i++) {
+        const X = rnd() * w, Y = rnd() * h, R = m * (0.015 + rnd() * 0.04), rot = rnd() * TAU, col = rnd() < 0.5 ? '160,240,255' : '255,220,170';
+        wrap(() => {
+          o.save(); o.translate(X, Y); o.rotate(rot); o.scale(1, 0.45 + rnd() * 0.4);
+          const gg = o.createRadialGradient(0, 0, 0, 0, 0, R * 2); gg.addColorStop(0, `rgba(${col},0.9)`); gg.addColorStop(0.25, `rgba(${col},0.35)`); gg.addColorStop(1, `rgba(${col},0)`);
+          o.fillStyle = gg; o.beginPath(); o.arc(0, 0, R * 2, 0, TAU); o.fill();
+          o.strokeStyle = `rgba(${col},0.35)`; o.lineWidth = Math.max(0.6, R * 0.15);
+          for (let k = 0; k < 2; k++) { o.beginPath(); for (let a = 0; a < 5; a += 0.2) { const r = R * 0.2 + a * R * 0.32; const x = Math.cos(a + k * Math.PI) * r, y = Math.sin(a + k * Math.PI) * r; a ? o.lineTo(x, y) : o.moveTo(x, y); } o.stroke(); }
+          o.restore();
+        });
+      }
+      break;
+    }
+    case 'universe': { // Kosmisches Netz: leuchtende Filamente zwischen Knoten
+      const nodes = []; for (let i = 0; i < 22; i++) nodes.push([rnd() * w, rnd() * h, 0.5 + rnd()]);
+      wrap(() => {
+        for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
+          const [x1, y1] = nodes[i], [x2, y2] = nodes[j], d = Math.hypot(x2 - x1, y2 - y1);
+          if (d > m * 0.42) continue;
+          o.strokeStyle = `rgba(255,120,200,${0.32 * (1 - d / (m * 0.42))})`; o.lineWidth = 2.2; o.beginPath(); o.moveTo(x1, y1); o.quadraticCurveTo((x1 + x2) / 2 + (y2 - y1) * 0.15, (y1 + y2) / 2 - (x2 - x1) * 0.15, x2, y2); o.stroke();
+          o.strokeStyle = `rgba(160,220,255,${0.25 * (1 - d / (m * 0.42))})`; o.lineWidth = 0.8; o.stroke();
+        }
+        for (const [x, y, k] of nodes) { const ng = o.createRadialGradient(x, y, 0, x, y, m * 0.05 * k); ng.addColorStop(0, 'rgba(255,230,250,0.9)'); ng.addColorStop(0.3, 'rgba(255,80,180,0.4)'); ng.addColorStop(1, 'rgba(255,80,180,0)'); o.fillStyle = ng; o.beginPath(); o.arc(x, y, m * 0.05 * k, 0, TAU); o.fill(); }
+      });
+      break;
+    }
+    case 'multiverse': { // Multiversum: schillernde Universums-Blasen
+      for (let i = 0; i < 16; i++) {
+        const X = rnd() * w, Y = rnd() * h, R = m * (0.06 + rnd() * 0.16), hue = Math.floor(rnd() * 360);
+        wrap(() => {
+          const bg2 = o.createRadialGradient(X - R * 0.3, Y - R * 0.3, R * 0.1, X, Y, R); bg2.addColorStop(0, `hsla(${hue},80%,92%,0.15)`); bg2.addColorStop(0.85, `hsla(${hue},80%,75%,0.22)`); bg2.addColorStop(1, `hsla(${(hue + 60) % 360},90%,60%,0.5)`);
+          o.fillStyle = bg2; o.beginPath(); o.arc(X, Y, R, 0, TAU); o.fill();
+          o.strokeStyle = `hsla(${(hue + 120) % 360},90%,60%,0.45)`; o.lineWidth = 1.5; o.stroke();
+          o.fillStyle = 'rgba(255,255,255,0.6)'; o.beginPath(); o.ellipse(X - R * 0.4, Y - R * 0.45, R * 0.18, R * 0.08, -0.6, 0, TAU); o.fill();
+        });
+      }
+      break;
+    }
+  }
+}
+
 function drawSpace(c, g, W, H, z, world, time) {
   const cam = g.cam;
   // Nebel-Hintergrund einmal pro Welt vorzeichnen
@@ -517,6 +622,7 @@ function drawSpace(c, g, W, H, z, world, time) {
       gr.addColorStop(0, (i % 2 ? world.accent : world.bg2) + '66'); gr.addColorStop(1, world.bg2 + '00');
       o.fillStyle = gr; o.fillRect(0, 0, cv.width, cv.height);
     }
+    spaceTheme(o, world, cv.width, cv.height);
     spaceTex = { key, cv };
   }
   const px = ((-cam.x * z * 0.01) % W + W) % W, py = ((-cam.y * z * 0.01) % H + H) % H;
@@ -543,7 +649,9 @@ export function render(c, g, W, H, time) {
   const sx = x => (x - cam.x) * z + ox, sy = y => (y - cam.y) * z + oy;
   c.lineJoin = 'round'; c.lineCap = 'round';
 
-  drawGround(c, g, W, H, sx, sy, z, world, time);
+  const PF = typeof window !== 'undefined' && window.__prof; let pt = PF ? performance.now() : 0;
+  const lap = n => { if (!PF) return; const t2 = performance.now(); PF[n] = (PF[n] || 0) + t2 - pt; if (t2 - pt > 60) (PF.spikes = PF.spikes || []).push(n + '@' + world.name + ':' + (t2 - pt).toFixed(0)); pt = t2; };
+  drawGround(c, g, W, H, sx, sy, z, world, time); lap('boden');
 
   // Trümmer-Flecken auf dem Boden
   for (const d of g.decals) {
@@ -593,6 +701,7 @@ export function render(c, g, W, H, time) {
     c.beginPath(); c.ellipse(sx(p.x), sy(p.y), R, R * 0.55, 0, 0, TAU); c.stroke(); c.setLineDash([]);
   }
 
+  lap('bodenfx');
   // ---- Objekte + Monster, nach Tiefe sortiert
   const limit = g.breakLimit();
   const drawList = [];
@@ -613,6 +722,7 @@ export function render(c, g, W, H, time) {
     drawObject(c, g, o, sx(o.x), sy(o.y), o.size * z, limit, time, hasFilter);
   }
 
+  lap('objekte');
   // Trümmerstücke
   for (const ch of g.chunks) {
     const X = sx(ch.x), Y = sy(ch.y), s = Math.max(2, ch.size * z);
@@ -653,6 +763,7 @@ export function render(c, g, W, H, time) {
   for (const f of g.grabFx || []) { c.globalAlpha = f.life / 0.4; c.beginPath(); c.moveTo(sx(p.x), sy(p.y) - p.r * z); c.quadraticCurveTo(sx((p.x + f.x) / 2), sy((p.y + f.y) / 2) - p.r * z * 3, sx(f.x), sy(f.y)); c.stroke(); }
   c.globalAlpha = 1;
 
+  lap('truemmer_muenzen');
   // Staubwolken
   for (const u of g.puffs) {
     c.globalAlpha = Math.max(0, u.life / u.max) * 0.7;
@@ -679,6 +790,7 @@ export function render(c, g, W, H, time) {
   }
   c.globalAlpha = 1;
 
+  lap('puffs_partikel');
   // schwebende Texte (poppen auf)
   c.textAlign = 'center'; c.textBaseline = 'middle';
   for (const t of g.texts) {
@@ -690,8 +802,8 @@ export function render(c, g, W, H, time) {
     c.strokeText(t.s, sx(t.x), sy(t.y)); c.fillStyle = t.color; c.fillText(t.s, sx(t.x), sy(t.y));
   }
   c.globalAlpha = 1;
-
-  drawOverlays(c, g, W, H, time);
+  lap('texte');
+  drawOverlays(c, g, W, H, time); lap('overlays');
 }
 
 // ---------------------------------------------------------------------
@@ -820,6 +932,7 @@ function drawPlayer(c, g, X, Y, R, time) {
   drawMonster(c, X, Y, R, {
     char: g.char, stage: g.world, face: p.face, walk: p.walk, punchT: p.punchT, punchX: p.punchX, punchY: p.punchY,
     hurtT: p.hurtT, berserk: p.berserkT > 0, squash: p.squash, time, lookX: p.lookX, lookY: p.lookY, slamT: p.slamT,
+    skin: g.save && g.save.skinSel ? g.save.skinSel[g.char.id] : null,
   });
   // Ansturm bereit: kleiner Ring am Boden
   if (p.dashCd <= 0 && g.state === 'play') {
@@ -851,14 +964,14 @@ function drawOverlays(c, g, W, H, time) {
 }
 
 // Vorschau eines Monsters (Menü, Monster-Auswahl)
-export function drawMonsterPreview(canvas, char, stage, time, locked) {
+export function drawMonsterPreview(canvas, char, stage, time, locked, skin = null) {
   const c = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   c.clearRect(0, 0, W, H);
   const R = Math.min(W, H) * 0.29;
   drawMonster(c, W / 2, H * 0.86, R, {
     char, stage, face: 1, walk: time * 1.5, punchT: (time % 2.2) < 0.18 ? 0.15 : 0, punchX: 1, punchY: 0, hurtT: 0, berserk: false,
-    squash: 0, time, lookX: 1, lookY: 0, slamT: 0,
+    squash: 0, time, lookX: 1, lookY: 0, slamT: 0, skin,
   });
   if (locked) { // geheimnisvolle Silhouette
     c.globalCompositeOperation = 'source-atop'; c.fillStyle = 'rgba(18,8,10,0.92)'; c.fillRect(0, 0, W, H);

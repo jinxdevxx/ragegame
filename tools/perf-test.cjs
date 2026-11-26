@@ -7,6 +7,7 @@ const SCEN = [
   { name: 'Welt 6 Meteor+Berserker', q: '?slot=1&world=5', setup: "g.event = C.EVENTS.list.find(e => e.id === 'meteor'); g.eventT = 999; g.p.berserkT = 999;" },
   { name: 'Welt 6 Super-Magnet', q: '?slot=1&world=5', setup: "g.muts.push('hole'); s.upgrades.magnet = 15; g.stats = window.__rv.computeStats(s, g.muts, g.char.id);" },
   { name: 'Welt 12 Goldregen', q: '?slot=1&world=11', setup: "g.event = C.EVENTS.list.find(e => e.id === 'gold'); g.eventT = 999;" },
+  { name: 'Krümelflut + Super-Magnet', q: '?slot=1&world=5', setup: "g.muts.push('hole'); s.upgrades.magnet = 15; g.stats = window.__rv.computeStats(s, g.muts, g.char.id); setInterval(() => { if (g.state !== 'play') return; const t = g.objects.find(o => !o.dead && !o.move && !o.hazard) || g.objects[0]; for (let i = 0; i < 70; i++) { const a = Math.random() * 6.283, d = g.p.r * (1.5 + Math.random() * 7); const sz = g.p.r * (0.08 + Math.random() * 0.12); const hp = 1; g.objects.push({ ...t, x: g.p.x + Math.cos(a) * d, y: g.p.y + Math.sin(a) * d, size: sz, hp, maxHp: hp, dead: false, golden: false, crate: false, explosive: false }); } }, 400);" },
   { name: 'Welt 30', q: '?slot=1&world=29', setup: '' },
   { name: 'Hölle Boss', q: '?slot=1&world=49', setup: '' },
 ];

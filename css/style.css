@@ -282,7 +282,7 @@ input[type=range] { width: 180px; accent-color: var(--rage2); }
 @keyframes slideUp { from { transform: translate(-50%, 20px); opacity: 0; } }
 .icon-btn { pointer-events: auto; background: rgba(0,0,0,.45); border: 2px solid rgba(255,255,255,.18); border-radius: 12px; width: 42px; height: 42px; display: grid; place-items: center; font-size: 15px; }
 /* Run beenden: unter der Pause-Taste, braucht einen zweiten Klick */
-.hud-endrun { position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 50px); right: max(12px, env(safe-area-inset-right)); width: auto; min-width: 42px; padding: 0 12px; font-size: 14px; font-weight: 800; gap: 6px; white-space: nowrap; display: flex; align-items: center; color: #fff; }
+.hud-endrun { position: relative; margin-top: 6px; height: 34px; width: auto; min-width: 42px; padding: 0 12px; font-size: 14px; font-weight: 800; gap: 6px; white-space: nowrap; display: flex; align-items: center; color: #fff; }
 .hud-endrun span { font-size: 13px; }
 .hud-endrun.armed { background: #d61f26; border-color: #ff9a6a; animation: endpulse 0.6s ease-in-out infinite alternate; }
 @keyframes endpulse { from { transform: scale(1); } to { transform: scale(1.06); } }
@@ -377,3 +377,15 @@ body.touch .ab-key { display: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; }
 }
+
+/* Premium-Skins im Monster-Bildschirm */
+.skin-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin: 6px 0 8px; }
+.skin-chip { background: rgba(0,0,0,.35); border: 2px solid rgba(255,255,255,.14); border-radius: 10px; color: #fff; padding: 4px 2px; font-size: 18px; line-height: 1.1; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; min-width: 0; }
+.skin-chip small { font-size: 10px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.skin-chip.on { border-color: #ffd23f; background: rgba(255,210,63,.18); box-shadow: 0 0 10px rgba(255,210,63,.45); }
+.skin-chip.buy { border-color: #5ad06a; animation: skinpulse 1.2s ease-in-out infinite alternate; }
+.skin-chip.locked { opacity: .45; }
+.skin-chip.sk-gold.on, .skin-chip.sk-gold.buy { background: linear-gradient(160deg, rgba(255,210,63,.35), rgba(120,70,0,.35)); }
+.skin-chip.sk-platinum.on { background: linear-gradient(160deg, rgba(160,240,255,.3), rgba(255,160,255,.2)); }
+.skin-chip.sk-god.on { background: linear-gradient(160deg, rgba(255,240,180,.45), rgba(255,200,60,.25)); }
+@keyframes skinpulse { from { box-shadow: 0 0 0 rgba(90,208,106,0); } to { box-shadow: 0 0 10px rgba(90,208,106,.7); } }
