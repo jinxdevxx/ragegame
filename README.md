@@ -8,7 +8,7 @@ Du steuerst **Grumpf**, ein kleines, gehörntes Wut-Monster. Alles, was kleiner 
 **Spielen:** https://jinxdevxx.github.io/ragegame/
 **Cheat-/Testversion:** https://jinxdevxx.github.io/ragegame-cheat/ (getrennter Speicher, Cheat-Menü per 🛠 oder Taste ^)
 **Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
-**Aktuelle Version:** v0.8.6 (siehe [Patch Notes](#patch-notes))
+**Aktuelle Version:** v0.8.7 (siehe [Patch Notes](#patch-notes))
 
 ---
 
@@ -186,6 +186,12 @@ Ein Mensch ist meist langsamer als der Bot, realistisch sind eher 25–40 Runs b
 
 ## Dev-Log
 
+### 2026-11-26: v0.8.7 420 ohne Ruckeln
+- **Nutzer:** Auf Karte 420 laggt alles (MacBook, Dev-Build ausgemaxt), auch für normale Spieler inakzeptabel.
+- **Analyse:** Frühere Messungen liefen mit Pixeldichte 1. Neu: echte Rasterkosten pro Bild inkl. Flush bei Retina (3024×1720) gemessen (Bild 30× rendern + `getImageData`): Karte 420 **92 ms**, davon ~80 ms Boden – das skalierte Kachelmuster wurde in jedem Bild über alle 5 Mio. Pixel gefiltert (+ Verlauf + 6 große Rauchbilder); Straße zum Vergleich 25 ms. Auf GPU kommt dazu, dass `createPattern` aus einer Canvas pro Bild die 4-MB-Kachel neu hochladen kann.
+- **Lösung:** 420-Boden läuft über denselben Boden-Zwischenspeicher wie alle Karten (`cached()`), das Muster wird nur beim Neuaufbau gemalt; Abendlicht in die Kachel eingebacken, 3 Rauchwolken, 18 Glühwürmchen; Kachel wird im Menü per `requestIdleCallback` vorgebaut (`prewarm420`). Ergebnis: **25 ms** (wie Straße); `tools/perf420.cjs` bei DPR 2: 45–47 FPS bei 1814×1032 statt 41 FPS bei auf 1210×688 heruntergeregelter Auflösung, bei DPR 1 58 FPS.
+- **Gesamt-Check:** Spiel-Logik ist überall günstig (Update Ø 0,2–0,4 ms). Größter verbleibender Kostenpunkt auf allen Karten: Boden-Neuaufbau bei sehr schnellem Wachsen (Spitzen 60–150 ms beim Durchrasen der Welten, v. a. im Dev-Build) – Kandidat für eine nächste Runde (Neuaufbau über mehrere Bilder verteilen). `tools/perf420.cjs` kann jetzt Auflösung/Karte/Upgrade-Stufe (`DPR`, `W`, `H`, `MAP`, `LV`).
+
 ### 2026-11-26: v0.8.6 Echter Bosskampf
 - **Nutzer:** Ein Kollege macht ZORNOS 0 Schaden, der Boss macht auch ihm kaum Schaden; es soll ein reiner Bosskampf mit Skill und Ausweichen sein, ohne andere Objekte.
 - **Analyse** (`tools/boss-check.js`: Bot spielt natürliche Runs bis Welt 50 und kämpft): Die Stärke Schaden ÷ Boss-Härte streute bei Ankunft von 0,02 bis 440 – unbesiegbar bzw. tot nach 0 s. Dazu stieg die Boss-Härte mit jedem Wachsen in der Endlos-Welt (Objekte drumherum fressen → ×1,68 pro 4× Größe), Multiplikatoren stapelten sich (Ansturm ×2,5 × Ansturm-Mutation ×2 × Berserker ×3 → ein Treffer > alle HP), Kuscheln am Boss kostete nichts und Berserker machte unverwundbar.
@@ -331,6 +337,9 @@ Feedback nach dem ersten Anspielen: Der Ball-Look gefällt nicht, das Early Game
 ## Patch Notes
 
 Die vollständigen Patch Notes stehen im Spiel (Button unten links) und in `js/patchnotes.js`.
+
+### v0.8.7: 420 ohne Ruckeln (2026-11-26)
+- Karte 420 auf hochauflösenden Bildschirmen ~4× weniger Grafik-Arbeit pro Bild
 
 ### v0.8.6: Echter Bosskampf (2026-11-26)
 - ZORNOS: Fehler mit 0 Schaden behoben, reine Arena, Hit & Run, härtere Angriffe
