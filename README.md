@@ -5,7 +5,8 @@
 
 Du bist eine kleine, wütende Kugel. Alles, was kleiner ist als du, wird zertrümmert. Mit jedem Trümmerteil wirst du größer, und irgendwann zoomt die Kamera raus: Aus dem Garten wird die Straße, aus der Straße die Stadt, und am Ende fressen sich Galaxien gegenseitig.
 
-**Spielen:** https://jinxdevxx.github.io/ragegame/ (sobald GitHub Pages aktiv ist)
+**Spielen:** https://jinxdevxx.github.io/ragegame/
+**Live-Devlog:** https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
 **Aktuelle Version:** v0.1.0 (siehe [Patch Notes](#patch-notes))
 
 ---
@@ -123,6 +124,9 @@ Hier steht, was an dem Spiel gemacht wurde und warum.
   - Ergebnis: Garten → Galaxie dauert jetzt etwa 23 Runs statt 3.
 - Browser-Test mit Playwright (Desktop + Handy): keine Konsolenfehler; Menü, Run, Mutation, Ergebnis, Werkstatt, Patch Notes und Update-Hinweis funktionieren.
 - Gefixt: Die Augenbrauen sahen traurig statt wütend aus. Die Shop-Anzeige „Schrottgier“ zeigte 0,12× statt 1,00×.
+- Live-Devlog in Claude angelegt (Stand, Patch-Notes-Historie, Roadmap, Ideen-Pool, PLAY-Button): https://claude.ai/artifact/H44HiDCZvRHvEJNZ74eZ6E
+- Täglicher Qualitäts-Check eingerichtet (20:13 Uhr): Bugs, Balancing und Spielgefühl prüfen, danach README, Patch Notes und Devlog pflegen.
+- Grundversion auf `main` gebracht, GitHub Pages ist aktiv: https://jinxdevxx.github.io/ragegame/
 
 ---
 
